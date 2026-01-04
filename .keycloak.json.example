@@ -1,0 +1,34 @@
+{
+  "clients": [
+    {
+      "clientId": "template",
+      "directAccessGrantsEnabled": true,
+      "name": "template",
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "redirectUris": ["http://localhost:8080/auth/callback"],
+      "secret": "CHANGE_ME_LOCAL_SECRET",
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": true
+    }
+  ],
+  "enabled": true,
+  "realm": "local",
+  "users": [
+    {
+      "credentials": [
+        {
+          "type": "password",
+          "value": "test",
+          "temporary": false
+        }
+      ],
+      "email": "test@example.com",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Test",
+      "lastName": "User",
+      "username": "test"
+    }
+  ]
+}

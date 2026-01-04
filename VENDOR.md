@@ -45,12 +45,15 @@ A collection of modular, high-performance utilities for building cloud-native Go
 
 **Import**: `github.com/andygeiss/cloud-native-utils/assert`
 
-| Function        | Description                                      |
-|-----------------|--------------------------------------------------|
-| `That(t, msg, got, want)` | Assert equality with a clear error message |
+| Function                  | Description                                      |
+|---------------------------|--------------------------------------------------|
+| `That(t, msg, got, want)` | Assert equality with a clear error message       |
 
 **When to use**:  
 - All unit tests in this template use `assert.That` for readable, consistent assertions.
+
+**When NOT to use**:  
+- Complex test scenarios requiring table-driven tests with custom matchers.
 
 **Pattern** (from this template):
 ```go
@@ -76,12 +79,16 @@ func Test_Index_Hash_With_No_FileInfos_Should_Return_Valid_Hash(t *testing.T) {
 | `NewJsonFileAccess[K, V](f)`  | JSON file–backed storage                          |
 | `NewYamlFileAccess[K, V](f)`  | YAML file–backed storage                          |
 | `NewSqliteAccess[K, V](db)`   | SQLite-backed storage                             |
-| `NewIndexedAccess[K, V](...)`  | Add secondary indexing to any `Access`           |
+| `NewIndexedAccess[K, V](...)` | Add secondary indexing to any `Access`            |
 | `NewMockAccess[K, V]()`       | Mock for unit tests                               |
 
 **When to use**:  
 - Implement `IndexRepository` or any repository port where a key-value shape fits.
 - Prefer this over ad-hoc repository interfaces.
+
+**When NOT to use**:  
+- Complex relational queries requiring joins.
+- High-throughput scenarios needing connection pooling (use dedicated DB drivers).
 
 **Pattern** (from this template):
 ```go
@@ -114,6 +121,10 @@ func NewFileIndexRepository(filename string) indexing.IndexRepository {
 **When to use**:  
 - Publish domain events from services.
 - Decouple bounded contexts via event-driven patterns.
+
+**When NOT to use**:  
+- Synchronous request-response patterns (use direct calls).
+- When guaranteed exactly-once delivery is critical (Kafka provides at-least-once).
 
 **Pattern** (from this template):
 ```go
@@ -148,6 +159,10 @@ func (ep *EventPublisher) Publish(ctx context.Context, e event.Event) error {
 - Wrap calls to external services (HTTP APIs, databases, third-party systems).
 - Prefer these wrappers over custom retry/circuit-breaker logic.
 
+**When NOT to use**:  
+- Internal domain logic (stability patterns are for infrastructure boundaries).
+- Simple in-memory operations that cannot fail transiently.
+
 **Pattern**:
 ```go
 import "github.com/andygeiss/cloud-native-utils/stability"
@@ -175,6 +190,9 @@ result, err := fn(ctx, input)
 **When to use**:  
 - Create root context in CLI/HTTP entry points.
 - Register graceful shutdown handlers.
+
+**When NOT to use**:  
+- Domain layer code (contexts should be passed in, not created).
 
 **Pattern**:
 ```go
@@ -215,6 +233,10 @@ func main() {
 - Hash user passwords.
 - Set up production HTTP servers with proper timeouts.
 
+**When NOT to use**:  
+- Token-based auth where JWTs are managed externally.
+- When you need custom server configuration beyond env vars.
+
 **Pattern**:
 ```go
 import "github.com/andygeiss/cloud-native-utils/security"
@@ -228,7 +250,38 @@ server := security.NewServer(mux)  // reads PORT, SERVER_*_TIMEOUT env vars
 
 ---
 
-### 3.7 `efficiency` — Concurrency Helpers
+### 3.7 `logging` — Structured JSON Logging
+
+**Import**: `github.com/andygeiss/cloud-native-utils/logging`
+
+| Function / Type                  | Description                                         |
+|----------------------------------|-----------------------------------------------------|
+| `NewJsonLogger()`                | Create structured JSON logger (uses `LOGGING_LEVEL`)|
+| `WithLogging(logger, handler)`   | HTTP middleware for request logging                 |
+
+**When to use**:  
+- All production logging in adapters and application layer.
+- HTTP request tracing.
+
+**When NOT to use**:  
+- Domain layer (domain code should not log directly).
+
+**Pattern**:
+```go
+import "github.com/andygeiss/cloud-native-utils/logging"
+
+logger := logging.NewJsonLogger()
+logger.Info("server started", "port", os.Getenv("PORT"))
+
+// HTTP middleware
+handler := logging.WithLogging(logger, yourHandler)
+```
+
+**Where it lives**: Application layer in `cmd/*/main.go`, adapters.
+
+---
+
+### 3.8 `efficiency` — Concurrency Helpers
 
 **Import**: `github.com/andygeiss/cloud-native-utils/efficiency`
 
@@ -245,6 +298,10 @@ server := security.NewServer(mux)  // reads PORT, SERVER_*_TIMEOUT env vars
 - Fan-out/fan-in patterns.
 - HTTP response compression.
 
+**When NOT to use**:  
+- Simple sequential processing.
+- When explicit goroutine control is needed.
+
 **Pattern**:
 ```go
 import "github.com/andygeiss/cloud-native-utils/efficiency"
@@ -255,7 +312,7 @@ results, errs := efficiency.Process(ch, processFn)
 
 ---
 
-### 3.8 `consistency` — Transactional Event Log
+### 3.9 `consistency` — Transactional Event Log
 
 **Import**: `github.com/andygeiss/cloud-native-utils/consistency`
 
@@ -270,9 +327,13 @@ results, errs := efficiency.Process(ch, processFn)
 - Event sourcing or audit trails.
 - Durable operation logs.
 
+**When NOT to use**:  
+- High-throughput event streams (use Kafka via `messaging`).
+- When you need complex event querying.
+
 ---
 
-### 3.9 `templating` — HTML Templating
+### 3.10 `templating` — HTML Templating
 
 **Import**: `github.com/andygeiss/cloud-native-utils/templating`
 
@@ -286,6 +347,10 @@ results, errs := efficiency.Process(ch, processFn)
 - HTML rendering in HTTP handlers.
 - Use instead of rolling a custom template loader.
 
+**When NOT to use**:  
+- Non-HTML templating (JSON, YAML generation).
+- When you need advanced template inheritance beyond Go's `html/template`.
+
 **Pattern**:
 ```go
 //go:embed templates/*.html
@@ -298,7 +363,7 @@ engine.Render(w, "page.html", data)
 
 ---
 
-### 3.10 `slices` — Generic Slice Utilities
+### 3.11 `slices` — Generic Slice Utilities
 
 **Import**: `github.com/andygeiss/cloud-native-utils/slices`
 
@@ -313,9 +378,13 @@ engine.Render(w, "page.html", data)
 - Functional-style slice transformations.
 - Prefer over hand-rolled loops for common operations.
 
+**When NOT to use**:  
+- Performance-critical hot paths where allocation matters.
+- When Go 1.21+ `slices` stdlib package suffices.
+
 ---
 
-### 3.11 `scheduling` — Time/Day Primitives
+### 3.12 `scheduling` — Time/Day Primitives
 
 **Import**: `github.com/andygeiss/cloud-native-utils/scheduling`
 
@@ -329,17 +398,72 @@ engine.Render(w, "page.html", data)
 - Booking or scheduling features.
 - Business hours and slot management.
 
+**When NOT to use**:  
+- Simple timestamp comparisons.
+- Cron-style job scheduling (use dedicated schedulers).
+
 ---
 
-### 3.12 Additional Packages
+### 3.13 `redirecting` — PRG Pattern
 
-| Package         | Purpose                                                      | When to use                                  |
-|-----------------|--------------------------------------------------------------|----------------------------------------------|
-| `logging`       | Structured JSON logging, HTTP middleware                     | Production logging, request tracing          |
-| `redirecting`   | PRG pattern, HTMX-compatible redirects                       | Web apps with POST/Redirect/GET              |
-| `i18n`          | YAML translations, date/money formatting                     | Internationalized applications               |
-| `imaging`       | QR code generation                                           | QR features                                  |
-| `extensibility` | Dynamic Go plugin loading                                    | Plugin architectures (platform-limited)      |
+**Import**: `github.com/andygeiss/cloud-native-utils/redirecting`
+
+| Function / Type                        | Description                              |
+|----------------------------------------|------------------------------------------|
+| `WithPRG(handler)`                     | Middleware for POST/Redirect/GET         |
+| `Redirect(w, r, url)`                  | Standard redirect                        |
+| `RedirectWithMessage(w, r, url, msg)`  | Redirect with flash message              |
+
+**When to use**:  
+- Web forms following POST/Redirect/GET pattern.
+- HTMX-compatible redirects.
+
+---
+
+### 3.14 `i18n` — Internationalization
+
+**Import**: `github.com/andygeiss/cloud-native-utils/i18n`
+
+| Function / Type                        | Description                              |
+|----------------------------------------|------------------------------------------|
+| `NewTranslations()`                    | Create translation store                 |
+| `Load(fs, lang, path)`                 | Load YAML translations from embed.FS     |
+| `T(lang, key)`                         | Get translated text                      |
+| `FormatDateISO`, `FormatMoney`         | Locale-aware formatting                  |
+
+**When to use**:  
+- Multi-language applications.
+- Locale-aware date/currency formatting.
+
+---
+
+### 3.15 `imaging` — QR Code Generation
+
+**Import**: `github.com/andygeiss/cloud-native-utils/imaging`
+
+| Function                               | Description                              |
+|----------------------------------------|------------------------------------------|
+| `GenerateQRCodeDataURL(content)`       | Generate QR code as data URL             |
+
+**When to use**:  
+- QR code features in web applications.
+
+---
+
+### 3.16 `extensibility` — Plugin Loading
+
+**Import**: `github.com/andygeiss/cloud-native-utils/extensibility`
+
+| Function                               | Description                              |
+|----------------------------------------|------------------------------------------|
+| `LoadPlugin[T](path, symbol)`          | Load Go plugin dynamically               |
+
+**When to use**:  
+- Plugin architectures requiring runtime extension.
+
+**When NOT to use**:  
+- Cross-platform applications (plugins are OS-specific).
+- When compile-time composition is sufficient.
 
 ---
 
@@ -355,6 +479,7 @@ engine.Render(w, "page.html", data)
 | Stability wrappers              | `internal/adapters/outbound/` (wrap external calls) |
 | Test assertions                 | `*_test.go` (same directory as code)  |
 | Templating engine               | `cmd/*/main.go` or dedicated handler adapter |
+| Logging                         | `cmd/*/main.go`, `internal/adapters/` |
 
 ### 4.2 Domain Layer Rules
 
@@ -374,6 +499,7 @@ engine.Render(w, "page.html", data)
 | External call resilience  | `stability.Retry(stability.Breaker(fn, 3), 5, time.Second)`  |
 | Signal-aware context      | `ctx, cancel := service.Context()`                           |
 | Secure HTTP server        | `security.NewServer(mux)`                                    |
+| Structured logging        | `logging.NewJsonLogger()`                                    |
 
 ---
 
@@ -389,7 +515,26 @@ When implementing cross-cutting functionality:
 
 ---
 
-## 6. Version Notes
+## 6. Environment Variables
+
+The following environment variables are used by `cloud-native-utils`:
+
+| Variable              | Package      | Description                              | Default  |
+|-----------------------|--------------|------------------------------------------|----------|
+| `PORT`                | `security`   | HTTP server port                         | `8080`   |
+| `SERVER_READ_TIMEOUT` | `security`   | HTTP read timeout                        | `5s`     |
+| `SERVER_WRITE_TIMEOUT`| `security`   | HTTP write timeout                       | `10s`    |
+| `SERVER_IDLE_TIMEOUT` | `security`   | HTTP idle timeout                        | `120s`   |
+| `LOGGING_LEVEL`       | `logging`    | Log level (debug, info, warn, error)     | `info`   |
+| `KAFKA_BROKERS`       | `messaging`  | Kafka broker addresses (comma-separated) | —        |
+| `OIDC_CLIENT_ID`      | `security`   | OIDC client identifier                   | —        |
+| `OIDC_CLIENT_SECRET`  | `security`   | OIDC client secret                       | —        |
+| `OIDC_ISSUER`         | `security`   | OIDC issuer URL                          | —        |
+| `OIDC_REDIRECT_URL`   | `security`   | OIDC callback URL                        | —        |
+
+---
+
+## 7. Version Notes
 
 | Version | Notable Changes                                              |
 |---------|--------------------------------------------------------------|
@@ -399,6 +544,35 @@ When upgrading `cloud-native-utils`:
 - Review the [releases page](https://github.com/andygeiss/cloud-native-utils/releases).
 - Check for breaking changes in packages this template uses.
 - Update this document if APIs change significantly.
+
+---
+
+## 8. Quick Reference Table
+
+| Need                        | Package        | Function/Type                            |
+|-----------------------------|----------------|------------------------------------------|
+| Test assertions             | `assert`       | `That(t, msg, got, want)`                |
+| Key-value storage           | `resource`     | `Access[K, V]`, `NewJsonFileAccess`      |
+| Pub/sub events              | `messaging`    | `Dispatcher`, `NewInternalDispatcher`    |
+| Circuit breaker             | `stability`    | `Breaker(fn, threshold)`                 |
+| Retry logic                 | `stability`    | `Retry(fn, attempts, delay)`             |
+| Rate limiting               | `stability`    | `Throttle(fn, maxConcurrent)`            |
+| Graceful shutdown           | `service`      | `Context()`, `RegisterOnContextDone`     |
+| Password hashing            | `security`     | `Password(pw)`, `IsPasswordValid`        |
+| AES encryption              | `security`     | `Encrypt`, `Decrypt`, `GenerateKey`      |
+| Secure HTTP server          | `security`     | `NewServer(handler)`                     |
+| OIDC authentication         | `security`     | `IdentityProvider`                       |
+| JSON logging                | `logging`      | `NewJsonLogger()`                        |
+| HTTP request logging        | `logging`      | `WithLogging(logger, handler)`           |
+| HTML templating             | `templating`   | `NewEngine(fs)`, `Render`                |
+| Slice operations            | `slices`       | `Map`, `Filter`, `Unique`, `Contains`    |
+| Concurrency pipelines       | `efficiency`   | `Generate`, `Merge`, `Split`, `Process`  |
+| HTTP compression            | `efficiency`   | `WithCompression(handler)`               |
+| Event sourcing log          | `consistency`  | `NewJsonFileLogger[K, V]`                |
+| Business hours/scheduling   | `scheduling`   | `TimeOfDay`, `DayHours`                  |
+| PRG redirects               | `redirecting`  | `WithPRG`, `Redirect`                    |
+| Translations                | `i18n`         | `NewTranslations()`, `T(lang, key)`      |
+| QR codes                    | `imaging`      | `GenerateQRCodeDataURL`                  |
 
 ---
 

@@ -2,6 +2,7 @@ package inbound
 
 import (
 	"net/http"
+	"os"
 
 	"github.com/andygeiss/cloud-native-utils/redirecting"
 	"github.com/andygeiss/cloud-native-utils/security"
@@ -22,6 +23,11 @@ type HttpViewIndexResponse struct {
 
 // HttpViewIndex defines an HTTP handler function for rendering the index template.
 func HttpViewIndex(e *templating.Engine) http.HandlerFunc {
+	// Retrieve application details from environment variables at startup.
+	// We can reuse these values instead of reading them from the environment on each request.
+	appName := os.Getenv("APP_NAME")
+	title := appName + " - " + os.Getenv("APP_DESCRIPTION")
+
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Make a shortcut for the current context.
 		ctx := r.Context()
@@ -35,13 +41,13 @@ func HttpViewIndex(e *templating.Engine) http.HandlerFunc {
 
 		// Add session-specific data.
 		data := HttpViewIndexResponse{
-			AppName:   "go-server",
+			AppName:   appName,
 			Email:     ctx.Value(security.ContextEmail).(string),
 			Issuer:    ctx.Value(security.ContextIssuer).(string),
 			Name:      ctx.Value(security.ContextName).(string),
 			SessionID: ctx.Value(security.ContextSessionID).(string),
 			Subject:   ctx.Value(security.ContextSubject).(string),
-			Title:     "Home",
+			Title:     title,
 			Verified:  ctx.Value(security.ContextVerified).(bool),
 		}
 

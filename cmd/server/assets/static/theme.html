@@ -1,4 +1,13 @@
 <!doctype html>
+<!--
+    HTML Design Philosophy:
+    - Keep HTML clean and minimal. No inline styles or inline JavaScript.
+    - Define all styles as reusable CSS classes (see theme.css and styles.css).
+    - Compose components by combining utility classes (.flex-center, .gap-4, etc.).
+    - No JavaScript in <script> tags within HTML files.
+    - For dynamic pages: use templating.Engine (Go templates) with HTMX for interactivity.
+    - This ensures clean separation of concerns and maintainable, predictable code.
+-->
 <html lang="en">
     <head>
         <meta charset="UTF-8" />
@@ -55,9 +64,7 @@
 
                     <div class="flex-center gap-4">
                         <!-- Buttons: .btn + size / variant modifiers -->
-                        <button class="btn btn-primary btn-lg">
-                            ✦ Primary
-                        </button>
+                        <button class="btn btn-primary btn-lg">Primary</button>
                         <button class="btn btn-outline btn-lg">Outline</button>
                         <button class="btn btn-ghost btn-lg">Ghost</button>
                     </div>

@@ -1,0 +1,92 @@
+# ======================================
+# Docker Compose Configuration
+# ======================================
+# Defines three services: Keycloak (auth), Kafka (event streaming), and app (main application)
+# Environment variables: USER (system user) and APP_SHORTNAME (from .env or shell)
+#
+# Usage:
+#   just up       # Build image and start services
+#   just down     # Stop and remove all services
+#   docker-compose logs -f app  # View app logs
+
+services:
+  # ======================================
+  # Keycloak - Authentication & Authorization
+  # ======================================
+  # OpenID Connect provider for user authentication
+  # Runs in development mode with default credentials (admin:admin)
+  # Admin console: http://127.0.0.1:8180/admin
+  keycloak:
+    image: quay.io/keycloak/keycloak:latest
+    container_name: keycloak
+    command:
+      - start-dev
+      - --import-realm
+    environment:
+      # Default admin credentials (development only - change in production!)
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      # Keycloak hostname configuration
+      # KC_HOSTNAME: hostname Keycloak advertises in OIDC issuer URLs (discovery, redirects)
+      # KC_HOSTNAME_PORT: port for issued URLs (must match published port 8180)
+      #
+      # Why `localhost:8180`?
+      # - Browsers are redirected to the hostname Keycloak advertises.
+      # - The Go OIDC client validates the issuer URL strictly.
+      # - This repo standardizes on http://localhost:8180 as the issuer.
+      KC_HOSTNAME: localhost
+      KC_HOSTNAME_PORT: 8180
+      KC_HOSTNAME_PROTOCOL: http
+      # Disable strict hostname checking (allows browser to reach via localhost:8180)
+      KC_HOSTNAME_STRICT: "false"
+    volumes:
+      - ./.keycloak.json:/opt/keycloak/data/import/local-realm.json:ro
+    ports:
+      # Admin console and OIDC endpoints
+      # Map to 8180 to avoid conflict with app service on 8080
+      - "8180:8080"
+    restart: unless-stopped
+
+  # ======================================
+  # Kafka - Event Streaming & Message Broker
+  # ======================================
+  # Distributed event log for domain event persistence
+  # Used by event_publisher in internal/adapters/outbound/
+  # Auto-creates topics on first use
+  kafka:
+    image: apache/kafka:latest
+    container_name: kafka
+    ports:
+      # Kafka broker port (localhost only for security)
+      - "9092:9092"
+    restart: unless-stopped
+
+  # ======================================
+  # App - Go DDD/Hexagonal Application
+  # ======================================
+  # Main application container built from Dockerfile
+  # Provides HTTP API on port 8080 and CLI tools
+  # Depends on Keycloak for auth and Kafka for events
+  app:
+    image: "${USER}/${APP_SHORTNAME}:latest"
+    container_name: "${APP_SHORTNAME}"
+    depends_on:
+      - keycloak
+      - kafka
+    env_file:
+      # Load all environment variables from .env into the container
+      - .env
+    ports:
+      # HTTP server (localhost only - use reverse proxy in production)
+      - "8080:8080"
+    extra_hosts:
+      # Allow the app container to reach host-published services via `localhost`.
+      #
+      # This is used to keep a single OIDC issuer URL (http://localhost:8180/realms/local)
+      # that works for both:
+      # - the browser on the host
+      # - the app inside the container (which otherwise can't reach host localhost)
+      #
+      # Requires a Docker engine that supports `host-gateway`.
+      - "localhost:host-gateway"
+    restart: unless-stopped

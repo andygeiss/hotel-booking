@@ -3,51 +3,62 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Layer 1: Reset / foundation -->
     <link rel="stylesheet" href="/static/css/base.css" />
+    <!-- Layer 2: Design tokens -->
     <link rel="stylesheet" href="/static/css/theme.css" />
+    <!-- Layer 3: Components / layout -->
     <link rel="stylesheet" href="/static/css/styles.css" />
     <script src="/static/js/htmx.min.js" defer></script>
     <title>{{ .Title }}</title>
 </head>
 <body>
-    <nav class="nav" aria-label="Main navigation">
-        <a href="/ui/" class="nav__brand">{{ .AppName }}</a>
-        <input type="checkbox" id="nav-toggle" class="nav__toggle" aria-hidden="true" />
-        <label for="nav-toggle" class="nav__toggle-label" aria-label="Toggle navigation menu">
+    <!-- Header Navigation -->
+    <header class="nav">
+        <div class="nav__brand">{{ .AppName }}</div>
+
+        <!-- Mobile nav toggle -->
+        <input type="checkbox" id="nav-toggle" class="nav__toggle" />
+        <label
+            for="nav-toggle"
+            class="nav__toggle-label"
+            aria-label="Toggle navigation"
+        >
             <span class="nav__hamburger"></span>
         </label>
-        <div class="nav__links">
+
+        <!-- Navigation links -->
+        <nav class="nav__links">
             <a href="/ui/" class="nav__link">Home</a>
-            <a href="/auth/logout" class="nav__link">Logout</a>
-        </div>
-    </nav>
-    <main>
-        <div class="card">
-            <div class="card__header">
-                <h1>Welcome, {{ .Name }}!</h1>
+            <a href="/auth/logout/{{ .SessionID }}" class="nav__link">Logout</a>
+        </nav>
+    </header>
+
+    <div class="container">
+        <main>
+            <div class="card">
+                <div class="card__header">
+                    <h1>Welcome, {{ .Name }}!</h1>
+                </div>
+                <div class="card__body">
+                    <p><strong>Email:</strong> {{ .Email }}</p>
+                    <p><strong>Issuer:</strong> {{ .Issuer }}</p>
+                    <p><strong>Session ID:</strong> {{ .SessionID }}</p>
+                    <p><strong>Subject:</strong> {{ .Subject }}</p>
+                    <p><strong>Verified:</strong> {{ .Verified }}</p>
+                </div>
+                <div class="card__footer">
+                    <a href="/auth/logout/{{ .SessionID }}" class="btn btn-primary">Logout</a>
+                </div>
             </div>
-            <div class="card__body">
-                <p><strong>Email:</strong> {{ .Email }}</p>
-                <p><strong>Issuer:</strong> {{ .Issuer }}</p>
-                <p><strong>Session ID:</strong> {{ .SessionID }}</p>
-                <p><strong>Subject:</strong> {{ .Subject }}</p>
-                <p><strong>Verified:</strong> {{ .Verified }}</p>
-            </div>
-            <div class="card__footer">
-                <a href="/auth/logout" class="btn btn-primary">Logout</a>
-            </div>
-        </div>
-    </main>
-    <div class="action-bar" aria-label="Quick actions">
-        <a href="/ui/" class="action-bar__item">
-            <span aria-hidden="true">🏠</span>
-            <span>Home</span>
-        </a>
-        <a href="/auth/logout" class="action-bar__item">
-            <span aria-hidden="true">🚪</span>
-            <span>Logout</span>
-        </a>
+        </main>
     </div>
+
+    <!-- Mobile action bar -->
+    <nav class="action-bar" aria-label="Quick actions">
+        <a href="/ui/" class="action-bar__item">Home</a>
+        <a href="/auth/logout/{{ .SessionID }}" class="action-bar__item">Logout</a>
+    </nav>
 </body>
 </html>
 {{ end }}

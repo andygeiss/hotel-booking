@@ -35,14 +35,14 @@ body::after {
 
 body::before {
     animation: blob-1 var(--blob-speed) ease-in-out infinite;
-    background: radial-gradient(circle, var(--gradient-purple) 0%, var(--gradient-pink) 50%, transparent 70%);
+    background: radial-gradient(circle, var(--accent-purple) 0%, var(--gradient-pink) 50%, transparent 70%);
     left: -10%;
     top: -10%;
 }
 
 body::after {
     animation: blob-2 var(--blob-speed) ease-in-out infinite;
-    background: radial-gradient(circle, var(--gradient-cyan) 0%, var(--gradient-blue) 50%, transparent 70%);
+    background: radial-gradient(circle, var(--accent-blue) 0%, var(--accent-cyan) 50%, transparent 70%);
     bottom: -10%;
     right: -10%;
 }
@@ -506,6 +506,15 @@ p {
     text-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
 }
 
+.text-muted {
+    color: var(--color-text-muted);
+}
+
+/* Main content area with proper height */
+main.content-view {
+    min-height: calc(100vh - var(--header-height) - 70px);
+}
+
 /* Code elements */
 code {
     backdrop-filter: blur(var(--glass-blur-sm));
@@ -557,6 +566,13 @@ a:hover {
     text-shadow: 0 0 20px var(--accent-pink);
 }
 
+/* Button links - keep white text */
+a.btn,
+a.btn:hover {
+    color: var(--color-primary-text);
+    text-shadow: none;
+}
+
 /* ========================================
    RESPONSIVE - Mobile First
    ======================================== */
@@ -577,9 +593,9 @@ a:hover {
 
     /* Hide desktop links, show when toggled */
     .nav__links {
-        backdrop-filter: blur(var(--glass-blur));
-        -webkit-backdrop-filter: blur(var(--glass-blur));
-        background: var(--glass-bg-solid);
+        backdrop-filter: blur(var(--glass-blur-lg));
+        -webkit-backdrop-filter: blur(var(--glass-blur-lg));
+        background: rgba(0, 0, 0, 0.95);
         box-shadow: var(--glass-shadow);
         flex-direction: column;
         gap: 0;

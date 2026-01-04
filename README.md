@@ -5,39 +5,38 @@
 # Go DDD Hexagonal Starter
 
 [![Go Reference](https://pkg.go.dev/badge/go-ddd-hex-starter.svg)](https://pkg.go.dev/go-ddd-hex-starter)
-[![Go Report Card](https://goreportcard.com/badge/go-ddd-hex-starter)](https://goreportcard.com/report/go-ddd-hex-starter)
+[![Go Report Card](https://goreportcard.com/badge/github.com/andygeiss/go-ddd-hex-starter)](https://goreportcard.com/report/github.com/andygeiss/go-ddd-hex-starter)
 [![Release](https://img.shields.io/github/v/release/andygeiss/go-ddd-hex-starter.svg)](https://github.com/andygeiss/go-ddd-hex-starter/releases)
 
-A production-ready Go template demonstrating Domain-Driven Design (DDD) and Hexagonal Architecture (Ports and Adapters) for building maintainable, scalable applications.
+A production-ready Go template demonstrating Domain-Driven Design (DDD) and Hexagonal Architecture (Ports and Adapters) for building maintainable, testable, and cloud-native applications.
 
 ---
 
-## Overview
+## Overview / Motivation
 
-**go-ddd-hex-starter** provides a clean, minimal foundation for Go projects requiring clear separation between business logic and infrastructure. It serves as:
+**go-ddd-hex-starter** provides a reusable blueprint for building maintainable Go applications with well-defined boundaries. It serves as both a reference implementation and a starting point for developers and AI coding agents.
 
-- A **reusable blueprint** for building maintainable Go applications with well-defined boundaries.
-- A **reference implementation** of the Ports and Adapters pattern with working examples.
-- A **template** for developers and AI coding agents that need a consistent, well-documented structure to extend.
+The template demonstrates:
 
-The included examples demonstrate:
-
-- A **CLI tool** that indexes files in a directory and persists the result to JSON.
-- An **HTTP server** with OIDC authentication, templating, and session management.
+- **Hexagonal Architecture** with clear separation between domain logic, adapters, and application entry points.
+- **Domain-Driven Design** patterns including aggregates, entities, value objects, and domain events.
+- **Profile-Guided Optimization (PGO)** for optimized production builds.
+- **OIDC Authentication** via Keycloak for secure HTTP endpoints.
 
 ---
 
 ## Key Features
 
-- **Hexagonal Architecture**: Clean separation between domain logic and infrastructure through ports and adapters.
-- **Domain-Driven Design**: Bounded contexts, aggregates, entities, value objects, and domain events.
-- **Profile-Guided Optimization (PGO)**: Benchmark-driven build process for optimized binaries.
-- **OIDC Authentication**: Built-in authentication using `cloud-native-utils/security`.
-- **Embedded Assets**: Static files and templates bundled into binaries via `embed.FS`.
-- **Event-Driven Architecture**: Domain events with pub/sub messaging support.
-- **Generic Repository Pattern**: Type-safe CRUD operations using `resource.Access[K, V]`.
-- **Structured Logging**: JSON logging via `cloud-native-utils/logging`.
-- **Task Runner**: Standardized workflows with `just` (justfile).
+- ✅ **Hexagonal Architecture** — Domain at the center, adapters depend on domain only
+- ✅ **Domain-Driven Design** — Aggregates, entities, value objects, ports, and domain events
+- ✅ **Profile-Guided Optimization** — Benchmark-driven PGO for optimized binaries
+- ✅ **OIDC Authentication** — Keycloak integration with session management
+- ✅ **Event-Driven Messaging** — Pub/sub dispatcher for domain events
+- ✅ **Generic CRUD Repositories** — JSON file–backed storage with type-safe access
+- ✅ **Structured Logging** — JSON logs via `log/slog`
+- ✅ **Docker/Podman Support** — Multi-stage builds, scratch runtime images
+- ✅ **Just Task Runner** — Standardized build, test, and deploy workflows
+- ✅ **Embedded Assets** — Static files and templates via `embed.FS`
 
 ---
 
@@ -93,109 +92,73 @@ Source code dependencies point **inward** only:
 go-ddd-hex-starter/
 ├── .justfile                 # Task runner commands (build, test, profile, run, serve)
 ├── go.mod                    # Go module definition (Go 1.25+)
-├── CONTEXT.md                # Detailed AI/developer context documentation
+├── CONTEXT.md                # AI/developer context documentation
 ├── VENDOR.md                 # Vendor library documentation (cloud-native-utils)
+├── README.md                 # User-facing documentation (this file)
+├── Dockerfile                # Multi-stage container build
+├── docker-compose.yml        # Dev stack (Keycloak, Kafka, app)
 ├── cpuprofile.pprof          # PGO profile data (auto-generated)
+├── coverage.pprof            # Test coverage data (auto-generated)
 ├── bin/                      # Compiled binaries (gitignored)
+├── tools/                    # Build/dev scripts (Python helpers)
 ├── cmd/                      # Application entry points
-│   ├── cli/                  # CLI application
-│   │   ├── main.go           # Wires adapters, runs file indexing
+│   ├── cli/                  # CLI application (file indexing example)
+│   │   ├── main.go
 │   │   ├── main_test.go      # Benchmarks for PGO
-│   │   └── assets/           # Embedded assets
+│   │   └── assets/
 │   └── server/               # HTTP server application
-│       ├── main.go           # Wires adapters, starts server with OIDC
+│       ├── main.go
 │       └── assets/
-│           ├── static/       # CSS, JS (base.css, htmx.min.js, theme.css)
-│           └── templates/    # HTML templates (index.tmpl, login.tmpl)
+│           ├── static/       # CSS, JS, images
+│           └── templates/    # HTML templates
 └── internal/
     ├── adapters/             # Infrastructure implementations
     │   ├── inbound/          # Driving adapters (filesystem, HTTP handlers, routing)
-    │   │   ├── file_reader.go
-    │   │   ├── router.go
-    │   │   ├── http_index.go
-    │   │   ├── http_login.go
-    │   │   ├── http_view.go
-    │   │   └── middleware.go
     │   └── outbound/         # Driven adapters (persistence, messaging)
-    │       ├── file_index_repository.go
-    │       └── event_publisher.go
     └── domain/               # Pure business logic
         ├── event/            # Domain event interface
-        │   └── event.go
         └── indexing/         # Bounded Context: Indexing
-            ├── aggregate.go      # Aggregate Root (Index)
-            ├── entities.go       # Entities (FileInfo)
-            ├── value_objects.go  # Value Objects (IndexID) + Domain Events
-            ├── service.go        # Domain Service (IndexingService)
-            ├── ports_inbound.go  # Interfaces for driving adapters
-            └── ports_outbound.go # Interfaces for driven adapters
+            ├── aggregate.go
+            ├── entities.go
+            ├── value_objects.go
+            ├── service.go
+            ├── ports_inbound.go
+            └── ports_outbound.go
 ```
+
+### Included Examples
+
+- **CLI tool** — Indexes files in a directory and persists the result to JSON.
+- **HTTP server** — OIDC authentication, templating, and session management.
 
 ---
 
-## Conventions and Standards
+## Conventions & Standards
 
-### Naming Conventions
+> The coding style in this repository reflects a combination of widely used practices, prior experience, and personal preference, and is influenced by the Go projects on github.com/andygeiss. There is no single "best" project setup; you are encouraged to adapt this structure, evolve your own style, and use this repository as a starting point for your own projects.
+
+### Key Conventions
 
 | Element | Convention | Example |
 |---------|------------|---------|
 | Files | `snake_case.go` | `file_reader.go`, `http_index.go` |
 | Packages | lowercase, singular | `indexing`, `event`, `inbound` |
 | Interfaces | Noun describing capability | `FileReader`, `IndexRepository` |
-| Structs | PascalCase noun | `Index`, `FileInfo`, `EventPublisher` |
-| Methods | PascalCase verb phrase | `ReadFileInfos`, `CreateIndex` |
 | Constructors | `New<Type>()` | `NewIndex()`, `NewFileReader()` |
-| Value Objects | PascalCase, `ID` suffix for identifiers | `IndexID` |
-| Domain Events | `Event<Action>` | `EventFileIndexCreated` |
+| Tests | `Test_<Struct>_<Method>_With_<Condition>_Should_<Result>` | `Test_Index_Hash_With_No_FileInfos_Should_Return_Valid_Hash` |
 | HTTP Handlers | `Http<View/Action><Name>` | `HttpViewIndex`, `HttpViewLogin` |
 | Middleware | `With<Capability>` | `WithLogging`, `WithSecurityHeaders` |
 
-### Test Naming
+### Architectural Rules
 
-```
-Test_<Struct>_<Method>_With_<Condition>_Should_<Result>
-Benchmark_<Struct>_<Method>_With_<Condition>_Should_<Result>
-```
-
-### Error Handling
-
-- Return errors from functions; do not panic except for unrecoverable situations.
-- Errors propagate upward through the call stack to the application layer.
-- Domain layer returns plain errors; adapters may wrap errors with context.
-
-### Context Propagation
-
-- Always pass `context.Context` as the first parameter.
-- Create contexts in inbound adapters or application layer.
-- Never create contexts in domain code.
-- Respect context cancellation in long-running operations.
-
-### Coding Style Disclaimer
-
-> The coding style in this repository reflects a combination of widely used practices, prior experience, and personal preference, and is influenced by the Go projects on github.com/andygeiss. There is no single "best" project setup; you are encouraged to adapt this structure, evolve your own style, and use this repository as a starting point for your own projects.
+- Domain code never imports adapter packages.
+- All operations accept `context.Context` as the first parameter.
+- Dependency injection via constructors in `cmd/*/main.go`; no global state.
+- Tests follow Arrange–Act–Assert pattern.
 
 ---
 
 ## Using This Repository as a Template
-
-### Invariants (What Must Be Preserved)
-
-- Hexagonal architecture: domain → adapters → application layering.
-- Dependency rule: dependencies point inward only.
-- Port interface pattern in domain layer.
-- Constructor pattern: `New<Type>()` returning interface types.
-- Test naming convention and AAA (Arrange-Act-Assert) pattern.
-- Context propagation through all layers.
-- Benchmark-driven PGO workflow.
-
-### Designed for Customization
-
-- **Domain logic**: Replace or extend the `indexing` bounded context.
-- **Adapters**: Add database, HTTP, queue, or API adapters.
-- **Entry points**: Add CLIs, servers, workers under `cmd/`.
-- **Embedded assets**: Replace contents of `cmd/*/assets/`.
-- **Configuration**: Add environment variables or config files.
-- **Templates**: Customize UI in `assets/templates/`.
 
 ### Steps to Create a New Project
 
@@ -216,16 +179,12 @@ Benchmark_<Struct>_<Method>_With_<Condition>_Should_<Result>
 |-------------|---------------|
 | New bounded context | `internal/domain/<context_name>/` |
 | New aggregate or entity | `internal/domain/<context>/aggregate.go` or `entities.go` |
-| New value object | `internal/domain/<context>/value_objects.go` |
-| New domain event | `internal/domain/<context>/value_objects.go` (with `Topic()` method) |
+| New domain event | `internal/domain/<context>/value_objects.go` |
 | New inbound port | `internal/domain/<context>/ports_inbound.go` |
 | New outbound port | `internal/domain/<context>/ports_outbound.go` |
 | New driving adapter (HTTP, CLI) | `internal/adapters/inbound/<adapter_name>.go` |
 | New driven adapter (DB, queue) | `internal/adapters/outbound/<adapter_name>.go` |
 | New application entry point | `cmd/<app_name>/main.go` |
-| Tests | `<filename>_test.go` (same directory) |
-| Static assets | `cmd/<app>/assets/static/` |
-| Templates | `cmd/<app>/assets/templates/` |
 
 ---
 
@@ -233,9 +192,9 @@ Benchmark_<Struct>_<Method>_With_<Condition>_Should_<Result>
 
 ### Prerequisites
 
-- **Go 1.25+** (see `go.mod`)
-- **just** task runner ([installation guide](https://github.com/casey/just))
-- **OIDC provider** (e.g., Keycloak) for HTTP server authentication (optional)
+- **Go 1.25+** — Required for `b.Loop()` benchmark syntax and latest features.
+- **Docker/Podman** — For containerized workflows.
+- **Just** — Task runner for standardized commands.
 
 ### Installation
 
@@ -244,27 +203,15 @@ Benchmark_<Struct>_<Method>_With_<Condition>_Should_<Result>
 git clone https://github.com/andygeiss/go-ddd-hex-starter.git
 cd go-ddd-hex-starter
 
-# Fetch dependencies
-go mod tidy
+# Install dependencies (macOS/Linux)
+just setup
 ```
-
-### Configuration
-
-Environment variables for the HTTP server:
-
-| Variable | Purpose | Default |
-|----------|---------|---------|
-| `PORT` | HTTP server port | `8080` |
-| `OIDC_CLIENT_ID` | OIDC client identifier | — |
-| `OIDC_CLIENT_SECRET` | OIDC client secret | — |
-| `OIDC_ISSUER` | OIDC issuer URL | — |
-| `OIDC_REDIRECT_URL` | OIDC callback URL | — |
 
 ---
 
 ## Running, Scripts, and Workflows
 
-### Task Runner Commands
+### Task Runner Commands (`just`)
 
 | Command | Description |
 |---------|-------------|
@@ -273,6 +220,18 @@ Environment variables for the HTTP server:
 | `just serve` | Run the HTTP server (development mode) |
 | `just test` | Run all unit tests with coverage |
 | `just profile` | Run benchmarks and generate PGO profile |
+| `just up` | Start Docker Compose dev stack (Keycloak, Kafka, app) |
+| `just down` | Stop Docker Compose services |
+| `just setup` | Install dependencies via Homebrew |
+
+### Aliases
+
+| Alias | Command |
+|-------|---------|
+| `b` | `build` |
+| `u` | `up` |
+| `d` | `down` |
+| `t` | `test` |
 
 ### Manual Commands
 
@@ -280,14 +239,17 @@ Environment variables for the HTTP server:
 # Run all tests
 go test ./...
 
-# Run with verbose output
-go test -v ./...
+# Run with verbose output and coverage
+go test -v -coverprofile=coverage.pprof ./internal/...
 
 # Run specific test
 go test -v -run Test_Index_Hash ./internal/domain/indexing/
 
 # Build without PGO
 go build -o ./bin/app ./cmd/cli/main.go
+
+# Build with PGO
+go build -ldflags "-s -w" -pgo cpuprofile.pprof -o ./bin/app ./cmd/cli/main.go
 
 # Run HTTP server
 PORT=8080 go run ./cmd/server/main.go
@@ -297,35 +259,41 @@ PORT=8080 go run ./cmd/server/main.go
 
 ## Usage Examples
 
-### CLI Tool
-
-The CLI indexes files in a directory and persists results to JSON:
+### CLI: File Indexing
 
 ```bash
-# Build and run the CLI
+# Run the CLI to index files in the current directory
 just run
 
-# Or manually
+# Or manually:
 go run ./cmd/cli/main.go
+```
+
+Output:
+
+```
+❯ main: index has N files
 ```
 
 ### HTTP Server
 
-The HTTP server provides OIDC-protected views:
-
 ```bash
-# Run the server
+# Start the server
 just serve
 
-# Or manually with environment variables
-PORT=8080 go run ./cmd/server/main.go
+# Or with a specific port:
+PORT=3000 go run ./cmd/server/main.go
 ```
 
-Access the server at `http://localhost:8080`.
+The server listens on the configured `PORT` (default: `8080`) and provides:
+
+- OIDC-protected routes
+- Session management
+- HTML templating with HTMX
 
 ---
 
-## Testing and Quality
+## Testing & Quality
 
 ### Running Tests
 
@@ -333,16 +301,16 @@ Access the server at `http://localhost:8080`.
 # Run all tests with coverage
 just test
 
-# Run tests manually
-go test -v -coverprofile=./coverage.pprof ./internal/...
+# Verbose output
+go test -v ./internal/...
 
-# View coverage report
-go tool cover -func=coverage.pprof
+# Coverage report
+go tool cover -html=coverage.pprof
 ```
 
 ### Test Patterns
 
-Tests follow the Arrange-Act-Assert pattern with consistent naming:
+Tests follow the **Arrange–Act–Assert (AAA)** pattern:
 
 ```go
 func Test_Index_Hash_With_No_FileInfos_Should_Return_Valid_Hash(t *testing.T) {
@@ -357,19 +325,47 @@ func Test_Index_Hash_With_No_FileInfos_Should_Return_Valid_Hash(t *testing.T) {
 }
 ```
 
-### Benchmarks and PGO
-
-Generate a PGO profile for optimized builds:
+### Profile-Guided Optimization
 
 ```bash
-# Run benchmarks and generate profile
+# Generate PGO profile from benchmarks
 just profile
 
 # Build with PGO
 just build
 ```
 
-The `cpuprofile.pprof` file is used during builds for Profile-Guided Optimization.
+---
+
+## CI/CD
+
+### Docker Build
+
+The project includes a multi-stage Dockerfile for production builds:
+
+```bash
+# Build container image
+just build
+
+# Start dev stack with Keycloak and Kafka
+just up
+
+# Stop services
+just down
+```
+
+### Environment Variables
+
+| Variable | Purpose | Default |
+|----------|---------|---------|
+| `PORT` | HTTP server port | `8080` |
+| `OIDC_CLIENT_ID` | OIDC client identifier | — |
+| `OIDC_CLIENT_SECRET` | OIDC client secret | — |
+| `OIDC_ISSUER` | OIDC issuer URL | — |
+| `OIDC_REDIRECT_URL` | OIDC callback URL | — |
+| `APP_NAME` | Application display name | — |
+| `APP_DESCRIPTION` | Application description | — |
+| `APP_SHORTNAME` | Short name for Docker image | — |
 
 ---
 
@@ -377,20 +373,42 @@ The `cpuprofile.pprof` file is used during builds for Profile-Guided Optimizatio
 
 ### Current Limitations
 
-- Single bounded context example (`indexing`).
-- File-based persistence only (no database adapters included).
-- HTTP server uses OIDC—requires provider configuration for authentication.
+- Single bounded context (`indexing`) provided as example.
+- OIDC requires external Keycloak instance for authentication.
+- JSON file storage is suitable for development; production may require database adapters.
 
 ### Potential Extensions
 
 - Database adapters (PostgreSQL, SQLite).
-- Additional bounded contexts.
-- gRPC adapters.
-- OpenTelemetry integration.
+- Additional bounded contexts and domain services.
+- Kubernetes deployment manifests.
+- OpenTelemetry observability integration.
 
 ---
 
-## Additional Documentation
+## Technology Stack
 
-- [CONTEXT.md](CONTEXT.md) — Detailed architectural context for AI agents and developers.
-- [VENDOR.md](VENDOR.md) — Documentation for `cloud-native-utils` and external patterns.
+| Category | Technology |
+|----------|------------|
+| **Language** | Go 1.25+ |
+| **Architecture** | Hexagonal (Ports and Adapters), Domain-Driven Design |
+| **HTTP Framework** | `net/http` (standard library) |
+| **Authentication** | OIDC via `cloud-native-utils/security` |
+| **Templating** | `cloud-native-utils/templating` with `html/template` |
+| **Logging** | `log/slog` + `cloud-native-utils/logging` (JSON structured logs) |
+| **Messaging** | `cloud-native-utils/messaging` (pub/sub dispatcher) |
+| **Persistence** | `cloud-native-utils/resource` (generic CRUD, JSON file storage) |
+| **Testing** | Standard `testing` + `cloud-native-utils/assert` |
+| **Build** | `go build` with Profile-Guided Optimization (PGO) |
+| **Task Runner** | `just` (justfile) |
+| **Containers** | Docker/Podman, multi-stage builds, scratch runtime |
+| **External Services** | Keycloak (OIDC provider), Kafka (event streaming) — optional |
+
+**Primary vendor library**: [`github.com/andygeiss/cloud-native-utils`](https://github.com/andygeiss/cloud-native-utils) v0.4.8
+
+---
+
+## Related Documentation
+
+- [CONTEXT.md](CONTEXT.md) — Architecture, conventions, and AI agent context.
+- [VENDOR.md](VENDOR.md) — Vendor library documentation for `cloud-native-utils`.

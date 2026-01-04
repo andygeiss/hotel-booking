@@ -1,83 +1,83 @@
 /*
  * theme.css - Glassmorphism Design Tokens
  * Frosted glass effect with blur, transparency, and vibrant gradients.
- * Inspired by modern glass UI trends.
+ * Apple-inspired color palette with dark elegance.
  */
 
 :root {
-    /* ===== GLASSMORPHISM PALETTE - Light Theme ===== */
+    /* ===== GLASSMORPHISM PALETTE - Apple Dark ===== */
     
     /* Glass Background Colors (with transparency) */
-    --glass-bg: rgba(255, 255, 255, 0.25);
-    --glass-bg-solid: rgba(255, 255, 255, 0.7);
-    --glass-bg-dark: rgba(0, 0, 0, 0.1);
-    --glass-border: rgba(255, 255, 255, 0.4);
-    --glass-border-light: rgba(255, 255, 255, 0.6);
+    --glass-bg: rgba(255, 255, 255, 0.08);
+    --glass-bg-solid: rgba(255, 255, 255, 0.12);
+    --glass-bg-dark: rgba(0, 0, 0, 0.2);
+    --glass-border: rgba(255, 255, 255, 0.18);
+    --glass-border-light: rgba(255, 255, 255, 0.3);
     
     /* Blur Values */
-    --glass-blur: 16px;
-    --glass-blur-sm: 8px;
-    --glass-blur-lg: 24px;
-    --glass-blur-xl: 40px;
+    --glass-blur: 20px;
+    --glass-blur-sm: 10px;
+    --glass-blur-lg: 30px;
+    --glass-blur-xl: 50px;
     
-    /* Vibrant Gradient Colors */
-    --gradient-purple: #667eea;
-    --gradient-pink: #f093fb;
-    --gradient-blue: #4facfe;
-    --gradient-cyan: #00f2fe;
-    --gradient-orange: #f5af19;
-    --gradient-yellow: #f7e018;
-    --gradient-green: #38ef7d;
-    --gradient-teal: #11998e;
+    /* Apple Gradient Colors */
+    --gradient-purple: #bf5af2;
+    --gradient-pink: #ff375f;
+    --gradient-blue: #0a84ff;
+    --gradient-cyan: #5ac8fa;
+    --gradient-orange: #ff9f0a;
+    --gradient-yellow: #ffd60a;
+    --gradient-green: #30d158;
+    --gradient-teal: #64d2ff;
     
-    /* Accent Colors */
-    --accent-purple: #a855f7;
-    --accent-pink: #ec4899;
-    --accent-blue: #3b82f6;
-    --accent-cyan: #06b6d4;
-    --accent-green: #10b981;
-    --accent-orange: #f97316;
+    /* Apple Accent Colors */
+    --accent-purple: #bf5af2;
+    --accent-pink: #ff375f;
+    --accent-blue: #0a84ff;
+    --accent-cyan: #64d2ff;
+    --accent-green: #30d158;
+    --accent-orange: #ff9f0a;
     
-    /* Base Colors */
+    /* Apple Gray Scale */
     --color-white: #ffffff;
-    --color-black: #0f0f0f;
-    --color-gray-50: #fafafa;
-    --color-gray-100: #f4f4f5;
-    --color-gray-200: #e4e4e7;
-    --color-gray-300: #d4d4d8;
-    --color-gray-400: #a1a1aa;
-    --color-gray-500: #71717a;
-    --color-gray-600: #52525b;
-    --color-gray-700: #3f3f46;
-    --color-gray-800: #27272a;
-    --color-gray-900: #18181b;
+    --color-black: #000000;
+    --color-gray-50: #f5f5f7;
+    --color-gray-100: #e8e8ed;
+    --color-gray-200: #d2d2d7;
+    --color-gray-300: #aeaeb2;
+    --color-gray-400: #8e8e93;
+    --color-gray-500: #636366;
+    --color-gray-600: #48484a;
+    --color-gray-700: #3a3a3c;
+    --color-gray-800: #2c2c2e;
+    --color-gray-900: #1c1c1e;
     
     /* Semantic Color Mapping */
-    --color-background: linear-gradient(135deg, var(--gradient-purple) 0%, var(--gradient-pink) 50%, var(--gradient-orange) 100%);
-    --color-background-solid: #1a1a2e;
+    --color-background: linear-gradient(160deg, #1c1c1e 0%, #2c2c2e 50%, #1c1c1e 100%);
+    --color-background-solid: #000000;
     --color-border: var(--glass-border);
-    --color-error: #ef4444;
-    --color-gray: var(--color-gray-500);
+    --color-error: #ff453a;
+    --color-gray: var(--color-gray-400);
     --color-gray-light: var(--color-gray-200);
     --color-gray-dark: var(--color-gray-700);
-    --color-primary: var(--accent-purple);
-    --color-primary-hover: #9333ea;
+    --color-primary: var(--accent-blue);
+    --color-primary-hover: #409cff;
     --color-primary-text: var(--color-white);
-    --color-secondary: var(--accent-cyan);
-    --color-secondary-light: #22d3ee;
-    --color-accent: var(--accent-pink);
+    --color-secondary: var(--color-gray-600);
+    --color-secondary-light: var(--color-gray-500);
+    --color-accent: var(--accent-purple);
     --color-success: var(--accent-green);
     --color-surface: var(--glass-bg);
     --color-surface-solid: var(--glass-bg-solid);
-    --color-text: var(--color-white);
-    --color-text-muted: rgba(255, 255, 255, 0.7);
-    --color-warning: var(--gradient-yellow);
+    --color-text: var(--color-gray-50);
+    --color-text-muted: var(--color-gray-400);
+    --color-warning: var(--accent-orange);
 
     /* Glassmorphism Effects */
-    --glass-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
-    --glass-shadow-sm: 0 4px 16px rgba(31, 38, 135, 0.2);
-    --glass-shadow-lg: 0 16px 48px rgba(31, 38, 135, 0.5);
-    --glass-inset: inset 0 1px 1px rgba(255, 255, 255, 0.3);
+    --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    --glass-shadow-sm: 0 4px 16px rgba(0, 0, 0, 0.25);
+    --glass-shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.5);
+    --glass-inset: inset 0 1px 0 rgba(255, 255, 255, 0.05);
     
     /* Blob Animation */
     --blob-size: 500px;

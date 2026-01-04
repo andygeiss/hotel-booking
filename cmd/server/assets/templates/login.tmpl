@@ -3,24 +3,62 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Layer 1: Reset / foundation -->
     <link rel="stylesheet" href="/static/css/base.css" />
+    <!-- Layer 2: Design tokens -->
     <link rel="stylesheet" href="/static/css/theme.css" />
+    <!-- Layer 3: Components / layout -->
     <link rel="stylesheet" href="/static/css/styles.css" />
     <script src="/static/js/htmx.min.js" defer></script>
     <title>{{ .Title }}</title>
 </head>
 <body>
-    <main class="flex-center" style="min-height: 100vh;">
-        <div class="card text-center">
-            <div class="card__header">
-                <h1>{{ .AppName }}</h1>
-                <p>Please sign in to continue</p>
+    <!-- Header Navigation -->
+    <header class="nav">
+        <div class="nav__brand">{{ .AppName }}</div>
+
+        <!-- Mobile nav toggle -->
+        <input type="checkbox" id="nav-toggle" class="nav__toggle" />
+        <label
+            for="nav-toggle"
+            class="nav__toggle-label"
+            aria-label="Toggle navigation"
+        >
+            <span class="nav__hamburger"></span>
+        </label>
+
+        <!-- Navigation links -->
+        <nav class="nav__links">
+            <a href="/auth/login" class="nav__link">Sign In</a>
+        </nav>
+    </header>
+
+    <div class="container">
+        <main class="flex-center content-view">
+            <div class="card text-center">
+                <div class="card__header">
+                    <h1>{{ .AppName }}</h1>
+                    <div class="flex-center">
+                        <img
+                            src="/static/img/icon-512.png"
+                            alt="Logo"
+                            width="200"
+                            height="200"
+                        />
+                    </div>
+                </div>
+                <div class="card__body">
+                    <p class="mb-4 text-muted">Sign in with Keycloak</p>
+                    <a href="/auth/login" class="btn btn-primary btn-lg">Sign In</a>
+                </div>
             </div>
-            <div class="card__body">
-                <a href="/auth/login" class="btn btn-primary btn-lg">Sign In</a>
-            </div>
-        </div>
-    </main>
+        </main>
+    </div>
+
+    <!-- Mobile action bar -->
+    <nav class="action-bar" aria-label="Quick actions">
+        <a href="/auth/login" class="action-bar__item">Sign In</a>
+    </nav>
 </body>
 </html>
 {{ end }}
