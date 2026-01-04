@@ -2,7 +2,7 @@
 <html lang="en">
     <head>
         <meta charset="UTF-8" />
-        <title>Theme Demo</title>
+        <title>Glassmorphism UI</title>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <!-- Layer 1: Reset / foundation -->
         <link rel="stylesheet" href="/static/css/base.css" />
@@ -14,7 +14,7 @@
     <body>
         <!-- Demonstrates body styles (layout + typography) -->
         <header class="nav">
-            <div class="nav__brand">Theme Demo</div>
+            <div class="nav__brand">Glassmorphism UI</div>
 
             <!-- Mobile nav toggle: .nav__toggle, .nav__toggle-label, .nav__hamburger -->
             <input type="checkbox" id="nav-toggle" class="nav__toggle" />
@@ -37,84 +37,81 @@
 
         <div class="container">
             <main>
-                <!-- HERO SECTION: h1, p, buttons, utilities -->
+                <!-- HERO SECTION: Frosted glass aesthetics -->
                 <section id="hero" class="flex-column gap-4 py-4">
-                    <h1 class="text-center">Theme Demo</h1>
+                    <div class="flex-center">
+                        <img
+                            src="/static/img/icon-192.png"
+                            alt="Logo"
+                            width="96"
+                            height="96"
+                        />
+                    </div>
+                    <h1 class="text-center">Glassmorphism UI</h1>
                     <p class="text-center">
-                        Colors, spacing, and typography are powered by CSS
-                        custom properties defined in the theme layer.
+                        Frosted glass effects with vibrant gradients. Blur,
+                        transparency, and soft glowing accents.
                     </p>
 
                     <div class="flex-center gap-4">
                         <!-- Buttons: .btn + size / variant modifiers -->
                         <button class="btn btn-primary btn-lg">
-                            Primary Action
+                            ✦ Primary
                         </button>
-                        <button class="btn btn-outline btn-lg">
-                            Outline Action
-                        </button>
-                        <button class="btn btn-ghost btn-lg">
-                            Ghost Action
-                        </button>
+                        <button class="btn btn-outline btn-lg">Outline</button>
+                        <button class="btn btn-ghost btn-lg">Ghost</button>
                     </div>
 
                     <div class="flex-center gap-2 mt-4">
                         <button class="btn btn-secondary btn-sm">
-                            Secondary Small
+                            Secondary
                         </button>
-                        <button class="btn btn-primary btn-sm">
-                            Primary Small
-                        </button>
+                        <button class="btn btn-primary btn-sm">Primary</button>
                     </div>
                 </section>
 
-                <!-- CARDS SECTION: .card, .card__header, .card__body, .card__footer -->
+                <!-- CARDS SECTION: Glass cards with blur -->
                 <section id="cards" class="my-4">
-                    <h2 class="mb-4">Card Components</h2>
+                    <h2 class="mb-4">Glass Cards</h2>
 
                     <div class="flex-column gap-4">
                         <article class="card">
                             <header class="card__header">
-                                <h3>Standard Card</h3>
+                                <h3>✦ Frosted Glass</h3>
                                 <p class="text-success">
-                                    Uses surface background, radius, and shadow
-                                    tokens.
+                                    Backdrop blur creates depth.
                                 </p>
                             </header>
                             <div class="card__body">
                                 <p>
-                                    This card body demonstrates how layout
-                                    tokens (spacing, shadows, radii) combine
-                                    with typography tokens from the theme.
+                                    Cards use backdrop-filter blur with
+                                    semi-transparent backgrounds. The glass
+                                    effect lets the gradient shine through.
                                 </p>
                             </div>
                             <footer class="card__footer">
                                 <button class="btn btn-outline btn-sm">
-                                    Cancel
+                                    Dismiss
                                 </button>
                                 <button class="btn btn-primary btn-sm">
-                                    Confirm
+                                    View
                                 </button>
                             </footer>
                         </article>
 
                         <article class="card">
                             <header class="card__header">
-                                <h3>Card With Error State</h3>
+                                <h3>✦ Glow Effects</h3>
                                 <p class="text-error">
-                                    Something went wrong while loading the
-                                    content.
+                                    Vibrant accents with soft shadows.
                                 </p>
                             </header>
                             <div class="card__body">
                                 <p>
-                                    The
-                                    <span class="text-error">text-error</span>
-                                    and
-                                    <span class="text-success"
-                                        >text-success</span
-                                    >
-                                    utilities use error/success colors.
+                                    Status colors glow with
+                                    <span class="text-error">error</span>,
+                                    <span class="text-success">success</span>,
+                                    states. Hover effects add subtle animations.
                                 </p>
                             </div>
                             <footer class="card__footer">
@@ -126,9 +123,9 @@
                     </div>
                 </section>
 
-                <!-- FORMS SECTION: .form-group, .form-label, .form-input, .text-error, .sr-only -->
+                <!-- FORMS SECTION: Glass input fields -->
                 <section id="forms" class="my-4">
-                    <h2 class="mb-4">Form Elements</h2>
+                    <h2 class="mb-4">Glass Forms</h2>
 
                     <form class="flex-column gap-4">
                         <div class="form-group">
@@ -185,14 +182,14 @@
                     </form>
                 </section>
 
-                <!-- UTILITIES SECTION: flex, gaps, text-center, padding/margin utilities -->
+                <!-- UTILITIES SECTION: Layout helpers -->
                 <section id="utilities" class="my-4">
-                    <h2 class="mb-4">Utility Classes</h2>
+                    <h2 class="mb-4">Utilities</h2>
 
                     <div class="card p-4">
                         <div class="flex-center flex-column gap-2">
                             <p class="text-center">
-                                This block uses <code>.flex-center</code>,
+                                Flex utilities: <code>.flex-center</code>,
                                 <code>.flex-column</code>, <code>.gap-2</code>,
                                 <code>.p-4</code>, and
                                 <code>.text-center</code>.
@@ -212,12 +209,12 @@
                                 >
                             </div>
                             <p class="mt-4 mb-4">
-                                Margin utilities like <code>.mt-4</code>,
-                                <code>.mb-4</code>, and <code>.my-4</code> apply
-                                vertical spacing quickly.
+                                Spacing: <code>.mt-4</code>, <code>.mb-4</code>,
+                                <code>.my-4</code>, <code>.px-4</code>,
+                                <code>.py-4</code>.
                             </p>
                             <div class="px-4 py-4 btn btn-secondary btn-sm">
-                                px-4 and py-4 around this button container
+                                Padded container
                             </div>
                         </div>
                     </div>
@@ -230,18 +227,18 @@
             <a href="#hero" class="action-bar__item">Home</a>
             <a href="#cards" class="action-bar__item">Cards</a>
             <a href="#forms" class="action-bar__item">Forms</a>
-            <a href="#utilities" class="action-bar__item">Utilities</a>
+            <a href="#utilities" class="action-bar__item">Utils</a>
         </nav>
 
-        <!-- Base.css is exercised implicitly via a, button, input, textarea, img/picture/svg/video, ol/ul, table -->
+        <!-- Base layer examples -->
         <section class="container my-4">
-            <h2 class="mb-4">Base Layer Examples</h2>
+            <h2 class="mb-4">Base Layer</h2>
 
             <ul>
-                <li><a href="#hero">Anchor reset (no default underline)</a></li>
+                <li><a href="#hero">Links have glow on hover</a></li>
                 <li>
                     <button class="btn btn-outline btn-sm">
-                        Button reset (no native styles)
+                        Glass buttons
                     </button>
                 </li>
             </ul>
@@ -252,14 +249,18 @@
                     <th>Description</th>
                 </tr>
                 <tr>
-                    <td>img</td>
-                    <td>Uses base.css defaults for display and max-width</td>
+                    <td>Tables</td>
+                    <td>Glass background with blur effect</td>
+                </tr>
+                <tr>
+                    <td>Code</td>
+                    <td>Frosted backdrop with pink accent</td>
                 </tr>
             </table>
         </section>
 
         <footer class="container my-4 text-center">
-            <p>&copy; Theme Demo</p>
+            <p>Glassmorphism UI</p>
         </footer>
     </body>
 </html>

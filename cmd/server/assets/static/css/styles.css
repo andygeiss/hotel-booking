@@ -1,16 +1,17 @@
 /*
- * styles.css - Component and Layout Styles
- * Application-specific styles built on base.css and theme.css.
+ * styles.css - Glassmorphism Component and Layout Styles
+ * Frosted glass UI with blur, transparency, and vibrant gradients.
  * Uses CSS custom properties from theme.css.
  */
 
 /* ========================================
-   LAYOUT
+   LAYOUT - Gradient Background
    ======================================== */
 
 body {
     background: var(--color-background);
-    color: var(--color-primary);
+    background-attachment: fixed;
+    color: var(--color-text);
     font-family: var(--font-family);
     font-size: var(--font-size-base);
     line-height: var(--line-height-base);
@@ -32,13 +33,16 @@ main {
 }
 
 /* ========================================
-   NAVIGATION
+   NAVIGATION - Glass Effect
    ======================================== */
 
 .nav {
     align-items: center;
-    background: var(--color-surface);
-    box-shadow: var(--shadow-sm);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    background: var(--glass-bg);
+    border-bottom: 1px solid var(--glass-border);
+    box-shadow: var(--glass-shadow-sm);
     display: flex;
     height: var(--header-height);
     justify-content: space-between;
@@ -49,9 +53,10 @@ main {
 }
 
 .nav__brand {
-    color: var(--color-primary);
+    color: var(--color-text);
     font-size: var(--font-size-lg);
     font-weight: var(--font-weight-bold);
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 .nav__links {
@@ -60,11 +65,17 @@ main {
 }
 
 .nav__link {
-    color: var(--color-primary);
+    color: var(--color-text);
     font-size: var(--font-size-base);
     min-height: var(--touch-target-min);
     min-width: var(--touch-target-min);
     padding: var(--space-2) var(--space-4);
+    transition: var(--transition-fast);
+}
+
+.nav__link:hover {
+    color: var(--color-primary-text);
+    text-shadow: 0 0 20px var(--accent-purple);
 }
 
 /* Mobile Navigation */
@@ -84,7 +95,7 @@ main {
 .nav__hamburger,
 .nav__hamburger::after,
 .nav__hamburger::before {
-    background: var(--color-primary);
+    background: var(--color-text);
     border-radius: var(--radius-sm);
     display: block;
     height: 3px;
@@ -127,15 +138,19 @@ main {
    ======================================== */
 
 h1 {
-    color: var(--color-secondary);
-    font-size: var(--font-size-3xl);
+    background: linear-gradient(135deg, var(--color-white) 0%, var(--accent-purple) 50%, var(--accent-pink) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    font-size: var(--font-size-4xl);
     font-weight: var(--font-weight-bold);
     line-height: var(--line-height-tight);
     margin-bottom: var(--space-4);
+    text-shadow: none;
 }
 
 h2 {
-    color: var(--color-primary);
+    color: var(--color-text);
     font-size: var(--font-size-2xl);
     font-weight: var(--font-weight-bold);
     line-height: var(--line-height-tight);
@@ -143,25 +158,29 @@ h2 {
 }
 
 h3 {
-    color: var(--color-primary);
+    color: var(--color-text);
     font-size: var(--font-size-xl);
-    font-weight: var(--font-weight-medium);
+    font-weight: var(--font-weight-semibold);
     line-height: var(--line-height-tight);
     margin-bottom: var(--space-2);
 }
 
 p {
+    color: var(--color-text-muted);
     margin-bottom: var(--space-4);
 }
 
 /* ========================================
-   BUTTONS
+   BUTTONS - Glass Style
    ======================================== */
 
 .btn {
     align-items: center;
-    border-radius: var(--radius-full);
-    box-shadow: var(--shadow-md);
+    backdrop-filter: blur(var(--glass-blur-sm));
+    -webkit-backdrop-filter: blur(var(--glass-blur-sm));
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--glass-shadow-sm), var(--glass-inset);
     cursor: pointer;
     display: inline-flex;
     font-size: var(--font-size-base);
@@ -171,15 +190,29 @@ p {
     min-height: var(--touch-target-min);
     min-width: var(--touch-target-min);
     padding: var(--space-3) var(--space-6);
-    transition:
-        box-shadow var(--transition-fast),
-        transform var(--transition-fast);
+    transition: all var(--transition-base);
+}
+
+.btn:hover {
+    box-shadow: var(--glass-shadow), var(--shadow-glow);
+    transform: translateY(-2px);
+}
+
+.btn:active {
+    transform: translateY(0);
 }
 
 .btn-ghost {
     background: transparent;
+    border: 1px solid transparent;
     box-shadow: none;
-    color: var(--color-primary);
+    color: var(--color-text);
+}
+
+.btn-ghost:hover {
+    background: var(--glass-bg);
+    border-color: var(--glass-border);
+    box-shadow: var(--glass-shadow-sm);
 }
 
 .btn-lg {
@@ -189,19 +222,34 @@ p {
 }
 
 .btn-outline {
-    background: transparent;
-    border: 2px solid var(--color-primary);
-    color: var(--color-primary);
+    background: var(--glass-bg);
+    border: 2px solid var(--accent-purple);
+    color: var(--color-text);
+}
+
+.btn-outline:hover {
+    background: rgba(168, 85, 247, 0.2);
+    box-shadow: var(--glass-shadow), var(--shadow-glow);
 }
 
 .btn-primary {
-    background: var(--color-primary);
-    color: var(--color-primary-text);
+    background: linear-gradient(135deg, var(--accent-purple) 0%, var(--accent-pink) 100%);
+    border: none;
+    color: var(--color-white);
+}
+
+.btn-primary:hover {
+    box-shadow: var(--glass-shadow-lg), var(--shadow-glow-pink);
 }
 
 .btn-secondary {
-    background: var(--color-secondary);
-    color: #ffffff;
+    background: linear-gradient(135deg, var(--accent-cyan) 0%, var(--accent-blue) 100%);
+    border: none;
+    color: var(--color-white);
+}
+
+.btn-secondary:hover {
+    box-shadow: var(--glass-shadow-lg), var(--shadow-glow-blue);
 }
 
 .btn-sm {
@@ -211,7 +259,7 @@ p {
 }
 
 /* ========================================
-   FORMS
+   FORMS - Glass Style
    ======================================== */
 
 .form-group {
@@ -219,23 +267,31 @@ p {
 }
 
 .form-input {
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
-    color: var(--color-primary);
+    backdrop-filter: blur(var(--glass-blur-sm));
+    -webkit-backdrop-filter: blur(var(--glass-blur-sm));
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--glass-inset);
+    color: var(--color-text);
     min-height: var(--touch-target-min);
     padding: var(--space-3) var(--space-4);
+    transition: all var(--transition-base);
     width: 100%;
 }
 
+.form-input::placeholder {
+    color: var(--color-text-muted);
+}
+
 .form-input:focus {
-    border-color: var(--color-secondary);
-    outline: 2px solid var(--color-secondary-light);
-    outline-offset: 2px;
+    border-color: var(--accent-purple);
+    box-shadow: var(--glass-shadow-sm), 0 0 20px rgba(168, 85, 247, 0.3);
+    outline: none;
 }
 
 .form-label {
-    color: var(--color-primary);
+    color: var(--color-text);
     display: block;
     font-size: var(--font-size-sm);
     font-weight: var(--font-weight-medium);
@@ -243,14 +299,23 @@ p {
 }
 
 /* ========================================
-   CARDS
+   CARDS - Glassmorphism
    ======================================== */
 
 .card {
-    background: var(--color-surface);
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-md);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--glass-shadow), var(--glass-inset);
     padding: var(--space-6);
+    transition: all var(--transition-base);
+}
+
+.card:hover {
+    box-shadow: var(--glass-shadow-lg), var(--shadow-glow);
+    transform: translateY(-4px);
 }
 
 .card__body {
@@ -268,14 +333,16 @@ p {
 }
 
 /* ========================================
-   ACTION BAR (Mobile Thumb Zone)
+   ACTION BAR - Glass Effect (Mobile)
    ======================================== */
 
 .action-bar {
-    background: var(--color-surface);
-    border-top: 1px solid var(--color-border);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    background: var(--glass-bg);
+    border-top: 1px solid var(--glass-border);
     bottom: 0;
-    box-shadow: var(--shadow-lg);
+    box-shadow: 0 -8px 32px rgba(31, 38, 135, 0.37);
     display: none;
     gap: var(--space-2);
     justify-content: space-around;
@@ -288,7 +355,7 @@ p {
 
 .action-bar__item {
     align-items: center;
-    color: var(--color-primary);
+    color: var(--color-text);
     display: flex;
     flex-direction: column;
     font-size: var(--font-size-xs);
@@ -296,6 +363,12 @@ p {
     min-height: var(--touch-target-min);
     min-width: var(--touch-target-min);
     padding: var(--space-2);
+    transition: var(--transition-fast);
+}
+
+.action-bar__item:hover {
+    color: var(--accent-purple);
+    text-shadow: 0 0 20px var(--accent-purple);
 }
 
 /* ========================================
@@ -367,10 +440,63 @@ p {
 
 .text-error {
     color: var(--color-error);
+    text-shadow: 0 0 10px rgba(239, 68, 68, 0.5);
 }
 
 .text-success {
     color: var(--color-success);
+    text-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
+}
+
+/* Code elements */
+code {
+    backdrop-filter: blur(var(--glass-blur-sm));
+    -webkit-backdrop-filter: blur(var(--glass-blur-sm));
+    background: var(--glass-bg-dark);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-sm);
+    color: var(--accent-pink);
+    font-family: var(--font-family-mono);
+    font-size: var(--font-size-sm);
+    padding: var(--space-1) var(--space-2);
+}
+
+/* Table styling */
+table {
+    backdrop-filter: blur(var(--glass-blur-sm));
+    -webkit-backdrop-filter: blur(var(--glass-blur-sm));
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    width: 100%;
+}
+
+th, td {
+    padding: var(--space-3) var(--space-4);
+    text-align: left;
+}
+
+th {
+    background: var(--glass-bg-dark);
+    color: var(--color-text);
+    font-weight: var(--font-weight-semibold);
+}
+
+td {
+    border-top: 1px solid var(--glass-border);
+    color: var(--color-text-muted);
+}
+
+/* Links */
+a {
+    color: var(--accent-purple);
+    transition: var(--transition-fast);
+}
+
+a:hover {
+    color: var(--accent-pink);
+    text-shadow: 0 0 20px var(--accent-pink);
 }
 
 /* ========================================
@@ -386,15 +512,17 @@ p {
     }
 
     .nav__link {
-        border-bottom: 1px solid var(--color-border);
+        border-bottom: 1px solid var(--glass-border);
         padding: var(--space-4);
         width: 100%;
     }
 
     /* Hide desktop links, show when toggled */
     .nav__links {
-        background: var(--color-surface);
-        box-shadow: var(--shadow-lg);
+        backdrop-filter: blur(var(--glass-blur));
+        -webkit-backdrop-filter: blur(var(--glass-blur));
+        background: var(--glass-bg-solid);
+        box-shadow: var(--glass-shadow);
         flex-direction: column;
         gap: 0;
         left: 0;
