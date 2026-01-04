@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="cmd/server/assets/static/img/icon-192.png" alt="Go DDD Hexagonal Starter logo" width="96" height="96">
+  <img src="cmd/server/assets/static/img/index.png" alt="Go DDD Hexagonal Starter logo" width="200">
 </p>
 
 # Go DDD Hexagonal Starter
