@@ -1,0 +1,77 @@
+/*
+ * base.css - CSS Reset and Foundation
+ * Provides normalization and baseline styles.
+ * This file contains NO colors, fonts, or theme-specific values.
+ */
+
+/* Box sizing and margins reset */
+*,
+*::after,
+*::before {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+/* Remove default anchor styles */
+a {
+    color: inherit;
+    text-decoration: none;
+}
+
+/* Remove default button styles */
+button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font: inherit;
+}
+
+/* Form element inheritance */
+button,
+input,
+select,
+textarea {
+    font: inherit;
+}
+
+/* Image defaults */
+img,
+picture,
+svg,
+video {
+    display: block;
+    max-width: 100%;
+}
+
+/* Remove default input styles */
+input,
+select,
+textarea {
+    border: none;
+    font: inherit;
+}
+
+/* Remove default list styles */
+ol,
+ul {
+    list-style: none;
+}
+
+/* Remove default table styles */
+table {
+    border-collapse: collapse;
+    border-spacing: 0;
+}
+
+/* Remove animations for reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::after,
+    *::before {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        scroll-behavior: auto !important;
+        transition-duration: 0.01ms !important;
+    }
+}

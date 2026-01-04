@@ -1,0 +1,19 @@
+# MacOS Desktop Service Store
+.DS_Store
+
+# Generated files
+*.go.sum
+*.mod
+
+# Local environment variables
+.env
+
+# Test artifacts
+*.test
+
+# Build artifacts
+bin
+
+# Profiler artifacts
+coverprofile.*
+cpuprofile.*

@@ -1,0 +1,26 @@
+{{ define "login" }}<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="/static/base.css" />
+    <link rel="stylesheet" href="/static/theme.css" />
+    <link rel="stylesheet" href="/static/styles.css" />
+    <script src="/static/htmx.min.js" defer></script>
+    <title>{{ .Title }}</title>
+</head>
+<body>
+    <main class="flex-center" style="min-height: 100vh;">
+        <div class="card text-center">
+            <div class="card__header">
+                <h1>{{ .AppName }}</h1>
+                <p>Please sign in to continue</p>
+            </div>
+            <div class="card__body">
+                <a href="/auth/login" class="btn btn-primary btn-lg">Sign In</a>
+            </div>
+        </div>
+    </main>
+</body>
+</html>
+{{ end }}
