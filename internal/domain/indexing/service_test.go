@@ -2,8 +2,8 @@ package indexing_test
 
 import (
 	"context"
-	"go-ddd-hex-starter/internal/domain/event"
-	"go-ddd-hex-starter/internal/domain/indexing"
+	"github.com/andygeiss/go-ddd-hex-starter/internal/domain/event"
+	"github.com/andygeiss/go-ddd-hex-starter/internal/domain/indexing"
 	"testing"
 
 	"github.com/andygeiss/cloud-native-utils/assert"

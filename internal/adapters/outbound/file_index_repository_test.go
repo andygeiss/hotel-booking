@@ -3,8 +3,8 @@ package outbound_test
 import (
 	"context"
 	"fmt"
-	"go-ddd-hex-starter/internal/adapters/outbound"
-	"go-ddd-hex-starter/internal/domain/indexing"
+	"github.com/andygeiss/go-ddd-hex-starter/internal/adapters/outbound"
+	"github.com/andygeiss/go-ddd-hex-starter/internal/domain/indexing"
 	"os"
 	"testing"
 )

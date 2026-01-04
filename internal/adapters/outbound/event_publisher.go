@@ -3,7 +3,7 @@ package outbound
 import (
 	"context"
 	"encoding/json"
-	"go-ddd-hex-starter/internal/domain/event"
+	"github.com/andygeiss/go-ddd-hex-starter/internal/domain/event"
 
 	"github.com/andygeiss/cloud-native-utils/messaging"
 )

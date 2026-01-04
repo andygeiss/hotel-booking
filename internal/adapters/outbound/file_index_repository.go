@@ -1,7 +1,7 @@
 package outbound
 
 import (
-	"go-ddd-hex-starter/internal/domain/indexing"
+	"github.com/andygeiss/go-ddd-hex-starter/internal/domain/indexing"
 
 	"github.com/andygeiss/cloud-native-utils/resource"
 )

@@ -2,7 +2,7 @@ package inbound
 
 import (
 	"context"
-	"go-ddd-hex-starter/internal/domain/indexing"
+	"github.com/andygeiss/go-ddd-hex-starter/internal/domain/indexing"
 	"os"
 	"path/filepath"
 	"strings"

@@ -3,7 +3,7 @@ package inbound_test
 import (
 	"context"
 	"fmt"
-	"go-ddd-hex-starter/internal/adapters/inbound"
+	"github.com/andygeiss/go-ddd-hex-starter/internal/adapters/inbound"
 	"os"
 	"testing"
 
