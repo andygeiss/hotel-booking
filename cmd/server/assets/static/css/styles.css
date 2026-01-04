@@ -9,13 +9,72 @@
    ======================================== */
 
 body {
-    background: var(--color-background);
-    background-attachment: fixed;
+    background: var(--color-background-solid);
     color: var(--color-text);
     font-family: var(--font-family);
     font-size: var(--font-size-base);
     line-height: var(--line-height-base);
     min-height: 100vh;
+    overflow-x: hidden;
+    position: relative;
+}
+
+/* Animated gradient blobs */
+body::before,
+body::after {
+    border-radius: 50%;
+    content: "";
+    filter: blur(var(--glass-blur-xl));
+    height: var(--blob-size);
+    opacity: 0.35;
+    pointer-events: none;
+    position: fixed;
+    width: var(--blob-size);
+    z-index: -1;
+}
+
+body::before {
+    animation: blob-1 var(--blob-speed) ease-in-out infinite;
+    background: radial-gradient(circle, var(--gradient-purple) 0%, var(--gradient-pink) 50%, transparent 70%);
+    left: -10%;
+    top: -10%;
+}
+
+body::after {
+    animation: blob-2 var(--blob-speed) ease-in-out infinite;
+    background: radial-gradient(circle, var(--gradient-cyan) 0%, var(--gradient-blue) 50%, transparent 70%);
+    bottom: -10%;
+    right: -10%;
+}
+
+@keyframes blob-1 {
+    0%, 100% {
+        transform: translate(0, 0) scale(1);
+    }
+    25% {
+        transform: translate(20%, 30%) scale(1.1);
+    }
+    50% {
+        transform: translate(40%, 10%) scale(0.9);
+    }
+    75% {
+        transform: translate(10%, 40%) scale(1.05);
+    }
+}
+
+@keyframes blob-2 {
+    0%, 100% {
+        transform: translate(0, 0) scale(1);
+    }
+    25% {
+        transform: translate(-30%, -20%) scale(0.95);
+    }
+    50% {
+        transform: translate(-10%, -40%) scale(1.1);
+    }
+    75% {
+        transform: translate(-40%, -10%) scale(1);
+    }
 }
 
 .container {
@@ -306,16 +365,15 @@ p {
     backdrop-filter: blur(var(--glass-blur));
     -webkit-backdrop-filter: blur(var(--glass-blur));
     background: var(--glass-bg);
-    border: 1px solid var(--glass-border);
+    border: 1px solid rgba(255, 255, 255, 0.18);
     border-radius: var(--radius-xl);
-    box-shadow: var(--glass-shadow), var(--glass-inset);
     padding: var(--space-6);
     transition: all var(--transition-base);
 }
 
 .card:hover {
-    box-shadow: var(--glass-shadow-lg), var(--shadow-glow);
-    transform: translateY(-4px);
+    border-color: rgba(255, 255, 255, 0.3);
+    transform: translateY(-2px);
 }
 
 .card__body {

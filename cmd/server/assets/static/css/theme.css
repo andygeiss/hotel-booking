@@ -79,6 +79,10 @@
     --glass-shadow-lg: 0 16px 48px rgba(31, 38, 135, 0.5);
     --glass-inset: inset 0 1px 1px rgba(255, 255, 255, 0.3);
     
+    /* Blob Animation */
+    --blob-size: 500px;
+    --blob-speed: 25s;
+    
     /* Layout */
     --header-height: 64px;
     --nav-width: 280px;
