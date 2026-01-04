@@ -10,11 +10,13 @@
 **go-ddd-hex-starter** is a production-ready Go template demonstrating Domain-Driven Design (DDD) and Hexagonal Architecture (Ports and Adapters). It provides a clean, minimal foundation for Go projects requiring clear separation between business logic and infrastructure.
 
 This repository serves as:
-- A **reusable blueprint** for building maintainable, scalable Go applications.
+
+- A **reusable blueprint** for building maintainable, scalable Go applications with well-defined boundaries.
 - A **reference implementation** of the Ports and Adapters pattern with working examples.
 - A **template** for AI coding agents that need a consistent, well-documented structure to extend.
 
 The included examples demonstrate:
+
 - A **CLI tool** that indexes files in a directory and persists the result to JSON.
 - An **HTTP server** with OIDC authentication, templating, and session management.
 
@@ -45,7 +47,6 @@ The included examples demonstrate:
 | `templating` | Template engine with `embed.FS` support |
 | `logging` | Structured JSON logger (`logging.NewJsonLogger()`) |
 | `service` | Context management, graceful shutdown |
-| `redirecting` | HTTP redirect helpers |
 
 See [VENDOR.md](VENDOR.md) for complete library documentation.
 
@@ -91,8 +92,9 @@ The project implements **Hexagonal Architecture** with three distinct layers:
 ### Dependency Rule
 
 Source code dependencies point **inward** only:
+
 - `adapters` → depends on → `domain`
-- `domain` → depends on → **nothing**
+- `domain` → depends on → **nothing** (no infrastructure imports)
 
 ---
 
@@ -100,59 +102,61 @@ Source code dependencies point **inward** only:
 
 ```
 go-ddd-hex-starter/
-├── .justfile                 # Task runner commands
-├── go.mod                    # Go module definition
+├── .github/
+│   └── agents/               # GitHub Copilot agent instructions
+├── .justfile                 # Task runner commands (build, test, profile, run, serve)
+├── go.mod                    # Go module definition (Go 1.25+)
 ├── README.md                 # Project documentation
 ├── CONTEXT.md                # This file (AI/developer context)
 ├── VENDOR.md                 # Vendor library documentation
-├── cpuprofile.pprof          # PGO profile data
+├── cpuprofile.pprof          # PGO profile data (auto-generated)
 ├── bin/                      # Compiled binaries (gitignored)
 ├── cmd/                      # Application entry points
 │   ├── cli/                  # CLI application
-│   │   ├── main.go           # Wires adapters, starts CLI
+│   │   ├── main.go           # Wires adapters, runs file indexing
 │   │   ├── main_test.go      # Benchmarks for PGO
 │   │   └── assets/           # Embedded assets (embed.FS)
 │   └── server/               # HTTP server application
-│       ├── main.go           # Wires adapters, starts server
+│       ├── main.go           # Wires adapters, starts server with OIDC
 │       └── assets/           # Embedded assets
-│           ├── static/       # CSS, JS files (base.css, htmx.min.js, etc.)
+│           ├── static/       # CSS, JS files (base.css, htmx.min.js, theme.css)
 │           └── templates/    # HTML templates (*.tmpl)
 └── internal/
     ├── adapters/             # Infrastructure implementations
     │   ├── inbound/          # Driving adapters
-    │   │   ├── file_reader.go      # Filesystem access
-    │   │   ├── router.go           # HTTP routing
+    │   │   ├── file_reader.go      # Filesystem access (implements FileReader port)
+    │   │   ├── router.go           # HTTP routing and middleware wiring
     │   │   ├── http_index.go       # Index view handler
     │   │   ├── http_login.go       # Login view handler
     │   │   ├── http_view.go        # Generic view renderer
     │   │   └── middleware.go       # HTTP middleware (logging, security headers)
     │   └── outbound/         # Driven adapters
-    │       ├── file_index_repository.go  # JSON file persistence
-    │       └── event_publisher.go        # Event publishing
+    │       ├── file_index_repository.go  # JSON file persistence (implements IndexRepository port)
+    │       └── event_publisher.go        # Event publishing (implements EventPublisher port)
     └── domain/               # Pure business logic
         ├── event/            # Domain event interface
-        │   └── event.go
+        │   └── event.go      # Event interface with Topic() method
         └── indexing/         # Bounded Context: Indexing
-            ├── aggregate.go      # Aggregate Root (Index)
+            ├── aggregate.go      # Aggregate Root (Index with Hash())
             ├── entities.go       # Entities (FileInfo)
-            ├── value_objects.go  # Value Objects (IndexID) + Domain Events
+            ├── value_objects.go  # Value Objects (IndexID) + Domain Events (EventFileIndexCreated)
             ├── service.go        # Domain Service (IndexingService)
-            ├── ports_inbound.go  # Interfaces for driving adapters
-            └── ports_outbound.go # Interfaces for driven adapters
+            ├── ports_inbound.go  # Interfaces for driving adapters (FileReader)
+            └── ports_outbound.go # Interfaces for driven adapters (IndexRepository, EventPublisher)
 ```
 
 ### Rules for New Code
 
-| What to add | Where it goes |
+| What to Add | Where It Goes |
 |-------------|---------------|
 | New bounded context | `internal/domain/<context_name>/` |
 | New aggregate or entity | `internal/domain/<context>/aggregate.go` or `entities.go` |
 | New value object | `internal/domain/<context>/value_objects.go` |
-| New domain event | `internal/domain/<context>/value_objects.go` (with `Topic()` method) |
+| New domain event | `internal/domain/<context>/value_objects.go` (implement `Topic()` method) |
 | New inbound port | `internal/domain/<context>/ports_inbound.go` |
 | New outbound port | `internal/domain/<context>/ports_outbound.go` |
-| New driving adapter (HTTP, CLI, etc.) | `internal/adapters/inbound/<adapter_name>.go` |
-| New driven adapter (DB, queue, etc.) | `internal/adapters/outbound/<adapter_name>.go` |
+| New driving adapter (HTTP, CLI, filesystem) | `internal/adapters/inbound/<adapter_name>.go` |
+| New driven adapter (DB, queue, external API) | `internal/adapters/outbound/<adapter_name>.go` |
 | New application entry point | `cmd/<app_name>/main.go` |
 | Tests for any file | `<filename>_test.go` (same directory) |
 | Static assets | `cmd/<app>/assets/static/` |
@@ -169,7 +173,7 @@ go-ddd-hex-starter/
 - All dependencies are injected explicitly—no global state.
 - Use `context.Context` for cancellation and timeout propagation.
 - Use `embed.FS` for bundling static files into binaries.
-- Domain code must never import adapter packages.
+- Domain code must **never** import adapter packages.
 
 ### 5.2 Naming
 
@@ -183,8 +187,8 @@ go-ddd-hex-starter/
 | Constructors | `New<Type>()` | `NewIndex()`, `NewFileReader()` |
 | Value Objects | PascalCase, `ID` suffix for identifiers | `IndexID` |
 | Domain Events | `Event<Action>` | `EventFileIndexCreated` |
-| HTTP Handlers | `Http<View/Action><Name>` | `HttpViewIndex`, `HttpViewLogin` |
-| HTTP Response Structs | `Http<View><Name>Response` | `HttpViewIndexResponse` |
+| HTTP Handlers | `HttpView<Name>` | `HttpViewIndex`, `HttpViewLogin` |
+| HTTP Response Structs | `HttpView<Name>Response` | `HttpViewIndexResponse` |
 | Middleware | `With<Capability>` | `WithLogging`, `WithSecurityHeaders` |
 
 #### Test Naming
@@ -195,17 +199,20 @@ Benchmark_<Struct>_<Method>_With_<Condition>_Should_<Result>
 ```
 
 Examples:
+
 - `Test_Index_Hash_With_No_FileInfos_Should_Return_Valid_Hash`
 - `Benchmark_FileReader_ReadFileInfos_With_1000_Entries_Should_Be_Fast`
 
 ### 5.3 Error Handling & Logging
 
 **Error Handling:**
+
 - Return errors from functions; do not panic except for unrecoverable situations.
 - Errors propagate upward through the call stack to the application layer.
 - Domain layer returns plain errors; adapters may wrap errors with context.
 
 **Logging:**
+
 - Use `cloud-native-utils/logging.NewJsonLogger()` for structured JSON logs.
 - Logging is handled at the application layer (`cmd/`), not within domain or adapters.
 - Use `slog.Logger` with structured fields: `logger.Info("message", "key", value)`.
@@ -252,10 +259,9 @@ This section documents patterns for building services within this architecture.
 
 ### Domain Event Pattern
 
-Events implement the `event.Event` interface:
+Events implement the `event.Event` interface defined in `internal/domain/event/event.go`:
 
 ```go
-// internal/domain/event/event.go
 type Event interface {
     Topic() string
 }
@@ -312,9 +318,9 @@ Services orchestrate use cases and coordinate between aggregates, repositories, 
 
 ```go
 type IndexingService struct {
-    fileReader      FileReader      // inbound
-    indexRepository IndexRepository // outbound
-    publisher       EventPublisher  // outbound
+    fileReader      FileReader      // inbound port
+    indexRepository IndexRepository // outbound port
+    publisher       EventPublisher  // outbound port
 }
 
 func NewIndexingService(fr FileReader, ir IndexRepository, ep EventPublisher) *IndexingService {
@@ -324,7 +330,7 @@ func NewIndexingService(fr FileReader, ir IndexRepository, ep EventPublisher) *I
 
 ### HTTP Handler Pattern
 
-HTTP handlers use the `cloud-native-utils` templating engine and follow this structure:
+HTTP handlers use the `cloud-native-utils` templating engine:
 
 ```go
 func HttpViewIndex(e *templating.Engine) http.HandlerFunc {
@@ -339,7 +345,7 @@ func HttpViewIndex(e *templating.Engine) http.HandlerFunc {
 
 Routes are defined in `router.go` using `mux.HandleFunc()` with middleware chains.
 
-### Adding a New Bounded Context Checklist
+### Adding a New Bounded Context
 
 1. Create directory: `internal/domain/<context_name>/`
 2. Define aggregate root: `aggregate.go`
@@ -352,22 +358,24 @@ Routes are defined in `router.go` using `mux.HandleFunc()` with middleware chain
 9. Implement adapters in `internal/adapters/`
 10. Wire in `cmd/<app>/main.go`
 
-### Adding a New Adapter Checklist
+### Adding a New Adapter
 
 **Inbound (driving) adapter:**
+
 1. Create `internal/adapters/inbound/<name>.go`
 2. Implement the inbound port interface from domain
 3. Constructor returns the domain interface type: `func New<Name>() <domain>.<Interface>`
 4. Write tests in `<name>_test.go`
 
 **Outbound (driven) adapter:**
+
 1. Create `internal/adapters/outbound/<name>.go`
 2. Implement the outbound port interface from domain
 3. Constructor returns the domain interface type
 4. Prefer reusing `cloud-native-utils` types (e.g., `resource.JsonFileAccess`)
 5. Write tests in `<name>_test.go`
 
-### Adding a New HTTP Endpoint Checklist
+### Adding a New HTTP Endpoint
 
 1. Create handler in `internal/adapters/inbound/http_<name>.go`
 2. Define response struct: `HttpView<Name>Response`
@@ -391,12 +399,12 @@ Routes are defined in `router.go` using `mux.HandleFunc()` with middleware chain
 
 ### What Is Designed for Customization
 
-- Domain logic: Replace/extend the `indexing` bounded context
-- Adapters: Add database, HTTP, queue, or API adapters
-- Entry points: Add CLIs, servers, workers under `cmd/`
-- Embedded assets: Replace contents of `cmd/*/assets/`
-- Configuration: Add environment variables or config files
-- Templates: Customize UI in `assets/templates/`
+- **Domain logic**: Replace/extend the `indexing` bounded context
+- **Adapters**: Add database, HTTP, queue, or API adapters
+- **Entry points**: Add CLIs, servers, workers under `cmd/`
+- **Embedded assets**: Replace contents of `cmd/*/assets/`
+- **Configuration**: Add environment variables or config files
+- **Templates**: Customize UI in `assets/templates/`
 
 ### Steps to Create a New Project
 
@@ -418,7 +426,8 @@ Routes are defined in `router.go` using `mux.HandleFunc()` with middleware chain
 | Command | Description |
 |---------|-------------|
 | `just build` | Build optimized binary with PGO to `bin/` |
-| `just run` | Build and run the application |
+| `just run` | Build and run the CLI application |
+| `just serve` | Run the HTTP server (development mode) |
 | `just test` | Run all unit tests with coverage |
 | `just profile` | Run benchmarks and generate PGO profile |
 
@@ -446,7 +455,10 @@ PORT=8080 go run ./cmd/server/main.go
 | Variable | Purpose | Default |
 |----------|---------|---------|
 | `PORT` | HTTP server port | `8080` |
-| OIDC variables | See `cloud-native-utils/security` docs | — |
+| `OIDC_CLIENT_ID` | OIDC client identifier | — |
+| `OIDC_CLIENT_SECRET` | OIDC client secret | — |
+| `OIDC_ISSUER` | OIDC issuer URL | — |
+| `OIDC_REDIRECT_URL` | OIDC callback URL | — |
 
 ---
 
@@ -521,6 +533,7 @@ PORT=8080 go run ./cmd/server/main.go
 ### When to Update This File
 
 Update `CONTEXT.md` when:
+
 - Adding a new bounded context.
 - Introducing a new architectural pattern.
 - Changing naming conventions.
@@ -528,10 +541,11 @@ Update `CONTEXT.md` when:
 - Modifying the directory structure.
 
 Do **not** update for:
+
 - Bug fixes.
 - Adding individual adapters following existing patterns.
 - Test additions.
 
 ---
 
-*Last updated: 2026-01-03*
+*Last updated: 2026-01-04*

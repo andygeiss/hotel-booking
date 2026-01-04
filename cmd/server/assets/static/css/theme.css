@@ -89,15 +89,15 @@
 /* Dark Theme */
 @media (prefers-color-scheme: dark) {
     :root {
-        --color-background: #1a1a1a;
+        --color-background: #020617;
         --color-border: #404040;
         --color-gray: #808080;
         --color-gray-light: #404040;
         --color-gray-dark: #c0c0c0;
         --color-primary: #ffffff;
         --color-primary-text: #1a1a1a;
-        --color-secondary: #4d9fff;
-        --color-secondary-light: #006edb;
+        --color-secondary: #00add8;
+        --color-secondary-light: #5dc9e2;
         --color-surface: #2d2d2d;
 
         --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
