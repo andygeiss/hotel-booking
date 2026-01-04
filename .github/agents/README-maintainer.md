@@ -62,11 +62,11 @@ The agent must keep the coding-style disclaimer exactly as specified in the docu
 
 ### README logo placement
 
-At the very top of `README.md`, above the main title and badge block, the agent must render the project logo using the embedded PNG located at `cmd/server/assets/static/img/icon-192.png`:
+At the very top of `README.md`, above the main title and badge block, the agent must render the project logo using the embedded PNG located at `cmd/server/assets/static/img/login.png`:
 
 ```markdown
 <p align="center">
-  <img src="cmd/server/assets/static/img/icon-192.png" alt="Go DDD Hexagonal Starter logo" width="96" height="96">
+  <img src="cmd/server/assets/static/img/login.png" alt="Go DDD Hexagonal Starter logo" width="300">
 </p>
 ```
 

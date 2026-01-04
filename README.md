@@ -4,156 +4,207 @@
 
 # Go DDD Hexagonal Starter
 
-[![Go Reference](https://pkg.go.dev/badge/github.com/andygeiss/go-ddd-hex-starter.svg)](https://pkg.go.dev/github.com/andygeiss/go-ddd-hex-starter)
-[![Go Report Card](https://goreportcard.com/badge/github.com/andygeiss/go-ddd-hex-starter)](https://goreportcard.com/report/github.com/andygeiss/go-ddd-hex-starter)
+[![Go Reference](https://pkg.go.dev/badge/go-ddd-hex-starter.svg)](https://pkg.go.dev/go-ddd-hex-starter)
+[![Go Report Card](https://goreportcard.com/badge/go-ddd-hex-starter)](https://goreportcard.com/report/go-ddd-hex-starter)
+[![License](https://img.shields.io/github/license/andygeiss/go-ddd-hex-starter.svg)](LICENSE)
 [![Release](https://img.shields.io/github/v/release/andygeiss/go-ddd-hex-starter.svg)](https://github.com/andygeiss/go-ddd-hex-starter/releases)
+[![Test coverage](https://img.shields.io/badge/test%20coverage-go%20test%20-coverprofile)](#testing--quality)
 
-A production-ready Go template demonstrating Domain-Driven Design (DDD) and Hexagonal Architecture (Ports and Adapters).
+Production-ready Go template demonstrating Domain-Driven Design (DDD) and Hexagonal Architecture (Ports and Adapters).
 
 ## Overview / Motivation
 
-This repository serves as a **reusable blueprint** for building maintainable Go applications with well-defined boundaries. It implements the **Ports and Adapters** (Hexagonal) pattern to decouple domain logic from external concerns like HTTP, databases, or messaging.
+This repository is a starter template intended to be reused for real services:
 
-The goal is to provide a consistent, well-documented structure that can be used by developers and AI coding agents alike to bootstrap new projects without reinventing the wheel.
+- Clear boundaries between **domain**, **adapters**, and **entrypoints**.
+- Dependency direction enforced (everything depends inward).
+- Working examples for both a **CLI** (file indexing) and an **HTTP server** (OIDC login + templating).
 
 ## Key Features
 
-- **Hexagonal Architecture**: Strict separation of concerns with a pure domain layer.
-- **Domain-Driven Design**: Focus on core business logic and entities.
-- **Production-Ready Stack**:
-  - **HTTP Server**: Standard `net/http` with OIDC authentication.
-  - **CLI Tool**: Example command-line interface sharing the same domain logic.
-  - **Structured Logging**: JSON logs using `log/slog`.
-  - **Observability**: Profile-Guided Optimization (PGO) support.
-- **Developer Experience**:
-  - **Justfile**: Simplified command runner for build, test, and run workflows.
-  - **Docker/Podman**: Containerized development and build environment.
-  - **Vendor Utilities**: Leverages `cloud-native-utils` for common patterns.
+- Hexagonal architecture with ports defined in the domain layer
+- Pure domain logic in `internal/domain/` (no infrastructure imports)
+- Inbound and outbound adapters in `internal/adapters/`
+- Explicit dependency injection in `cmd/*/main.go`
+- HTTP server based on `net/http` + `cloud-native-utils/security`
+- OIDC authentication (Keycloak-friendly dev setup via Docker Compose)
+- Embedded templates and static assets via `embed.FS`
+- Task runner workflows via `just` (build, run, serve, test, profile, compose up/down)
+- PGO support (CPU profiling artifacts used by the Docker build)
 
 ## Architecture Overview
 
-The project follows a strict **Hexagonal Architecture** with three distinct layers:
+This project follows Hexagonal Architecture (Ports and Adapters):
 
-1.  **Domain (`internal/domain`)**: The core business logic. It contains entities, value objects, and port definitions (interfaces). It has **no dependencies** on outer layers.
-2.  **Adapters (`internal/adapters`)**: Implementations of the ports defined in the domain.
-    -   **Inbound**: Drive the application (e.g., HTTP handlers, CLI commands).
-    -   **Outbound**: Driven by the application (e.g., repositories, event publishers).
-3.  **Application (`cmd/`)**: The entry points that wire everything together using dependency injection.
+- **Domain layer**: pure business logic and ports (interfaces)
+- **Adapters layer**: infrastructure implementations
+  - inbound (driving): HTTP handlers, filesystem readers
+  - outbound (driven): repositories, event publishers
+- **Application layer**: entrypoints wiring everything together via dependency injection
+
+Key invariants (from [CONTEXT.md](CONTEXT.md)):
+
+- Ports (inbound/outbound) are defined in `internal/domain/**/ports_*.go`
+- Domain code never imports adapter packages
+- No global wiring: dependency injection happens in `cmd/*/main.go`
+- All operations accept `context.Context` as the first parameter
 
 ## Project Structure
 
-```text
-.
-├── .justfile               # Command runner configuration
-├── CONTEXT.md              # Architectural constraints and agent rules
-├── VENDOR.md               # Documentation for external utilities
-├── cmd/                    # Application entry points
-│   ├── cli/                # CLI application
-│   └── server/             # HTTP server application
-├── internal/               # Private application code
-│   ├── adapters/           # Infrastructure implementations
-│   │   ├── inbound/        # Driving adapters (HTTP, etc.)
-│   │   └── outbound/       # Driven adapters (Repositories, etc.)
-│   └── domain/             # Core business logic (Ports, Entities)
-└── tools/                  # Build and maintenance scripts
 ```
+.
+├── .justfile
+├── CONTEXT.md
+├── VENDOR.md
+├── Dockerfile
+├── docker-compose.yml
+├── tools/
+├── cmd/
+│   ├── cli/
+│   │   ├── main.go
+│   │   └── assets/
+│   └── server/
+│       ├── main.go
+│       └── assets/
+│           ├── static/
+│           └── templates/
+└── internal/
+    ├── adapters/
+    │   ├── inbound/
+    │   └── outbound/
+    └── domain/
+        ├── event/
+        └── indexing/
+```
+
+Notes:
+
+- `cmd/cli`: CLI example that indexes files in the current directory and writes an `index.json`.
+- `cmd/server`: HTTP server example that serves UI templates and uses OIDC authentication.
+- `internal/domain/indexing`: bounded context implementing the indexing domain.
+- `internal/adapters/*`: adapter implementations (HTTP, filesystem, JSON file persistence, messaging).
+- `tools/`: helper scripts used by `just` tasks.
 
 ## Conventions & Standards
 
+- Architectural contracts and naming conventions live in [CONTEXT.md](CONTEXT.md) and are authoritative.
+- Vendor library guidance (especially cross-cutting concerns) lives in [VENDOR.md](VENDOR.md).
+
+Coding-style disclaimer (must remain unchanged):
+
 > The coding style in this repository reflects a combination of widely used practices, prior experience, and personal preference, and is influenced by the Go projects on github.com/andygeiss. There is no single “best” project setup; you are encouraged to adapt this structure, evolve your own style, and use this repository as a starting point for your own projects.
 
-- **Dependency Injection**: Explicitly passed in `main.go`. No global state.
-- **Context**: All operations accept `context.Context` as the first parameter.
-- **Testing**: Follows Arrange–Act–Assert.
+## Using This Repository as a Template
 
-## Using this Repository as a Template
-
-1.  **Clone or Fork**: Start by copying this repository.
-2.  **Rename Module**: Update `go.mod` with your module path.
-3.  **Define Domain**: Replace `internal/domain` content with your business logic.
-4.  **Implement Adapters**: Add necessary adapters in `internal/adapters`.
-5.  **Wire Up**: Update `cmd/` to inject your new adapters.
+- Click **Use this template** on GitHub to create a new repository from this one.
+- Update the module name in [go.mod](go.mod) to your desired module path.
+- Search/replace import paths in `cmd/` and `internal/` to match the new module path.
+- Update application metadata in your `.env` (see below).
 
 ## Getting Started
 
 ### Prerequisites
 
-- **Go 1.25+**
-- **Just** (Command runner)
-- **Docker** or **Podman** (for containerized builds)
+- Go 1.25+ (see [go.mod](go.mod))
+- `just` (task runner)
+- `docker-compose`
+- A container build tool for `just build` (this repo uses `podman build` by default)
+- Python 3 (for `tools/*.py` tasks)
 
-### Setup
+Optional (for `just profile` SVG output):
 
-Install dependencies (macOS/Linux):
+- Graphviz (`dot`) installed
 
-```bash
-just setup
-```
+### Local Configuration
+
+This repository expects local-only config files:
+
+- Copy `.env.example` to `.env`
+- Copy `.keycloak.json.example` to `.keycloak.json`
+
+`just up` will replace the placeholder `CHANGE_ME_LOCAL_SECRET` in both files with a generated secret.
 
 ## Running, Scripts, and Workflows
 
-The project uses `just` to manage common tasks.
+All workflows are defined in [.justfile](.justfile):
 
-- **Build Container**:
-  ```bash
-  just build
-  ```
-- **Start Services (Docker Compose)**:
-  ```bash
-  just up
-  ```
-  This will generate a local secret, build the image, and start the stack (including Keycloak).
-- **Stop Services**:
-  ```bash
-  just down
-  ```
-- **Run CLI Locally**:
-  ```bash
-  just run
-  ```
-- **Run Server Locally**:
-  ```bash
-  just serve
-  ```
-- **Generate PGO Profile**:
-  ```bash
-  just profile
-  ```
+- `just setup`: installs `just` and `docker-compose` via Homebrew
+- `just serve`: runs the HTTP server locally (`go run ./cmd/server/main.go`)
+- `just run`: runs the CLI locally (`go run ./cmd/cli/main.go`)
+- `just test`: runs unit tests under `./internal/...` and writes `coverage.pprof`
+- `just profile`: generates `cpuprofile.pprof` and `cpuprofile.svg` via `tools/create_pgo.py`
+- `just build`: builds the container image with `podman build`
+- `just up`: builds the image and starts Keycloak + Kafka + app via Docker Compose
+- `just down`: stops Docker Compose services
+
+Container notes:
+
+- `just build` uses **Podman** by default (`podman build`). If you prefer Docker, adjust the build recipe accordingly.
+- `docker-compose.yml` runs Keycloak (OIDC) and Kafka (messaging) as optional dev dependencies.
 
 ## Usage Examples
 
-### CLI
+### CLI: Index files
 
-The CLI tool indexes files in a directory:
-
-```bash
-go run cmd/cli/main.go
-```
-
-### HTTP Server
-
-The server provides a web interface with OIDC login:
+Run:
 
 ```bash
-go run cmd/server/main.go
+just run
 ```
-Access it at `http://localhost:8080` (default).
+
+Behavior (from [cmd/cli/main.go](cmd/cli/main.go)):
+
+- Reads file infos from the current directory (`.`)
+- Builds an index keyed by your working directory
+- Writes a JSON file at `./index.json` (then removes it at process exit)
+
+### Server: UI + OIDC Login
+
+Run locally (without Docker Compose):
+
+```bash
+just serve
+```
+
+Important endpoints (from [internal/adapters/inbound/router.go](internal/adapters/inbound/router.go)):
+
+- `GET /liveness`
+- `GET /readiness`
+- `GET /ui/` (requires authentication; redirects to `/ui/login` if unauthenticated)
+- `GET /ui/login` (renders login page)
+
+Auth callback:
+
+- The OIDC redirect URI is configured via `OIDC_REDIRECT_URL` (see `.env.example`).
+- The callback handling is provided by `cloud-native-utils/security` through the server mux initialization.
 
 ## Testing & Quality
 
-Run unit tests with coverage:
+Run tests and collect coverage:
 
 ```bash
 just test
 ```
 
-This runs tests in `internal/...` and outputs the coverage percentage.
+This will:
+
+- run `go test -v -coverprofile=coverage.pprof ./internal/...`
+- print the total coverage summary
+
+Testing conventions (Arrange–Act–Assert, naming) are defined in [CONTEXT.md](CONTEXT.md).
 
 ## CI/CD
 
-*Currently, no CI/CD workflows are configured in `.github/workflows`.*
+No GitHub Actions workflows are included in this repository at the moment.
+
+If you add CI, keep it aligned with the existing workflows:
+
+- `go test ./...` (or `./internal/...`)
+- optional coverage reporting based on `coverage.pprof`
+- optional PGO profiling via `just profile`
 
 ## Limitations and Roadmap
 
-- **Database**: Currently uses a file-based JSON repository (`cloud-native-utils/resource`). For production, replace with a SQL/NoSQL adapter.
-- **Authentication**: Configured for Keycloak/OIDC. Requires a running Identity Provider.
+- The module name in [go.mod](go.mod) is currently `go-ddd-hex-starter`; template users typically change this to their own module path.
+- Docker build uses `-pgo cpuprofile.pprof` (see [Dockerfile](Dockerfile)); if the file is missing, image build will fail until you generate it via `just profile`.
+- No CI workflows are present yet (see the CI/CD section).
