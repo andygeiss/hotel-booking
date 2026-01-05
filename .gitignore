@@ -3,7 +3,6 @@
 
 # Generated files
 *.go.sum
-*.mod
 
 # Local environment variables
 .env
