@@ -24,8 +24,10 @@ var efs embed.FS
 func main() {
 	ctx := context.Background()
 
-	// Setup the messaging dispatcher (internal for local pub/sub).
-	dispatcher := messaging.NewInternalDispatcher()
+	// Setup the messaging dispatcher (external Kafka pub/sub).
+	// Requires KAFKA_BROKERS environment variable to be set.
+	// Example: KAFKA_BROKERS=localhost:9092 for local, kafka:9092 for Docker Compose.
+	dispatcher := messaging.NewExternalDispatcher()
 
 	// Setup the inbound adapters.
 	fileReader := inbound.NewFileReader()

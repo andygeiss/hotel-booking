@@ -53,16 +53,16 @@ import sys
 # List of packages to profile.
 # These should be the core domains and adapters where performance matters most.
 PACKAGES_TO_PROFILE = [
-    "cmd/cli",
     "cmd/server",
     "internal/adapters/inbound",
-    "internal/adapters/outbound"
+    "internal/adapters/outbound",
 ]
+
 
 def run_command(command, shell=False, check=True):
     """
     Runs a shell command and handles errors gracefully.
-    
+
     Args:
         command (list or str): The command to run.
         shell (bool): Whether to run the command in a shell.
@@ -73,6 +73,7 @@ def run_command(command, shell=False, check=True):
     except subprocess.CalledProcessError as e:
         print(f"Error running command: {command}")
         sys.exit(e.returncode)
+
 
 def main():
     print("Starting PGO profile generation...")
@@ -98,11 +99,11 @@ def main():
     # live close to the code under test.
     for pkg in PACKAGES_TO_PROFILE:
         print(f"Profiling package: {pkg}")
-        
+
         # Create a safe filename suffix (replace / with __) to avoid path issues
         suffix = pkg.replace("/", "__").replace("\\", "__")
         output_file = f"cpuprofile-{suffix}.pprof"
-        
+
         # Construct the go test command for benchmarking
         # -run=^$      : Don't run any unit tests (only benchmarks)
         # -bench=.     : Run all benchmarks in the package
@@ -111,18 +112,22 @@ def main():
         # -pgo=off     : IMPORTANT: Disable PGO during profiling to get a clean baseline.
         #                Profiling an already optimized binary can skew results.
         cmd = [
-            "go", "test", f"./{pkg}/...",
+            "go",
+            "test",
+            f"./{pkg}/...",
             "-run=^$",
             "-bench=.",
             "-benchtime=10s",
             f"-cpuprofile={output_file}",
-            "-pgo=off"
+            "-pgo=off",
         ]
-        
+
         # Run the benchmark, suppressing stdout/stderr to keep the output clean.
         # We only care if it fails.
         try:
-            subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            subprocess.run(
+                cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+            )
         except subprocess.CalledProcessError:
             print(f"Failed to profile package: {pkg}")
             sys.exit(1)
@@ -144,7 +149,10 @@ def main():
     # Rename/Copy the merged file to the standard name 'cpuprofile.pprof'
     # This is the file that should be committed to the repo for PGO.
     try:
-        with open("cpuprofile-merged.pprof", "rb") as src, open("cpuprofile.pprof", "wb") as dst:
+        with (
+            open("cpuprofile-merged.pprof", "rb") as src,
+            open("cpuprofile.pprof", "wb") as dst,
+        ):
             dst.write(src.read())
     except IOError as e:
         print(f"Error copying merged profile: {e}")
@@ -168,13 +176,14 @@ def main():
         os.remove(f)
     for f in glob.glob("*.test"):
         os.remove(f)
-    
+
     if os.path.exists("cpuprofile-merged.pprof"):
         os.remove("cpuprofile-merged.pprof")
 
     print("PGO generation complete!")
     print("  - Created 'cpuprofile.pprof' (Commit this file)")
     print("  - Created 'cpuprofile.svg'   (View this to analyze performance)")
+
 
 if __name__ == "__main__":
     main()
