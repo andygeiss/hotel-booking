@@ -75,7 +75,7 @@ func (a *mockEventPublisher) Publish(ctx context.Context, e event.Event) error {
 }
 
 // setupIndexingService creates a new IndexingService with mocked dependencies.
-func setupIndexingService() (service *indexing.IndexingService, publisher event.EventPublisher) {
+func setupIndexingService() (*indexing.IndexingService, event.EventPublisher) {
 	mockFileReader := &mockFileReader{
 		fileInfos: []indexing.FileInfo{
 			{AbsPath: "test/path/file1.txt", Size: 100},
@@ -88,6 +88,6 @@ func setupIndexingService() (service *indexing.IndexingService, publisher event.
 			return nil
 		})
 	mockEventPublisher := &mockEventPublisher{}
-	service = indexing.NewIndexingService(mockFileReader, mockIndexRepository, mockEventPublisher)
+	service := indexing.NewIndexingService(mockFileReader, mockIndexRepository, mockEventPublisher)
 	return service, mockEventPublisher
 }

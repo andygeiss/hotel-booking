@@ -40,7 +40,6 @@ func NewIndexingService(fileReader FileReader, indexRepository IndexRepository, 
 // We pass the context to the file reader to ensure that the operation is cancellable.
 // We also pass the context to the index repository to ensure that the operation is cancellable.
 func (a *IndexingService) CreateIndex(ctx context.Context, path string) error {
-
 	files, err := a.fileReader.ReadFileInfos(ctx, path)
 	if err != nil {
 		return err
@@ -74,7 +73,6 @@ func (a *IndexingService) CreateIndex(ctx context.Context, path string) error {
 
 // IndexFiles indexes the files specified by the given ID.
 func (a *IndexingService) IndexFiles(ctx context.Context, path string) ([]string, error) {
-
 	// Read the file infos from the file reader.
 	files, err := a.fileReader.ReadFileInfos(ctx, path)
 	if err != nil {

@@ -45,7 +45,6 @@ func main() {
 
 	// Start the HTTP server in the main goroutine.
 	if err := srv.ListenAndServe(); err != nil {
-
 		// Check if the server was closed intentionally.
 		if err == http.ErrServerClosed {
 			logger.Error("server closed", "reason", "server closed intentionally")

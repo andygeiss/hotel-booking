@@ -58,8 +58,9 @@ func main() {
 
 	fmt.Printf("❯ main: creating index for path: %s\n", wd)
 
-	if err := indexingService.CreateIndex(ctx, wd); err != nil {
-		panic(err)
+	createErr := indexingService.CreateIndex(ctx, wd)
+	if createErr != nil {
+		panic(createErr)
 	}
 
 	// Give a moment for async event processing.

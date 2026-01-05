@@ -132,6 +132,7 @@ When performing any non-trivial task, follow this loop:
   - Any CI checks described in project docs.
 - **Run `just fmt` after every code change** to format Go source files.
 - **Run `just lint` after every code change.** Resolve all reported issues iteratively until the output shows `0 issues`. Do not consider the task complete until linting passes with zero issues.
+- **Run `just test` after every code change.** Resolve all failing tests iteratively until all tests pass. Do not consider the task complete until all tests pass.
 - Ensure changes are safe, incremental, and do not break the repository's invariants.
 
 ### 4.6 Document

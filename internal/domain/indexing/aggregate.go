@@ -2,6 +2,7 @@ package indexing
 
 import (
 	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"time"
 )
@@ -11,9 +12,9 @@ import (
 // This ensures that the Index is a valid and consistent representation of the indexed files.
 type Index struct {
 	ID        IndexID
-	FileInfos []FileInfo
 	CreatedAt time.Time
 	UpdatedAt time.Time
+	FileInfos []FileInfo
 }
 
 // NewIndex creates a new Index instance with the given ID and fileInfos.
@@ -38,5 +39,5 @@ func (a *Index) Hash() string {
 	for _, fileInfo := range a.FileInfos {
 		_, _ = fmt.Fprintf(hasher, "%s-%d|", fileInfo.AbsPath, fileInfo.Size)
 	}
-	return fmt.Sprintf("%x", hasher.Sum(nil))
+	return hex.EncodeToString(hasher.Sum(nil))
 }

@@ -78,7 +78,6 @@ func Benchmark_FileReader_ReadFileInfos_With_1000_Entries_Should_Be_Fast(b *test
 	// We use b.Loop() to iterate over the benchmark loop.
 	// This is the new way to iterate over the benchmark loop.
 	for b.Loop() {
-
 		// Read all generated file infos.
 		fileInfos, err := reader.ReadFileInfos(ctx, "testdata")
 		if err != nil {

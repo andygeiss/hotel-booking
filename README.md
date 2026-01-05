@@ -163,6 +163,8 @@ Default Keycloak credentials: `admin` / `admin`
 | `just build` | `just b` | Build Docker image |
 | `just up` | `just u` | Start all services |
 | `just down` | `just d` | Stop all services |
+| `just fmt` | — | Format Go code with golangci-lint |
+| `just lint` | — | Run golangci-lint checks |
 | `just test` | `just t` | Run tests with coverage |
 | `just serve` | — | Run HTTP server locally |
 | `just run` | — | Run CLI demo locally |

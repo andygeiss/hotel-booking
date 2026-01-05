@@ -190,7 +190,9 @@ go-ddd-hex-starter/
 
 ### 5.5 Formatting & Linting
 
-- **Formatter:** `gofmt` (standard Go formatter)
+- **Formatter:** `golangci-lint fmt` (via `just fmt`)
+- **Linter:** `golangci-lint` with project-specific configuration (`.golangci.yml`)
+- **Workflow:** Run `just fmt` then `just lint` after every code change; resolve all issues until `0 issues`
 - **Import organization:** Standard library, blank line, external packages, blank line, internal packages
 - **Line length:** No hard limit; prefer readability
 - **Comments:** Document exported types and functions; use `//` style
@@ -307,6 +309,8 @@ All commands are defined in `.justfile` and executed via `just`:
 | `just build` (or `just b`) | Build Docker image using Podman |
 | `just up` (or `just u`) | Generate secrets, build image, start all services |
 | `just down` (or `just d`) | Stop and remove all containers |
+| `just fmt` | Format Go code with golangci-lint formatters |
+| `just lint` | Run golangci-lint to check code quality (0 issues required) |
 | `just test` (or `just t`) | Run unit tests with coverage |
 | `just serve` | Run HTTP server locally (requires Kafka/Keycloak) |
 | `just run` | Run CLI demo locally |
