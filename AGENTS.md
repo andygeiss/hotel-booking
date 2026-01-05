@@ -1,157 +1,242 @@
 # AGENTS.md
 
-This repository defines several specialized AI agents under `.github/agents`.  
-Any AI assistant or coding agent (including Zed’s agent) working on this repo must respect and reuse these definitions instead of inventing its own workflow.
+## Overview
 
-Authoritative agent definitions:
+This repository uses specialized AI agents defined in `.github/agents/` to maintain documentation, code quality, and consistency. Each agent has a specific responsibility and operates according to ground-truth documents.
 
-- `.github/agents/coding-assistant.md`
-- `.github/agents/CONTEXT-maintainer.md`
-- `.github/agents/README-maintainer.md`
-- `.github/agents/VENDOR-maintainer.md`
-
-Always read the relevant agent file before performing non-trivial work.
+This file serves as an index for AI tools (Zed, VS Code Copilot, MCP servers, or other assistants) to understand which agent to invoke for a given task.
 
 ---
 
-## 1. Agent catalog and responsibilities
+## Agent Definitions
 
-### 1.1 coding-assistant
+All agent definition files are located in `.github/agents/`.
 
-Definition: `.github/agents/coding-assistant.md`
-
-You are an autonomous **senior software engineer and template maintainer** for this repository.
-
-Use this agent when the main goal is to **change or generate code**:
-
-- Implementing or extending features in this template.
-- Refactoring, improving structure, or paying down technical debt.
-- Adding tests and improving test coverage.
-- Generating new projects based on this template.
-
-Key rules (see `coding-assistant.md` for full details):
-
-- Treat `CONTEXT.md` as the primary **architecture and conventions** contract.
-- Treat `README.md` as the primary **human-facing description**.
-- Treat `VENDOR.md` as the primary **vendor usage** guide.
-- Always look for appropriate utilities in `cloud-native-utils` before inventing new helpers.
-- Prefer small, incremental, template-consistent changes over large speculative rewrites.
-
-When starting a coding task, explicitly state:  
-“Act as the `coding-assistant` defined in `.github/agents/coding-assistant.md`. Read and follow that file first.”
+| Agent | File | Role |
+|-------|------|------|
+| coding-assistant | `.github/agents/coding-assistant.md` | Implements code changes following architecture and conventions |
+| CONTEXT-maintainer | `.github/agents/CONTEXT-maintainer.md` | Maintains `CONTEXT.md` with accurate architectural documentation |
+| README-maintainer | `.github/agents/README-maintainer.md` | Maintains `README.md` as the human-first project introduction |
+| VENDOR-maintainer | `.github/agents/VENDOR-maintainer.md` | Maintains `VENDOR.md` with vendor library documentation |
+| AGENTS-maintainer | `.github/agents/AGENTS-maintainer.md` | Maintains this file (`AGENTS.md`) |
 
 ---
 
-### 1.2 CONTEXT-maintainer
+## Agent Responsibilities
 
-Definition: `.github/agents/CONTEXT-maintainer.md`
+### coding-assistant
 
-You are a **senior software architect and context engineer** responsible for `CONTEXT.md`.
+**Purpose:** Senior software engineer that implements and evolves code while strictly following documented architecture, conventions, and vendor-usage rules.
 
-Use this agent when the main goal is to **create or update `CONTEXT.md`**:
+**When to use:**
+- Implementing new features or fixing bugs
+- Refactoring existing code
+- Adding new bounded contexts or adapters
+- Creating tests
+- Any code modification task
 
-- Describing architecture, directory contracts, and conventions.
-- Updating the template’s invariants and customization points.
-- Aligning `CONTEXT.md` with real code after significant changes.
+**Ground truth documents:**
+1. `CONTEXT.md` — architecture, conventions, directory structure
+2. `README.md` — project purpose and positioning
+3. `VENDOR.md` — approved libraries and usage patterns
 
-Key rules (see `CONTEXT-maintainer.md` for full details):
-
-- Optimize for **signal per token**; no marketing fluff.
-- Describe how the project is structured and how to work within it.
-- Never invent files, tools, or patterns that do not exist.
-- Follow the required `CONTEXT.md` structure (Project purpose, Technology stack, High-level architecture, Directory structure, Coding conventions, Agent patterns, Template usage, Key commands, Constraints, How AI tools should use this file).
-
-When starting a context task, explicitly state:  
-“Act as the `CONTEXT-maintainer` defined in `.github/agents/CONTEXT-maintainer.md`. Read and follow that file first.”
-
----
-
-### 1.3 README-maintainer
-
-Definition: `.github/agents/README-maintainer.md`
-
-You are a **README-focused documentation maintainer** for this repository.
-
-Use this agent when the main goal is to **create or update `README.md`**:
-
-- Keeping `README.md` aligned with the actual codebase and workflows.
-- Presenting the repo as a reusable Go template for humans and coding agents.
-- Updating badges, sections, and structure after code or template changes.
-
-Key rules (see `README-maintainer.md` for full details):
-
-- Ground truth documents: `CONTEXT.md` → architecture, `README.md` → public-facing description, `VENDOR.md` → vendor usage.
-- Preserve the main title `Go DDD Hexagonal Starter` and the full badge block (Go Reference, Go Report Card, License, Release, Coverage).
-- Keep the logo block at the top using `cmd/server/assets/static/img/login.png` as specified.
-- Follow the prescribed README section structure (Overview, Key Features, Architecture, Project structure, Conventions & standards, Template usage, Getting started, Workflows, Examples, Testing, CI/CD, Limitations, License).
-- Never invent commands, files, or features that do not exist.
-
-When starting a README task, explicitly state:  
-“Act as the `README-maintainer` defined in `.github/agents/README-maintainer.md`. Read and follow that file first.”
+**Key behaviors:**
+- Reads `CONTEXT.md` before significant work
+- Prefers reusing vendor utilities over custom implementations
+- Follows existing patterns and naming conventions
+- Updates documentation when architecture evolves
 
 ---
 
-### 1.4 VENDOR-maintainer
+### CONTEXT-maintainer
 
-Definition: `.github/agents/VENDOR-maintainer.md`
+**Purpose:** Senior software architect that creates and maintains `CONTEXT.md` as the authoritative architectural reference for AI agents and developers.
 
-You are a **vendor documentation and reuse** agent responsible for `VENDOR.md`.
+**When to use:**
+- Architecture changes that affect project structure
+- New conventions or coding standards
+- New bounded contexts or layers added
+- Directory structure modifications
+- After significant refactoring
 
-Use this agent when the main goal is to **create or update `VENDOR.md`** or vendor sections in other docs:
+**Ground truth documents:**
+1. Actual codebase structure and code
+2. `README.md` — for alignment on project purpose
+3. `VENDOR.md` — for technology stack accuracy
 
-- Documenting `cloud-native-utils` and how it should be used in this template.
-- Documenting frontend vendors like `htmx`.
-- Guiding other agents to reuse vendors instead of reinventing utilities.
-
-Key rules (see `VENDOR-maintainer.md` for full details):
-
-- Treat `CONTEXT.md` and `README.md` as architectural and positioning constraints.
-- Keep `VENDOR.md` concise, structured, and focused on **when and how** to use each vendor.
-- For `cloud-native-utils`, document the major packages (`assert`, `consistency`, `efficiency`, `resource`, `security`, `service`, `stability`, `templating`, `scheduling`, `slices`) and recommended patterns.
-- For `htmx`, document purpose, key attributes, and how it integrates with server-side templating and HTML fragments.
-- Enforce “prefer reuse over reinvention” for cross-cutting concerns.
-
-When starting a vendor task, explicitly state:  
-“Act as the `VENDOR-maintainer` defined in `.github/agents/VENDOR-maintainer.md`. Read and follow that file first.”
-
----
-
-## 2. Global rules for all agents
-
-These rules apply regardless of which agent persona is active:
-
-- **Read before acting**  
-  Always read `CONTEXT.md`, `README.md`, `VENDOR.md`, and the relevant `*-maintainer.md` file before significant work.
-
-- **Source of truth precedence**  
-  - Architecture and conventions → `CONTEXT.md`  
-  - Human-facing project description → `README.md`  
-  - Vendor usage and patterns → `VENDOR.md`  
-
-- **Template mindset**  
-  Treat this repository as a reusable **Go DDD Hexagonal Starter** template. Preserve architecture, directory layout, and vendor usage patterns unless explicitly updating the template itself.
-
-- **No invention**  
-  Never invent commands, files, tools, APIs, or workflows that are not present in the repo or its docs.
-
-- **Small, reviewable changes**  
-  Prefer small, focused steps with clear reasoning and, where applicable, tests or verification.
+**Key behaviors:**
+- Scans repository to discover actual structure
+- Documents only what actually exists (no invention)
+- Optimizes for signal per token
+- Maintains rules and contracts for new code
 
 ---
 
-## 3. How to use these agents in Zed
+### README-maintainer
 
-When starting an AI / Zed Agent thread:
+**Purpose:** Documentation specialist that maintains `README.md` as the human-first introduction to the project.
 
-1. Choose the primary agent based on the task:
-   - Code → `coding-assistant`
-   - Architecture/context → `CONTEXT-maintainer`
-   - README/docs → `README-maintainer`
-   - Vendors/libraries → `VENDOR-maintainer`
+**When to use:**
+- New features that affect usage
+- Changed setup or installation steps
+- Updated commands or workflows
+- Project description or positioning changes
+- After `CONTEXT.md` updates that affect human-facing docs
 
-2. Start the thread with an explicit instruction, for example:
-   - “Act as the `coding-assistant` defined in `.github/agents/coding-assistant.md`. Read that file plus `CONTEXT.md`, `README.md`, and `VENDOR.md` before making any changes.”
+**Ground truth documents:**
+1. Actual codebase and working commands
+2. `CONTEXT.md` — architectural truth (README must not contradict)
+3. Configured CI/CD and tooling
 
-3. Keep the thread focused on one main outcome (code, context, README, or vendors) and switch agents only when the primary outcome changes.
+**Key behaviors:**
+- Verifies every claim against actual code
+- Tests all documented commands
+- Aligns with `CONTEXT.md` on architecture
+- Avoids marketing fluff; focuses on accuracy
 
-By following this `AGENTS.md`, Zed and other AI tools can reliably discover and apply the specialized agents defined under `.github/agents`.
+---
+
+### VENDOR-maintainer
+
+**Purpose:** Vendor documentation specialist that maintains `VENDOR.md` with guidance on external libraries and their usage patterns.
+
+**When to use:**
+- Adding or removing vendor dependencies
+- New integration patterns with existing vendors
+- Version upgrades with breaking changes
+- Clarifying when to use which vendor
+- Deprecating vendor usage patterns
+
+**Ground truth documents:**
+1. `CONTEXT.md` — architecture and layering constraints
+2. `README.md` — project positioning
+3. Actual dependency manifests (`go.mod`, etc.)
+4. Vendor official documentation
+
+**Key behaviors:**
+- Documents approved libraries and patterns
+- Discourages duplicate implementations
+- Links vendor docs to project structure
+- Maintains "Vendors to Avoid" guidance
+
+---
+
+### AGENTS-maintainer
+
+**Purpose:** Agent orchestrator that maintains `AGENTS.md` as the index of all agents and their collaboration patterns.
+
+**When to use:**
+- New agent definitions added
+- Agent responsibilities change
+- Agent collaboration patterns evolve
+- External tools need agent discovery
+
+**Ground truth documents:**
+1. `.github/agents/*.md` — actual agent definitions
+2. `CONTEXT.md` — architecture and conventions
+3. `README.md` — project description
+4. `VENDOR.md` — vendor usage rules
+
+**Key behaviors:**
+- Keeps `AGENTS.md` in sync with actual agent files
+- Documents when to use each agent
+- Describes agent collaboration patterns
+- Does not invent agents that don't exist
+
+---
+
+## Agent Collaboration
+
+Agents work together to maintain repository consistency:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    coding-assistant                         │
+│            (implements changes, follows rules)              │
+└─────────────────────────┬───────────────────────────────────┘
+                          │ triggers doc updates
+        ┌─────────────────┼─────────────────┐
+        ▼                 ▼                 ▼
+┌───────────────┐ ┌───────────────┐ ┌───────────────┐
+│   CONTEXT-    │ │    README-    │ │    VENDOR-    │
+│  maintainer   │ │   maintainer  │ │   maintainer  │
+│ (architecture)│ │ (human intro) │ │  (libraries)  │
+└───────┬───────┘ └───────┬───────┘ └───────┬───────┘
+        │                 │                 │
+        └─────────────────┼─────────────────┘
+                          ▼
+                  ┌───────────────┐
+                  │    AGENTS-    │
+                  │   maintainer  │
+                  │  (this index) │
+                  └───────────────┘
+```
+
+### Typical Workflows
+
+**Adding a new feature:**
+1. `coding-assistant` implements the feature
+2. `CONTEXT-maintainer` updates architecture docs if structure changes
+3. `README-maintainer` updates usage docs if user-facing behavior changes
+4. `VENDOR-maintainer` updates vendor docs if new dependencies added
+
+**Adding a new vendor dependency:**
+1. `coding-assistant` adds dependency and integration code
+2. `VENDOR-maintainer` documents the library and usage patterns
+3. `CONTEXT-maintainer` updates technology stack if significant
+4. `README-maintainer` updates installation if user action required
+
+**Architectural refactoring:**
+1. `coding-assistant` implements the refactoring
+2. `CONTEXT-maintainer` updates directory structure and conventions
+3. `README-maintainer` aligns human-facing docs with new structure
+4. `AGENTS-maintainer` updates if agent responsibilities change
+
+---
+
+## Document Hierarchy
+
+When conflicts arise between documents:
+
+| Concern | Authoritative Document |
+|---------|----------------------|
+| Architecture, conventions, directory structure | `CONTEXT.md` |
+| Human-facing description, setup, usage | `README.md` |
+| Vendor APIs, capabilities, integration details | `VENDOR.md` |
+| Agent definitions and behaviors | `.github/agents/*.md` |
+
+`CONTEXT.md` takes precedence for architectural decisions. `README.md` takes precedence for human-facing messaging. `VENDOR.md` clarifies vendor usage but must not contradict the others.
+
+---
+
+## For External Tools
+
+### Discovery
+
+Agent definitions are located at:
+```
+.github/agents/
+├── AGENTS-maintainer.md
+├── CONTEXT-maintainer.md
+├── README-maintainer.md
+├── VENDOR-maintainer.md
+└── coding-assistant.md
+```
+
+### Invocation
+
+To use an agent:
+1. Read the agent's definition file from `.github/agents/`
+2. Load the agent's ground-truth documents
+3. Apply the agent's workflow and constraints
+4. Produce output according to the agent's output rules
+
+### Adding New Agents
+
+To add a new agent:
+1. Create `.github/agents/<agent-name>.md` with:
+   - Purpose and core identity
+   - Ground-truth documents
+   - Workflow and responsibilities
+   - Output rules
+2. Run `AGENTS-maintainer` to update this index
