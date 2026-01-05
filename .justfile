@@ -110,11 +110,12 @@ serve:
 # Setup - Install dependencies
 # ======================================
 # Installs required development tools via Homebrew (macOS/Linux)
-# Required: docker-compose (container orchestration), just (command runner)
+# Required: docker-compose (container orchestration), just (command runner),
+#           golangci-lint (linting), podman (container runtime)
 
 setup:
     @echo "Installing dependencies via Homebrew..."
-    @brew install docker-compose just
+    @brew install docker-compose golangci-lint just podman
     @echo "Setup complete! You can now use 'just' commands."
 
 # ======================================

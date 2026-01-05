@@ -123,7 +123,7 @@ cd go-ddd-hex-starter
 just setup
 ```
 
-This installs `docker-compose` and `just` via Homebrew.
+This installs `docker-compose`, `golangci-lint`, `just` and `podman` via Homebrew.
 
 ### 3. Configure Environment
 
