@@ -47,16 +47,16 @@ This template follows **Hexagonal Architecture** (Ports & Adapters) with **Domai
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                        cmd/ (Entry Points)                       │
-│   ┌─────────────┐                      ┌─────────────┐          │
-│   │   cli/      │                      │   server/   │          │
-│   │  main.go    │                      │   main.go   │          │
-│   └──────┬──────┘                      └──────┬──────┘          │
+│                        cmd/ (Entry Points)                      │
+│   ┌─────────────┐                       ┌─────────────┐         │
+│   │   cli/      │                       │   server/   │         │
+│   │  main.go    │                       │   main.go   │         │
+│   └──────┬──────┘                       └──────┬──────┘         │
 └──────────┼─────────────────────────────────────┼────────────────┘
            │                                     │
            ▼                                     ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│               internal/adapters/ (Infrastructure)                │
+│               internal/adapters/ (Infrastructure)               │
 │   ┌────────────────────────┐    ┌────────────────────────┐      │
 │   │       inbound/         │    │       outbound/        │      │
 │   │  - HTTP handlers       │    │  - Repositories        │      │
@@ -68,7 +68,7 @@ This template follows **Hexagonal Architecture** (Ports & Adapters) with **Domai
                 │         Ports (Interfaces)   │
                 ▼                              ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                    internal/domain/ (Core)                       │
+│                    internal/domain/ (Core)                      │
 │   ┌────────────────────────┐    ┌────────────────────────┐      │
 │   │        event/          │    │       indexing/        │      │
 │   │  - Event interface     │    │  - Aggregate (Index)   │      │
