@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"embed"
 	"fmt"
 	"os"
 	"time"
@@ -13,13 +12,6 @@ import (
 	"github.com/andygeiss/go-ddd-hex-starter/internal/domain/event"
 	"github.com/andygeiss/go-ddd-hex-starter/internal/domain/indexing"
 )
-
-// We use embed.FS to embed files into the binary.
-// This allows us to include files such as templates, configuration files, etc., directly within the binary.
-// This is useful for distributing applications with all necessary resources included.
-
-//go:embed assets
-var efs embed.FS
 
 func main() {
 	ctx := context.Background()
@@ -35,7 +27,7 @@ func main() {
 
 	// Setup the outbound adapters.
 	indexPath := "./index.json"
-	defer os.Remove(indexPath)
+	defer func() { _ = os.Remove(indexPath) }()
 	indexRepository := outbound.NewFileIndexRepository(indexPath)
 	eventPublisher := outbound.NewEventPublisher(dispatcher)
 

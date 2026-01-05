@@ -36,7 +36,7 @@ func (a *Index) Hash() string {
 	// The hash does not include the IndexID because it is not part of the file info.
 	// Thus even if the IndexID changes, the hash will remain the same.
 	for _, fileInfo := range a.FileInfos {
-		fmt.Fprintf(hasher, "%s-%d|", fileInfo.AbsPath, fileInfo.Size)
+		_, _ = fmt.Fprintf(hasher, "%s-%d|", fileInfo.AbsPath, fileInfo.Size)
 	}
 	return fmt.Sprintf("%x", hasher.Sum(nil))
 }

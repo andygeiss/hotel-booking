@@ -18,12 +18,12 @@ import (
 
 func Test_FileReader_ReadFileInfos_With_Current_Path_Should_Return_Two_Files(t *testing.T) {
 	// Arrange
-	os.MkdirAll("testdata", 0755)
-	defer os.RemoveAll("testdata")
+	_ = os.MkdirAll("testdata", 0755)
+	defer func() { _ = os.RemoveAll("testdata") }()
 	r := inbound.NewFileReader()
 	wanted := 2
 	for i := range wanted {
-		os.Create(fmt.Sprintf("testdata/file%d.txt", i))
+		_, _ = os.Create(fmt.Sprintf("testdata/file%d.txt", i))
 	}
 	ctx := context.Background()
 
@@ -52,8 +52,8 @@ const (
 
 func Benchmark_FileReader_ReadFileInfos_With_1000_Entries_Should_Be_Fast(b *testing.B) {
 	// Arrange
-	os.MkdirAll("testdata", 0755)
-	defer os.RemoveAll("testdata")
+	_ = os.MkdirAll("testdata", 0755)
+	defer func() { _ = os.RemoveAll("testdata") }()
 	reader := inbound.NewFileReader()
 	ctx := context.Background()
 
@@ -66,7 +66,7 @@ func Benchmark_FileReader_ReadFileInfos_With_1000_Entries_Should_Be_Fast(b *test
 		if err != nil {
 			b.Fatal(err)
 		}
-		defer file.Close()
+		defer func() { _ = file.Close() }()
 		if _, err := file.Write(make([]byte, BenchmarkMaxFileSize)); err != nil {
 			b.Fatal(err)
 		}

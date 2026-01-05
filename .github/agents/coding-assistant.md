@@ -130,6 +130,8 @@ When performing any non-trivial task, follow this loop:
   - Tests (unit/integration).
   - Linters and formatters.
   - Any CI checks described in project docs.
+- **Run `just fmt` after every code change** to format Go source files.
+- **Run `just lint` after every code change.** Resolve all reported issues iteratively until the output shows `0 issues`. Do not consider the task complete until linting passes with zero issues.
 - Ensure changes are safe, incremental, and do not break the repository's invariants.
 
 ### 4.6 Document

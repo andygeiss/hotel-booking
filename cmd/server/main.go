@@ -29,13 +29,13 @@ func main() {
 	// Create a new service with the configuration.
 	mux := inbound.Route(ctx, efs, logger)
 	srv := security.NewServer(mux)
-	defer srv.Close()
+	defer func() { _ = srv.Close() }()
 
 	// Register the server shutdown function on the context done function.
 	// We use the RegisterOnContextDone function from the cloud-native-utils/service package.
 	// The server.Shutdown function waits for 5 seconds before shutting down the server.
 	service.RegisterOnContextDone(ctx, func() {
-		srv.Shutdown(context.Background())
+		_ = srv.Shutdown(context.Background())
 	})
 
 	// The server implementation from the cloud-native-utils/security package uses

@@ -34,7 +34,7 @@ func Test_Server_Integration_Liveness_Endpoint_Should_Return_OK(t *testing.T) {
 	assert.That(t, "status code must be 200", resp.StatusCode, http.StatusOK)
 
 	body, _ := io.ReadAll(resp.Body)
-	resp.Body.Close()
+	_ = resp.Body.Close()
 	assert.That(t, "body must be OK", string(body), "OK")
 }
 
@@ -54,7 +54,7 @@ func Test_Server_Integration_Readiness_Endpoint_Should_Return_OK(t *testing.T) {
 	assert.That(t, "status code must be 200", resp.StatusCode, http.StatusOK)
 
 	body, _ := io.ReadAll(resp.Body)
-	resp.Body.Close()
+	_ = resp.Body.Close()
 	assert.That(t, "body must be OK", string(body), "OK")
 }
 
@@ -73,7 +73,7 @@ func Test_Server_Integration_Static_Assets_Should_Serve_CSS(t *testing.T) {
 	assert.That(t, "request error must be nil", err == nil, true)
 	assert.That(t, "status code must be 200", resp.StatusCode, http.StatusOK)
 	assert.That(t, "content-type must be text/css", resp.Header.Get("Content-Type"), "text/css; charset=utf-8")
-	resp.Body.Close()
+	_ = resp.Body.Close()
 }
 
 func Test_Server_Integration_Static_Assets_Should_Serve_JS(t *testing.T) {
@@ -90,7 +90,7 @@ func Test_Server_Integration_Static_Assets_Should_Serve_JS(t *testing.T) {
 	// Assert
 	assert.That(t, "request error must be nil", err == nil, true)
 	assert.That(t, "status code must be 200", resp.StatusCode, http.StatusOK)
-	resp.Body.Close()
+	_ = resp.Body.Close()
 }
 
 func Test_Server_Integration_UI_Login_Should_Return_Login_Page(t *testing.T) {
@@ -109,7 +109,7 @@ func Test_Server_Integration_UI_Login_Should_Return_Login_Page(t *testing.T) {
 	assert.That(t, "status code must be 200", resp.StatusCode, http.StatusOK)
 
 	body, _ := io.ReadAll(resp.Body)
-	resp.Body.Close()
+	_ = resp.Body.Close()
 
 	// Verify it contains login page content.
 	bodyStr := string(body)
@@ -141,7 +141,7 @@ func Test_Server_Integration_UI_Index_Without_Auth_Should_Redirect_To_Login(t *t
 
 	location := resp.Header.Get("Location")
 	assert.That(t, "location must contain login", len(location) > 0, true)
-	resp.Body.Close()
+	_ = resp.Body.Close()
 }
 
 func Test_Server_Integration_NotFound_Should_Return_404(t *testing.T) {
@@ -158,7 +158,7 @@ func Test_Server_Integration_NotFound_Should_Return_404(t *testing.T) {
 	// Assert
 	assert.That(t, "request error must be nil", err == nil, true)
 	assert.That(t, "status code must be 404", resp.StatusCode, http.StatusNotFound)
-	resp.Body.Close()
+	_ = resp.Body.Close()
 }
 
 func Test_Server_Integration_Concurrent_Requests_Should_Handle_Load(t *testing.T) {
@@ -181,7 +181,7 @@ func Test_Server_Integration_Concurrent_Requests_Should_Handle_Load(t *testing.T
 				return
 			}
 			results <- resp.StatusCode
-			resp.Body.Close()
+			_ = resp.Body.Close()
 		}()
 	}
 
@@ -213,7 +213,7 @@ func Benchmark_Server_Integration_Liveness_Should_Respond_Fast(b *testing.B) {
 	for b.Loop() {
 		resp, _ := client.Get(server.URL + "/liveness")
 		if resp != nil {
-			resp.Body.Close()
+			_ = resp.Body.Close()
 		}
 	}
 }
@@ -232,7 +232,7 @@ func Benchmark_Server_Integration_Static_CSS_Should_Serve_Fast(b *testing.B) {
 	for b.Loop() {
 		resp, _ := client.Get(server.URL + "/static/css/base.css")
 		if resp != nil {
-			resp.Body.Close()
+			_ = resp.Body.Close()
 		}
 	}
 }
@@ -251,7 +251,7 @@ func Benchmark_Server_Integration_Login_Page_Should_Render_Fast(b *testing.B) {
 	for b.Loop() {
 		resp, _ := client.Get(server.URL + "/ui/login")
 		if resp != nil {
-			resp.Body.Close()
+			_ = resp.Body.Close()
 		}
 	}
 }

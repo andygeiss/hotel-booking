@@ -30,8 +30,8 @@ const (
 
 func Benchmark_FileIndexRepository_Create_With_1000_Entries_Should_Be_Fast(b *testing.B) {
 	// Arrange
-	os.MkdirAll("testdata", 0755)
-	defer os.RemoveAll("testdata")
+	_ = os.MkdirAll("testdata", 0755)
+	defer func() { _ = os.RemoveAll("testdata") }()
 	path := "testdata/index.json"
 	repo := outbound.NewFileIndexRepository(path)
 
@@ -55,6 +55,6 @@ func Benchmark_FileIndexRepository_Create_With_1000_Entries_Should_Be_Fast(b *te
 	// Benchmark
 	b.ResetTimer()
 	for b.Loop() {
-		repo.Create(ctx, id, index)
+		_ = repo.Create(ctx, id, index)
 	}
 }

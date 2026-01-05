@@ -36,7 +36,7 @@ func Test_CLI_Integration_With_Kafka_Should_Publish_And_Receive_Event(t *testing
 	eventSubscriber := inbound.NewEventSubscriber(dispatcher)
 
 	indexPath := "./test_index.json"
-	defer os.Remove(indexPath)
+	defer func() { _ = os.Remove(indexPath) }()
 	indexRepository := outbound.NewFileIndexRepository(indexPath)
 	eventPublisher := outbound.NewEventPublisher(dispatcher)
 
@@ -94,7 +94,7 @@ func Test_CLI_Integration_With_Kafka_Should_Create_Valid_Index_Hash(t *testing.T
 	fileReader := inbound.NewFileReader()
 
 	indexPath := "./test_index_hash.json"
-	defer os.Remove(indexPath)
+	defer func() { _ = os.Remove(indexPath) }()
 	indexRepository := outbound.NewFileIndexRepository(indexPath)
 	eventPublisher := outbound.NewEventPublisher(dispatcher)
 
@@ -132,7 +132,7 @@ func Benchmark_CLI_Integration_With_Kafka_Should_Index_Efficiently(b *testing.B)
 	fileReader := inbound.NewFileReader()
 
 	indexPath := "./bench_index.json"
-	defer os.Remove(indexPath)
+	defer func() { _ = os.Remove(indexPath) }()
 	indexRepository := outbound.NewFileIndexRepository(indexPath)
 	eventPublisher := outbound.NewEventPublisher(dispatcher)
 
