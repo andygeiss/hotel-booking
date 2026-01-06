@@ -11,9 +11,8 @@ This repository is a **production-ready Go starter template** demonstrating **Do
 It serves as:
 - A reference implementation for structuring Go applications with clean architecture
 - A template for spinning up new projects with established conventions
-- A demonstration of integrating LLM-based agents with event-driven patterns
 
-The template includes two bounded contexts (`agent` and `indexing`), an HTTP server with OIDC authentication, Kafka-based event streaming, and LM Studio integration for local LLM inference.
+The template includes an `indexing` bounded context, an HTTP server with OIDC authentication, and Kafka-based event streaming.
 
 ---
 
@@ -25,7 +24,6 @@ The template includes two bounded contexts (`agent` and `indexing`), an HTTP ser
 | Core Library | [`github.com/andygeiss/cloud-native-utils`](https://github.com/andygeiss/cloud-native-utils) |
 | Authentication | Keycloak (OIDC), `coreos/go-oidc/v3` |
 | Event Streaming | Apache Kafka, `segmentio/kafka-go` |
-| LLM Integration | LM Studio (OpenAI-compatible API) |
 | Container Runtime | Podman / Docker |
 | Orchestration | Docker Compose |
 | Task Runner | [`just`](https://github.com/casey/just) |
@@ -56,14 +54,14 @@ The template includes two bounded contexts (`agent` and `indexing`), an HTTP ser
                            │ implements ports
 ┌──────────────────────────▼──────────────────────────────────┐
 │                     Domain Layer                            │
-│   Bounded contexts: agent/, indexing/, event/               │
+│   Bounded contexts: indexing/, event/                       │
 │   Aggregates, entities, value objects, services, ports      │
 │                   internal/domain/                          │
 └──────────────────────────┬──────────────────────────────────┘
                            │ defines ports
 ┌──────────────────────────▼──────────────────────────────────┐
 │                  Outbound Adapters                          │
-│   Event publisher, repositories, LLM client                 │
+│   Event publisher, repositories                             │
 │              internal/adapters/outbound/                    │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -72,7 +70,6 @@ The template includes two bounded contexts (`agent` and `indexing`), an HTTP ser
 
 | Context | Purpose | Location |
 |---------|---------|----------|
-| `agent` | LLM-based agent with observe→decide→act→update loop, tool execution | `internal/domain/agent/` |
 | `indexing` | File indexing, search, and repository management | `internal/domain/indexing/` |
 | `event` | Domain event contracts and infrastructure | `internal/domain/event/` |
 
@@ -91,7 +88,7 @@ The template includes two bounded contexts (`agent` and `indexing`), an HTTP ser
 ```
 go-ddd-hex-starter/
 ├── cmd/                          # Application entry points
-│   ├── cli/                      # CLI application (demonstrates agent loop)
+│   ├── cli/                      # CLI application (demonstrates indexing)
 │   │   ├── main.go
 │   │   └── assets/               # Embedded assets for CLI
 │   └── server/                   # HTTP server (OIDC-protected web UI)
@@ -118,20 +115,11 @@ go-ddd-hex-starter/
 │   │   │   ├── event_subscriber.go
 │   │   │   ├── middleware.go
 │   │   │   └── testdata/         # Test fixtures
-│   │   └── outbound/             # Driven adapters (repos, publishers, clients)
+│   │   └── outbound/             # Driven adapters (repos, publishers)
 │   │       ├── event_publisher.go
-│   │       ├── file_index_repository.go
-│   │       ├── index_search_tool_executor.go  # Agent tool executor for file search
-│   │       └── lmstudio_client.go
+│   │       └── file_index_repository.go
 │   │
 │   └── domain/                   # Domain layer (business logic)
-│       ├── agent/                # Agent bounded context
-│       │   ├── aggregate.go      # Agent aggregate root
-│       │   ├── entities.go       # Task, ToolCall, SearchIndexToolArgs, SearchResult
-│       │   ├── events.go         # Domain events
-│       │   ├── ports_outbound.go # LLMClient, ToolExecutor interfaces
-│       │   ├── service.go        # TaskService (orchestrates agent loop)
-│       │   └── value_objects.go  # IDs, statuses, Message, Role
 │       ├── event/                # Shared event infrastructure
 │       │   ├── event.go          # Event interface
 │       │   ├── event_publisher.go
@@ -205,7 +193,7 @@ go-ddd-hex-starter/
 | Test files | `*_test.go` | `aggregate_test.go` |
 | HTTP handlers | `Http*` or `HttpView*` | `HttpViewIndex`, `HttpViewLogin` |
 | Domain events | `Event*` prefix | `EventTaskStarted`, `EventFileIndexCreated` |
-| Event topics | `{context}.{action}` | `agent.task_started`, `indexing.file_index_created` |
+| Event topics | `{context}.{action}` | `indexing.file_index_created` |
 
 ### 5.3 Error Handling & Logging
 
@@ -290,7 +278,7 @@ The primary external dependency. Use its utilities instead of rolling custom imp
 - Environment variables (see `.env.example`)
 - Loaded via `dotenv-load` in `.justfile`
 - Docker Compose uses `--env-file .env`
-- Key variables: `PORT`, `KAFKA_BROKERS`, `OIDC_*`, `LM_STUDIO_URL`, `LM_STUDIO_MODEL`, `VERBOSE`, `APP_VERSION`
+- Key variables: `PORT`, `KAFKA_BROKERS`, `OIDC_*`, `APP_VERSION`
 
 ### Dependency Injection
 
@@ -302,7 +290,7 @@ The primary external dependency. Use its utilities instead of rolling custom imp
 
 - Domain events are plain Go structs implementing `event.Event`
 - Events serialized to JSON for Kafka
-- Builder pattern: `NewEventTaskStarted().WithAgentID(id).WithTaskID(taskID)`
+- Builder pattern: `NewEventFileIndexCreated().WithIndexID(id).WithFileCount(count)`
 - Topics follow pattern: `{bounded_context}.{event_name}`
 
 ### Progressive Web App (PWA)
@@ -320,67 +308,6 @@ The primary external dependency. Use its utilities instead of rolling custom imp
 - Middleware chains: `logging.WithLogging(logger, security.WithAuth(sessions, handler))`
 - Static assets embedded via `//go:embed` and served at `/static`
 - Templates rendered via `templating.Engine.View()`
-
-### Agent Tool Execution Pattern
-
-The agent can invoke tools during its observe→decide→act loop. Tool execution follows this pattern:
-
-```
-User Task → Agent Loop:
-  1. OBSERVE: Gather messages + tool definitions
-  2. DECIDE: LLM returns response (text or tool_calls)
-  3. ACT: If tool_calls → execute via ToolExecutor → add results to messages
-  4. UPDATE: Loop until task complete or max iterations
-```
-
-**Key interfaces:**
-
-```go
-// LLMClient sends messages and tool definitions to the LLM
-type LLMClient interface {
-    Run(ctx context.Context, messages []Message, tools []ToolDefinition) (LLMResponse, error)
-}
-
-// ToolExecutor executes tools requested by the LLM
-type ToolExecutor interface {
-    Execute(ctx context.Context, toolName string, arguments string) (string, error)
-    GetAvailableTools() []string
-    GetToolDefinitions() []ToolDefinition  // Returns OpenAI-compatible tool schemas
-    HasTool(toolName string) bool
-}
-```
-
-**Tool definitions use OpenAI-compatible JSON Schema:**
-```json
-{
-  "type": "function",
-  "function": {
-    "name": "search_index",
-    "description": "Search indexed files",
-    "parameters": {
-      "type": "object",
-      "properties": {
-        "query": {"type": "string", "description": "Search query"}
-      },
-      "required": ["query"],
-      "additionalProperties": false
-    }
-  }
-}
-```
-
-**Key components:**
-- **`LLMClient` interface** (`agent/ports_outbound.go`): Sends messages + tools to LLM
-- **`ToolExecutor` interface** (`agent/ports_outbound.go`): Defines contract for tool execution
-- **`LMStudioClient`** (`adapters/outbound/lmstudio_client.go`): OpenAI-compatible LLM adapter
-- **`IndexSearchToolExecutor`** (`adapters/outbound/`): Implements `search_index` tool for file search
-- **`ToolDefinition`** (`agent/ports_outbound.go`): Domain representation of tool schema
-
-**Adding new tools:**
-1. Add tool function to executor's `initTools()` method
-2. Add `ToolDefinition` to `GetToolDefinitions()` return value
-3. Implement the tool logic (receives JSON arguments string, returns JSON result string)
-4. Wire executor in entry point (`cmd/cli/main.go`)
 
 ---
 
@@ -467,8 +394,7 @@ type ToolExecutor interface {
 
 - **Local development:** `just serve` or `just run` (uses `.env` with `localhost` addresses)
 - **Docker stack:** `just up` (services communicate via Docker network)
-- **Integration tests:** Set `LM_STUDIO_URL`, `LM_STUDIO_MODEL` in `.env`, run `just test-integration`
-- **Verbose tool logging:** Set `VERBOSE=true` to see tool calls and results in CLI output
+- **Integration tests:** Run `just test-integration` (requires external services)
 
 ---
 
@@ -490,7 +416,6 @@ type ToolExecutor interface {
 
 - macOS or Linux development (Homebrew for tooling)
 - Podman preferred for builds; Docker Compose for orchestration
-- LM Studio for local LLM inference (optional, for agent features)
 
 ### Deprecated/Experimental Areas
 
@@ -499,11 +424,8 @@ type ToolExecutor interface {
 ### Known Limitations
 
 - File-based repository (`JsonFileAccess`) is for demo only; replace with database for production
-- `IndexSearchToolExecutor` performs substring matching on file paths; extend for content search
 - Index search scores are heuristic (exact filename match > partial match)
-- Integration tests require external services (LM Studio, Kafka, Keycloak)
-- LM Studio requires models that support OpenAI-compatible tool calling (Qwen3, Llama 3.1+, Mistral, Hermes-2-Pro)
-- The `LM_STUDIO_MODEL` env var must match the exact model ID loaded in LM Studio (use `curl http://localhost:1234/v1/models` to discover)
+- Integration tests require external services (Kafka, Keycloak)
 
 ---
 

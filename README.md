@@ -43,9 +43,8 @@ This repository provides a reference implementation for structuring Go applicati
 - Apply **Domain-Driven Design** tactical patterns (aggregates, entities, value objects, domain events)
 - Integrate authentication via **OIDC/Keycloak**
 - Implement event-driven communication with **Apache Kafka**
-- Connect to local LLMs via **LM Studio** for AI agent capabilities
 
-The template includes two bounded contexts (`agent` and `indexing`), an HTTP server with OIDC authentication, and a CLI demonstrating the agent loop pattern.
+The template includes an `indexing` bounded context, an HTTP server with OIDC authentication, and a CLI demonstrating event-driven file indexing.
 
 ---
 
@@ -55,7 +54,6 @@ The template includes two bounded contexts (`agent` and `indexing`), an HTTP ser
 - **Domain-Driven Design** — Aggregates, entities, value objects, services, and domain events
 - **OIDC Authentication** — Keycloak integration with session management
 - **Event Streaming** — Kafka-based pub/sub for domain events
-- **LLM Agent with Tool Execution** — Observe → decide → act → update pattern with tool calling (file search, extensible)
 - **File Indexing & Search** — Index workspace files and search by filename with relevance scoring
 - **Progressive Web App** — Service worker, manifest, and offline support for installable web apps
 - **Production-Ready Docker** — Multi-stage build with PGO optimization (~5-10MB images)
@@ -79,14 +77,14 @@ The template includes two bounded contexts (`agent` and `indexing`), an HTTP ser
                            │ implements ports
 ┌──────────────────────────▼──────────────────────────────────┐
 │                     Domain Layer                            │
-│   Bounded contexts: agent/, indexing/, event/               │
+│   Bounded contexts: indexing/, event/                       │
 │   Aggregates, entities, value objects, services, ports      │
 │                   internal/domain/                          │
 └──────────────────────────┬──────────────────────────────────┘
                            │ defines ports
 ┌──────────────────────────▼──────────────────────────────────┐
 │                  Outbound Adapters                          │
-│   Event publisher, repositories, LLM client                 │
+│   Event publisher, repositories                             │
 │              internal/adapters/outbound/                    │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -95,7 +93,6 @@ The template includes two bounded contexts (`agent` and `indexing`), an HTTP ser
 
 | Context | Purpose |
 |---------|---------|
-| `agent` | LLM-based agent with observe→decide→act→update loop, tool execution |
 | `indexing` | File indexing, search, and repository management |
 | `event` | Domain event contracts and infrastructure |
 
@@ -108,14 +105,13 @@ For detailed architectural documentation, see [CONTEXT.md](CONTEXT.md).
 ```
 go-ddd-hex-starter/
 ├── cmd/                          # Application entry points
-│   ├── cli/                      # CLI application (agent demo)
+│   ├── cli/                      # CLI application (indexing demo)
 │   └── server/                   # HTTP server (OIDC-protected UI)
 ├── internal/
 │   ├── adapters/
 │   │   ├── inbound/              # HTTP handlers, file readers, subscribers
-│   │   └── outbound/             # Repositories, publishers, LLM client
+│   │   └── outbound/             # Repositories, publishers
 │   └── domain/
-│       ├── agent/                # Agent bounded context
 │       ├── event/                # Shared event infrastructure
 │       └── indexing/             # Indexing bounded context
 ├── tools/                        # Build tooling (Python scripts)
@@ -194,44 +190,34 @@ To run the server locally (requires Kafka running on localhost:9092):
 just serve
 ```
 
-### Running the CLI Agent
+### Running the CLI
 
-The CLI demonstrates an LLM-powered agent that uses the **observe → decide → act → update** loop pattern with tool calling.
-
-**Prerequisites:**
-- [LM Studio](https://lmstudio.ai/) running locally with a model loaded
-- A model that supports OpenAI-compatible tool calling (e.g., Qwen3, Llama 3.1+, Mistral)
+The CLI demonstrates event-driven file indexing with Kafka.
 
 **Basic usage:**
 ```bash
-# Set your model name (check LM Studio for available models)
-export LM_STUDIO_MODEL="qwen/qwen3-coder-30b"
-
-# Run the CLI
 just run
 ```
 
-**With verbose output (see tool calls):**
-```bash
-VERBOSE=true LM_STUDIO_MODEL="qwen/qwen3-coder-30b" go run ./cmd/cli/
+**Example output:**
+```
+❯ main: creating index for path: /path/to/project
+❯ main: waiting for event processing to complete...
+❯ event: received EventFileIndexCreated - IndexID: /path/to/project, FileCount: 42
+❯ main: event processing completed
+❯ main: index created at 2026-01-07T10:30:00Z with 42 files
+❯ main: index hash: abc123...
+❯ main: first 5 files in index:
+  - /path/to/project/main.go (1234 bytes)
+  - /path/to/project/go.mod (567 bytes)
+  ... and 37 more files
 ```
 
-**Example output with verbose mode:**
-```
-❯ agent: starting agent loop for index analysis...
-  ↳ tool call: search_index({"query":".go","limit":10})
-  ↳ tool result: [{"file_path":"cmd/cli/main.go","score":1}, ...]
-  ↳ tool call: search_index({"query":"internal","limit":10})
-  ↳ tool result: [{"file_path":"internal/adapters/...","score":0.5}, ...]
-❯ agent: task completed successfully
-❯ agent: output - Based on the search results, this is a Go DDD project...
-```
-
-The agent:
+The CLI:
 1. Indexes the current directory
-2. Receives a task to analyze the project structure
-3. Uses the `search_index` tool to find relevant files
-4. Provides a summary based on the search results
+2. Publishes an `EventFileIndexCreated` event to Kafka
+3. Receives the event via subscription
+4. Displays a summary of the indexed files
 
 ---
 
@@ -249,10 +235,9 @@ This runs both Go and Python tests, generating `coverage.pprof`.
 
 ### Integration Tests
 
-Integration tests require external services (LM Studio, Kafka, Keycloak):
+Integration tests require external services (Kafka, Keycloak):
 
 ```bash
-# Ensure LM_STUDIO_URL and LM_STUDIO_MODEL are set in .env
 just test-integration
 ```
 
@@ -278,27 +263,8 @@ Configuration is managed via environment variables. Copy `.env.example` to `.env
 | `OIDC_ISSUER` | Keycloak realm URL | `http://localhost:8180/realms/local` |
 | `OIDC_CLIENT_ID` | OIDC client ID | `template` |
 | `OIDC_CLIENT_SECRET` | OIDC client secret | Auto-generated |
-| `LM_STUDIO_URL` | LM Studio API URL | `http://localhost:1234` |
-| `LM_STUDIO_MODEL` | LLM model name (must match model loaded in LM Studio) | `default` |
-| `VERBOSE` | Enable verbose tool call logging (`true` or `1`) | `false` |
 
 See `.env.example` for the complete list with documentation.
-
-### LM Studio Configuration
-
-The CLI agent requires [LM Studio](https://lmstudio.ai/) running with a model that supports tool calling:
-
-1. **Download and install LM Studio**
-2. **Load a compatible model** (recommended: Qwen3, Llama 3.1+, Mistral, Hermes-2-Pro)
-3. **Start the local server** (default: http://localhost:1234)
-4. **Find your model name:**
-   ```bash
-   curl -s http://localhost:1234/v1/models | jq '.data[].id'
-   ```
-5. **Set the model in your environment:**
-   ```bash
-   export LM_STUDIO_MODEL="your-model-id"
-   ```
 
 ---
 
