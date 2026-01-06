@@ -170,10 +170,12 @@ IMPORTANT: After gathering enough information (2-3 searches), provide a final su
 func setupAgentComponents(eventPublisher event.EventPublisher, indexingService *indexing.IndexingService, indexID indexing.IndexID) *agent.TaskService {
 	lmStudioURL := getEnvOrDefault("LM_STUDIO_URL", "http://localhost:1234")
 	lmStudioModel := getEnvOrDefault("LM_STUDIO_MODEL", "default")
+	verbose := os.Getenv("VERBOSE") == "true" || os.Getenv("VERBOSE") == "1"
+
 	llmClient := outbound.NewLMStudioClient(lmStudioURL, lmStudioModel)
 
 	// Create the tool executor with search_index capability
-	toolExecutor := outbound.NewIndexSearchToolExecutor(indexingService, indexID).WithVerbose(true)
+	toolExecutor := outbound.NewIndexSearchToolExecutor(indexingService, indexID).WithVerbose(verbose)
 
 	return agent.NewTaskService(llmClient, toolExecutor, eventPublisher)
 }
