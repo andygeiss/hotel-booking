@@ -10,7 +10,7 @@ app_user := env("USER", "user")
 
 # Docker image name: {user}/{app}:latest
 
-app_image := app_user + "/" + env("APP_SHORTNAME") + ":latest"
+app_image := app_user + "/" + env("APP_SHORTNAME", "app") + ":latest"
 
 # ======================================
 # Aliases - Quick shortcuts
