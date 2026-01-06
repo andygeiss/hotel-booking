@@ -2,7 +2,7 @@ module github.com/andygeiss/go-ddd-hex-starter
 
 go 1.25.5
 
-require github.com/andygeiss/cloud-native-utils v0.4.9
+require github.com/andygeiss/cloud-native-utils v0.4.10
 
 require (
 	github.com/coreos/go-oidc/v3 v3.17.0 // indirect

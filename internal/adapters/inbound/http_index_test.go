@@ -17,77 +17,9 @@ import (
 // ============================================================================
 // Test Assets
 // ============================================================================
-// We embed test templates and static files for testing HTTP handlers.
-// The testdata/assets/ directory mirrors the production structure.
-// Note: Router integration tests are in cmd/server/main_test.go since
-// Route() requires embed.FS with "assets/templates/*.tmpl" paths.
 
 //go:embed testdata/assets/templates/*.tmpl testdata/assets/static/css/*.css
-var testAssets embed.FS
-
-// ============================================================================
-// HttpViewLogin Tests
-// ============================================================================
-
-func Test_HttpViewLogin_With_Request_Should_Return_200(t *testing.T) {
-	// Arrange
-	t.Setenv("APP_NAME", "TestApp")
-	t.Setenv("APP_DESCRIPTION", "Test Description")
-
-	e := templating.NewEngine(testAssets)
-	e.Parse("testdata/assets/templates/*.tmpl")
-
-	handler := inbound.HttpViewLogin(e)
-	req := httptest.NewRequest(http.MethodGet, "/ui/login", nil)
-	rec := httptest.NewRecorder()
-
-	// Act
-	handler(rec, req)
-
-	// Assert
-	assert.That(t, "status code must be 200", rec.Code, http.StatusOK)
-}
-
-func Test_HttpViewLogin_With_Request_Should_Render_Template(t *testing.T) {
-	// Arrange
-	t.Setenv("APP_NAME", "TestApp")
-	t.Setenv("APP_DESCRIPTION", "Test Description")
-
-	e := templating.NewEngine(testAssets)
-	e.Parse("testdata/assets/templates/*.tmpl")
-
-	handler := inbound.HttpViewLogin(e)
-	req := httptest.NewRequest(http.MethodGet, "/ui/login", nil)
-	rec := httptest.NewRecorder()
-
-	// Act
-	handler(rec, req)
-
-	// Assert
-	body, _ := io.ReadAll(rec.Body)
-	bodyStr := string(body)
-	assert.That(t, "body must contain app name", containsString(bodyStr, "TestApp"), true)
-}
-
-func Test_HttpViewLogin_With_Request_Should_Return_HTML_Content_Type(t *testing.T) {
-	// Arrange
-	t.Setenv("APP_NAME", "TestApp")
-	t.Setenv("APP_DESCRIPTION", "Test Description")
-
-	e := templating.NewEngine(testAssets)
-	e.Parse("testdata/assets/templates/*.tmpl")
-
-	handler := inbound.HttpViewLogin(e)
-	req := httptest.NewRequest(http.MethodGet, "/ui/login", nil)
-	rec := httptest.NewRecorder()
-
-	// Act
-	handler(rec, req)
-
-	// Assert
-	contentType := rec.Header().Get("Content-Type")
-	assert.That(t, "content type must be text/html", containsString(contentType, "text/html"), true)
-}
+var indexTestAssets embed.FS
 
 // ============================================================================
 // HttpViewIndex Tests
@@ -98,7 +30,7 @@ func Test_HttpViewIndex_Without_Session_Should_Redirect_To_Login(t *testing.T) {
 	t.Setenv("APP_NAME", "TestApp")
 	t.Setenv("APP_DESCRIPTION", "Test Description")
 
-	e := templating.NewEngine(testAssets)
+	e := templating.NewEngine(indexTestAssets)
 	e.Parse("testdata/assets/templates/*.tmpl")
 
 	handler := inbound.HttpViewIndex(e)
@@ -119,7 +51,7 @@ func Test_HttpViewIndex_With_Empty_SessionID_Should_Redirect_To_Login(t *testing
 	t.Setenv("APP_NAME", "TestApp")
 	t.Setenv("APP_DESCRIPTION", "Test Description")
 
-	e := templating.NewEngine(testAssets)
+	e := templating.NewEngine(indexTestAssets)
 	e.Parse("testdata/assets/templates/*.tmpl")
 
 	handler := inbound.HttpViewIndex(e)
@@ -141,7 +73,7 @@ func Test_HttpViewIndex_With_Valid_Session_Should_Return_200(t *testing.T) {
 	t.Setenv("APP_NAME", "TestApp")
 	t.Setenv("APP_DESCRIPTION", "Test Description")
 
-	e := templating.NewEngine(testAssets)
+	e := templating.NewEngine(indexTestAssets)
 	e.Parse("testdata/assets/templates/*.tmpl")
 
 	handler := inbound.HttpViewIndex(e)
@@ -170,7 +102,7 @@ func Test_HttpViewIndex_With_Valid_Session_Should_Render_User_Data(t *testing.T)
 	t.Setenv("APP_NAME", "TestApp")
 	t.Setenv("APP_DESCRIPTION", "Test Description")
 
-	e := templating.NewEngine(testAssets)
+	e := templating.NewEngine(indexTestAssets)
 	e.Parse("testdata/assets/templates/*.tmpl")
 
 	handler := inbound.HttpViewIndex(e)
@@ -196,58 +128,4 @@ func Test_HttpViewIndex_With_Valid_Session_Should_Render_User_Data(t *testing.T)
 	assert.That(t, "body must contain user email", containsString(bodyStr, "test@example.com"), true)
 	assert.That(t, "body must contain user name", containsString(bodyStr, "Test User"), true)
 	assert.That(t, "body must contain session ID", containsString(bodyStr, "test-session-123"), true)
-}
-
-// ============================================================================
-// HttpView Tests
-// ============================================================================
-
-func Test_HttpView_With_Valid_Template_Should_Return_200(t *testing.T) {
-	// Arrange
-	e := templating.NewEngine(testAssets)
-	e.Parse("testdata/assets/templates/*.tmpl")
-
-	data := struct {
-		AppName string
-		Title   string
-	}{
-		AppName: "TestApp",
-		Title:   "Test Title",
-	}
-
-	handler := inbound.HttpView(e, "login", data)
-	req := httptest.NewRequest(http.MethodGet, "/test", nil)
-	rec := httptest.NewRecorder()
-
-	// Act
-	handler(rec, req)
-
-	// Assert
-	assert.That(t, "status code must be 200", rec.Code, http.StatusOK)
-}
-
-func Test_HttpView_With_Data_Should_Render_Data_In_Template(t *testing.T) {
-	// Arrange
-	e := templating.NewEngine(testAssets)
-	e.Parse("testdata/assets/templates/*.tmpl")
-
-	data := struct {
-		AppName string
-		Title   string
-	}{
-		AppName: "MyCustomApp",
-		Title:   "Custom Title",
-	}
-
-	handler := inbound.HttpView(e, "login", data)
-	req := httptest.NewRequest(http.MethodGet, "/test", nil)
-	rec := httptest.NewRecorder()
-
-	// Act
-	handler(rec, req)
-
-	// Assert
-	body, _ := io.ReadAll(rec.Body)
-	bodyStr := string(body)
-	assert.That(t, "body must contain custom app name", containsString(bodyStr, "MyCustomApp"), true)
 }

@@ -21,13 +21,6 @@ github.com/andygeiss/go-ddd-hex-starter/internal/domain/indexing/service.go:78.1
 github.com/andygeiss/go-ddd-hex-starter/internal/domain/indexing/service.go:83.2,84.29 2 1
 github.com/andygeiss/go-ddd-hex-starter/internal/domain/indexing/service.go:84.29,86.3 1 1
 github.com/andygeiss/go-ddd-hex-starter/internal/domain/indexing/service.go:88.2,88.23 1 1
-github.com/andygeiss/go-ddd-hex-starter/internal/adapters/outbound/event_publisher.go:22.73,26.2 1 1
-github.com/andygeiss/go-ddd-hex-starter/internal/adapters/outbound/event_publisher.go:29.77,32.16 2 1
-github.com/andygeiss/go-ddd-hex-starter/internal/adapters/outbound/event_publisher.go:32.16,34.3 1 0
-github.com/andygeiss/go-ddd-hex-starter/internal/adapters/outbound/event_publisher.go:37.2,40.56 2 1
-github.com/andygeiss/go-ddd-hex-starter/internal/adapters/outbound/event_publisher.go:40.56,42.3 1 0
-github.com/andygeiss/go-ddd-hex-starter/internal/adapters/outbound/event_publisher.go:43.2,43.12 1 1
-github.com/andygeiss/go-ddd-hex-starter/internal/adapters/outbound/file_index_repository.go:24.71,27.2 1 1
 github.com/andygeiss/go-ddd-hex-starter/internal/adapters/inbound/event_subscriber.go:22.75,26.2 1 1
 github.com/andygeiss/go-ddd-hex-starter/internal/adapters/inbound/event_subscriber.go:31.142,33.75 1 1
 github.com/andygeiss/go-ddd-hex-starter/internal/adapters/inbound/event_subscriber.go:33.75,38.55 2 1
@@ -64,4 +57,11 @@ github.com/andygeiss/go-ddd-hex-starter/internal/adapters/inbound/middleware.go:
 github.com/andygeiss/go-ddd-hex-starter/internal/adapters/inbound/middleware.go:11.54,22.3 3 1
 github.com/andygeiss/go-ddd-hex-starter/internal/adapters/inbound/middleware.go:26.66,27.54 1 1
 github.com/andygeiss/go-ddd-hex-starter/internal/adapters/inbound/middleware.go:27.54,41.3 5 1
-github.com/andygeiss/go-ddd-hex-starter/internal/adapters/inbound/router.go:16.83,50.2 8 0
+github.com/andygeiss/go-ddd-hex-starter/internal/adapters/inbound/router.go:17.80,51.2 8 1
+github.com/andygeiss/go-ddd-hex-starter/internal/adapters/outbound/event_publisher.go:22.73,26.2 1 1
+github.com/andygeiss/go-ddd-hex-starter/internal/adapters/outbound/event_publisher.go:29.77,32.16 2 1
+github.com/andygeiss/go-ddd-hex-starter/internal/adapters/outbound/event_publisher.go:32.16,34.3 1 0
+github.com/andygeiss/go-ddd-hex-starter/internal/adapters/outbound/event_publisher.go:37.2,40.56 2 1
+github.com/andygeiss/go-ddd-hex-starter/internal/adapters/outbound/event_publisher.go:40.56,42.3 1 0
+github.com/andygeiss/go-ddd-hex-starter/internal/adapters/outbound/event_publisher.go:43.2,43.12 1 1
+github.com/andygeiss/go-ddd-hex-starter/internal/adapters/outbound/file_index_repository.go:24.71,27.2 1 1

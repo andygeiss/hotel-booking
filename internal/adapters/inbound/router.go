@@ -2,7 +2,7 @@ package inbound
 
 import (
 	"context"
-	"embed"
+	"io/fs"
 	"log/slog"
 	"net/http"
 
@@ -13,13 +13,14 @@ import (
 
 // Route creates a new mux with the liveness and readiness probe (/liveness, /readiness),
 // the static assets endpoint (/) and the ui endpoints (/ui).
-func Route(ctx context.Context, efs embed.FS, logger *slog.Logger) *http.ServeMux {
+// The efs parameter accepts any fs.FS implementation (embed.FS, fs.Sub result, etc.).
+func Route(ctx context.Context, efs fs.FS, logger *slog.Logger) *http.ServeMux {
 	// Create a new mux with liveness and readyness endpoint.
 	// Embed the assets into the mux.
 	mux, serverSessions := security.NewServeMux(ctx, efs)
 
 	// Create a new templating engine.
-	// We use the embed.FS to load the templates from the file system.
+	// We use the fs.FS to load the templates from the file system.
 	// We use the templating.Engine from cloud-native-utils and reuse it for all views.
 	e := templating.NewEngine(efs)
 
