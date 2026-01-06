@@ -9,7 +9,8 @@ type LLMClient interface {
 	// Run sends the conversation messages to the LLM and returns the response.
 	// The messages should include the system prompt, user messages, assistant responses,
 	// and any tool call results from previous iterations.
-	Run(ctx context.Context, messages []Message) (LLMResponse, error)
+	// The tools parameter provides the available tool definitions for the LLM to use.
+	Run(ctx context.Context, messages []Message, tools []ToolDefinition) (LLMResponse, error)
 }
 
 // ToolExecutor represents the interface for executing tool calls.
@@ -22,6 +23,10 @@ type ToolExecutor interface {
 
 	// GetAvailableTools returns the list of available tool names.
 	GetAvailableTools() []string
+
+	// GetToolDefinitions returns the tool definitions for the LLM.
+	// These definitions tell the LLM what tools are available and how to use them.
+	GetToolDefinitions() []ToolDefinition
 
 	// HasTool returns true if the specified tool is available.
 	HasTool(toolName string) bool

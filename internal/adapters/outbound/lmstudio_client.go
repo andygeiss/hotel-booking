@@ -40,10 +40,11 @@ func (c *LMStudioClient) WithHTTPClient(httpClient *http.Client) *LMStudioClient
 
 // Run sends the conversation messages to LM Studio and returns the response.
 // It translates between domain types and the OpenAI-compatible API format.
-func (c *LMStudioClient) Run(ctx context.Context, messages []agent.Message) (agent.LLMResponse, error) {
+func (c *LMStudioClient) Run(ctx context.Context, messages []agent.Message, tools []agent.ToolDefinition) (agent.LLMResponse, error) {
 	apiMessages := c.convertToAPIMessages(messages)
+	apiTools := c.convertToAPITools(tools)
 
-	respPayload, err := c.sendRequest(ctx, apiMessages)
+	respPayload, err := c.sendRequest(ctx, apiMessages, apiTools)
 	if err != nil {
 		return agent.LLMResponse{}, err
 	}
@@ -78,10 +79,11 @@ func (c *LMStudioClient) convertToAPIMessages(messages []agent.Message) []chatMe
 }
 
 // sendRequest sends the chat completion request to LM Studio.
-func (c *LMStudioClient) sendRequest(ctx context.Context, apiMessages []chatMessage) (*chatCompletionResponse, error) {
+func (c *LMStudioClient) sendRequest(ctx context.Context, apiMessages []chatMessage, apiTools []apiTool) (*chatCompletionResponse, error) {
 	reqPayload := chatCompletionRequest{
 		Model:    c.model,
 		Messages: apiMessages,
+		Tools:    apiTools,
 	}
 
 	reqBody, err := json.Marshal(reqPayload)
@@ -139,7 +141,67 @@ func (c *LMStudioClient) convertToResponse(respPayload *chatCompletionResponse) 
 	return agent.NewLLMResponse(domainMessage, choice.FinishReason).WithToolCalls(domainToolCalls), nil
 }
 
+// convertToAPITools converts domain tool definitions to API format.
+func (c *LMStudioClient) convertToAPITools(tools []agent.ToolDefinition) []apiTool {
+	if len(tools) == 0 {
+		return nil
+	}
+	apiTools := make([]apiTool, len(tools))
+	for i, tool := range tools {
+		properties := make(map[string]apiPropertyDefinition)
+		for paramName, paramDesc := range tool.Parameters {
+			properties[paramName] = apiPropertyDefinition{
+				Type:        "string",
+				Description: paramDesc,
+			}
+		}
+		// Build required fields (all parameters are required by default, except "limit")
+		required := make([]string, 0, len(tool.Parameters))
+		for paramName := range tool.Parameters {
+			if paramName != "limit" {
+				required = append(required, paramName)
+			}
+		}
+		apiTools[i] = apiTool{
+			Type: "function",
+			Function: apiFunctionDefinition{
+				Name:        tool.Name,
+				Description: tool.Description,
+				Parameters: apiParametersDefinition{
+					Type:       "object",
+					Properties: properties,
+					Required:   required,
+				},
+			},
+		}
+	}
+	return apiTools
+}
+
 // OpenAI-compatible API types for LM Studio
+
+type apiPropertyDefinition struct {
+	Type        string `json:"type"`
+	Description string `json:"description"`
+}
+
+type apiParametersDefinition struct {
+	Type                 string                           `json:"type"`
+	Properties           map[string]apiPropertyDefinition `json:"properties"`
+	Required             []string                         `json:"required,omitempty"`
+	AdditionalProperties bool                             `json:"additionalProperties"`
+}
+
+type apiFunctionDefinition struct {
+	Name        string                  `json:"name"`
+	Description string                  `json:"description"`
+	Parameters  apiParametersDefinition `json:"parameters"`
+}
+
+type apiTool struct {
+	Type     string                `json:"type"`
+	Function apiFunctionDefinition `json:"function"`
+}
 
 type apiFunctionCall struct {
 	Name      string `json:"name"`
@@ -155,6 +217,7 @@ type apiToolCall struct {
 type chatCompletionRequest struct {
 	Model    string        `json:"model"`
 	Messages []chatMessage `json:"messages"`
+	Tools    []apiTool     `json:"tools,omitempty"`
 }
 
 type chatCompletionResponse struct {

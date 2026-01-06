@@ -159,7 +159,7 @@ type mockLLMClient struct {
 	response   agent.LLMResponse
 }
 
-func (m *mockLLMClient) Run(_ context.Context, messages []agent.Message) (agent.LLMResponse, error) {
+func (m *mockLLMClient) Run(_ context.Context, messages []agent.Message, _ []agent.ToolDefinition) (agent.LLMResponse, error) {
 	if m.err != nil {
 		return agent.LLMResponse{}, m.err
 	}
@@ -185,6 +185,13 @@ func (m *mockToolExecutor) Execute(_ context.Context, _ string, _ string) (strin
 
 func (m *mockToolExecutor) GetAvailableTools() []string {
 	return []string{"search", "loop_tool"}
+}
+
+func (m *mockToolExecutor) GetToolDefinitions() []agent.ToolDefinition {
+	return []agent.ToolDefinition{
+		agent.NewToolDefinition("search", "Search for items").WithParameter("query", "The search query"),
+		agent.NewToolDefinition("loop_tool", "A tool that loops"),
+	}
 }
 
 func (m *mockToolExecutor) HasTool(_ string) bool {

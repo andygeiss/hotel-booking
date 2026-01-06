@@ -67,8 +67,9 @@ func (s *TaskService) initializeTask(ctx context.Context, agent *Agent, task Tas
 func (s *TaskService) executeIteration(ctx context.Context, agent *Agent, currentTask *Task) error {
 	agent.IncrementIteration()
 
-	// OBSERVE & DECIDE: Get state and call LLM
-	response, err := s.llmClient.Run(ctx, agent.GetMessages())
+	// OBSERVE & DECIDE: Get state and call LLM with available tools
+	tools := s.executor.GetToolDefinitions()
+	response, err := s.llmClient.Run(ctx, agent.GetMessages(), tools)
 	if err != nil {
 		return s.handleLLMError(ctx, agent, currentTask, err)
 	}
@@ -138,9 +139,9 @@ func (s *TaskService) publishTaskCompleted(ctx context.Context, agent *Agent, ta
 	evt := NewEventTaskCompleted().
 		WithAgentID(agent.ID).
 		WithTaskID(task.ID).
+		WithIterations(agent.CurrentIteration).
 		WithName(task.Name).
-		WithOutput(task.Output).
-		WithIterations(agent.CurrentIteration)
+		WithOutput(task.Output)
 	return s.publisher.Publish(ctx, evt)
 }
 
@@ -149,9 +150,9 @@ func (s *TaskService) publishTaskFailed(ctx context.Context, agent *Agent, task 
 	evt := NewEventTaskFailed().
 		WithAgentID(agent.ID).
 		WithTaskID(task.ID).
-		WithName(task.Name).
 		WithError(errMsg).
-		WithIterations(agent.CurrentIteration)
+		WithIterations(agent.CurrentIteration).
+		WithName(task.Name)
 	return s.publisher.Publish(ctx, evt)
 }
 
@@ -168,9 +169,8 @@ func (s *TaskService) publishTaskStarted(ctx context.Context, agentID AgentID, t
 func (s *TaskService) publishToolCallExecuted(ctx context.Context, agentID AgentID, taskID TaskID, tc *ToolCall) error {
 	evt := NewEventToolCallExecuted().
 		WithAgentID(agentID).
+		WithSuccess(tc.IsCompleted()).
 		WithTaskID(taskID).
-		WithToolCallID(tc.ID).
-		WithToolName(tc.Name).
-		WithSuccess(tc.IsCompleted())
+		WithToolCallID(tc.ID)
 	return s.publisher.Publish(ctx, evt)
 }

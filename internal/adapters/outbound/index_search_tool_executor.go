@@ -16,6 +16,7 @@ type IndexSearchToolExecutor struct {
 	tools           map[string]toolFunc
 	indexingService *indexing.IndexingService
 	indexID         indexing.IndexID
+	verbose         bool
 }
 
 // searchIndexToolArgs represents the JSON arguments for search_index.
@@ -34,9 +35,16 @@ func NewIndexSearchToolExecutor(indexingService *indexing.IndexingService, index
 		indexingService: indexingService,
 		indexID:         indexID,
 		tools:           make(map[string]toolFunc),
+		verbose:         false,
 	}
 	executor.initTools()
 	return executor
+}
+
+// WithVerbose enables verbose logging of tool executions.
+func (e *IndexSearchToolExecutor) WithVerbose(verbose bool) *IndexSearchToolExecutor {
+	e.verbose = verbose
+	return e
 }
 
 // Execute runs the specified tool with the given input arguments.
@@ -46,7 +54,23 @@ func (e *IndexSearchToolExecutor) Execute(ctx context.Context, toolName string, 
 	if !ok {
 		return "", fmt.Errorf("tool not found: %s", toolName)
 	}
-	return tool(ctx, arguments)
+	if e.verbose {
+		fmt.Printf("  ↳ tool call: %s(%s)\n", toolName, arguments)
+	}
+	result, err := tool(ctx, arguments)
+	if e.verbose {
+		if err != nil {
+			fmt.Printf("  ↳ tool error: %v\n", err)
+		} else {
+			// Truncate result for display
+			display := result
+			if len(display) > 150 {
+				display = display[:150] + "..."
+			}
+			fmt.Printf("  ↳ tool result: %s\n", display)
+		}
+	}
+	return result, err
 }
 
 // GetAvailableTools returns the list of available tool names.

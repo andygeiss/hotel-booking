@@ -194,13 +194,44 @@ To run the server locally (requires Kafka running on localhost:9092):
 just serve
 ```
 
-To run the CLI application (demonstrates agent with file search):
+### Running the CLI Agent
 
+The CLI demonstrates an LLM-powered agent that uses the **observe → decide → act → update** loop pattern with tool calling.
+
+**Prerequisites:**
+- [LM Studio](https://lmstudio.ai/) running locally with a model loaded
+- A model that supports OpenAI-compatible tool calling (e.g., Qwen3, Llama 3.1+, Mistral)
+
+**Basic usage:**
 ```bash
+# Set your model name (check LM Studio for available models)
+export LM_STUDIO_MODEL="qwen/qwen3-coder-30b"
+
+# Run the CLI
 just run
 ```
 
-The CLI agent can search indexed files using the `search_index` tool when processing queries.
+**With verbose output (see tool calls):**
+```bash
+VERBOSE=true LM_STUDIO_MODEL="qwen/qwen3-coder-30b" go run ./cmd/cli/
+```
+
+**Example output with verbose mode:**
+```
+❯ agent: starting agent loop for index analysis...
+  ↳ tool call: search_index({"query":".go","limit":10})
+  ↳ tool result: [{"file_path":"cmd/cli/main.go","score":1}, ...]
+  ↳ tool call: search_index({"query":"internal","limit":10})
+  ↳ tool result: [{"file_path":"internal/adapters/...","score":0.5}, ...]
+❯ agent: task completed successfully
+❯ agent: output - Based on the search results, this is a Go DDD project...
+```
+
+The agent:
+1. Indexes the current directory
+2. Receives a task to analyze the project structure
+3. Uses the `search_index` tool to find relevant files
+4. Provides a summary based on the search results
 
 ---
 
@@ -248,9 +279,26 @@ Configuration is managed via environment variables. Copy `.env.example` to `.env
 | `OIDC_CLIENT_ID` | OIDC client ID | `template` |
 | `OIDC_CLIENT_SECRET` | OIDC client secret | Auto-generated |
 | `LM_STUDIO_URL` | LM Studio API URL | `http://localhost:1234` |
-| `LM_STUDIO_MODEL` | LLM model name | `qwen/qwen3-coder-30b` |
+| `LM_STUDIO_MODEL` | LLM model name (must match model loaded in LM Studio) | `default` |
+| `VERBOSE` | Enable verbose tool call logging (`true` or `1`) | `false` |
 
 See `.env.example` for the complete list with documentation.
+
+### LM Studio Configuration
+
+The CLI agent requires [LM Studio](https://lmstudio.ai/) running with a model that supports tool calling:
+
+1. **Download and install LM Studio**
+2. **Load a compatible model** (recommended: Qwen3, Llama 3.1+, Mistral, Hermes-2-Pro)
+3. **Start the local server** (default: http://localhost:1234)
+4. **Find your model name:**
+   ```bash
+   curl -s http://localhost:1234/v1/models | jq '.data[].id'
+   ```
+5. **Set the model in your environment:**
+   ```bash
+   export LM_STUDIO_MODEL="your-model-id"
+   ```
 
 ---
 

@@ -39,7 +39,7 @@ func (a *FileReader) ReadFileInfos(ctx context.Context, root string) ([]indexing
 
 // walk recursively walks the directory tree and collects file information.
 func (a *FileReader) walk(dir string, out *[]indexing.FileInfo) error {
-	// Gt the directory entries.
+	// Get the directory entries.
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		return err

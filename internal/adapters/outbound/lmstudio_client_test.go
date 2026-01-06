@@ -45,10 +45,11 @@ func Test_LMStudioClient_Run_With_ValidResponse_Should_ReturnMessage(t *testing.
 	messages := []agent.Message{
 		agent.NewMessage(agent.RoleUser, "Hello"),
 	}
+	tools := []agent.ToolDefinition{}
 	ctx := context.Background()
 
 	// Act
-	response, err := sut.Run(ctx, messages)
+	response, err := sut.Run(ctx, messages, tools)
 
 	// Assert
 	assert.That(t, "err must be nil", err == nil, true)
@@ -95,10 +96,13 @@ func Test_LMStudioClient_Run_With_ToolCalls_Should_ReturnToolCalls(t *testing.T)
 	messages := []agent.Message{
 		agent.NewMessage(agent.RoleUser, "Search for something"),
 	}
+	tools := []agent.ToolDefinition{
+		agent.NewToolDefinition("search", "Search for items").WithParameter("query", "The search query"),
+	}
 	ctx := context.Background()
 
 	// Act
-	response, err := sut.Run(ctx, messages)
+	response, err := sut.Run(ctx, messages, tools)
 
 	// Assert
 	assert.That(t, "err must be nil", err == nil, true)
@@ -120,10 +124,11 @@ func Test_LMStudioClient_Run_With_ServerError_Should_ReturnError(t *testing.T) {
 	messages := []agent.Message{
 		agent.NewMessage(agent.RoleUser, "Hello"),
 	}
+	tools := []agent.ToolDefinition{}
 	ctx := context.Background()
 
 	// Act
-	_, err := sut.Run(ctx, messages)
+	_, err := sut.Run(ctx, messages, tools)
 
 	// Assert
 	assert.That(t, "err must not be nil", err != nil, true)
@@ -148,10 +153,11 @@ func Test_LMStudioClient_Run_With_EmptyChoices_Should_ReturnError(t *testing.T) 
 	messages := []agent.Message{
 		agent.NewMessage(agent.RoleUser, "Hello"),
 	}
+	tools := []agent.ToolDefinition{}
 	ctx := context.Background()
 
 	// Act
-	_, err := sut.Run(ctx, messages)
+	_, err := sut.Run(ctx, messages, tools)
 
 	// Assert
 	assert.That(t, "err must not be nil", err != nil, true)
@@ -163,10 +169,11 @@ func Test_LMStudioClient_Run_With_ConnectionError_Should_ReturnError(t *testing.
 	messages := []agent.Message{
 		agent.NewMessage(agent.RoleUser, "Hello"),
 	}
+	tools := []agent.ToolDefinition{}
 	ctx := context.Background()
 
 	// Act
-	_, err := sut.Run(ctx, messages)
+	_, err := sut.Run(ctx, messages, tools)
 
 	// Assert
 	assert.That(t, "err must not be nil", err != nil, true)

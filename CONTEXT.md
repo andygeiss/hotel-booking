@@ -290,7 +290,7 @@ The primary external dependency. Use its utilities instead of rolling custom imp
 - Environment variables (see `.env.example`)
 - Loaded via `dotenv-load` in `.justfile`
 - Docker Compose uses `--env-file .env`
-- Key variables: `PORT`, `KAFKA_BROKERS`, `OIDC_*`, `LM_STUDIO_*`, `APP_VERSION`
+- Key variables: `PORT`, `KAFKA_BROKERS`, `OIDC_*`, `LM_STUDIO_URL`, `LM_STUDIO_MODEL`, `VERBOSE`, `APP_VERSION`
 
 ### Dependency Injection
 
@@ -326,19 +326,60 @@ The primary external dependency. Use its utilities instead of rolling custom imp
 The agent can invoke tools during its observe→decide→act loop. Tool execution follows this pattern:
 
 ```
-User Question → Agent Task → LLM Response with ToolCall → ToolExecutor → Results → LLM → Final Answer
+User Task → Agent Loop:
+  1. OBSERVE: Gather messages + tool definitions
+  2. DECIDE: LLM returns response (text or tool_calls)
+  3. ACT: If tool_calls → execute via ToolExecutor → add results to messages
+  4. UPDATE: Loop until task complete or max iterations
+```
+
+**Key interfaces:**
+
+```go
+// LLMClient sends messages and tool definitions to the LLM
+type LLMClient interface {
+    Run(ctx context.Context, messages []Message, tools []ToolDefinition) (LLMResponse, error)
+}
+
+// ToolExecutor executes tools requested by the LLM
+type ToolExecutor interface {
+    Execute(ctx context.Context, toolName string, arguments string) (string, error)
+    GetAvailableTools() []string
+    GetToolDefinitions() []ToolDefinition  // Returns OpenAI-compatible tool schemas
+    HasTool(toolName string) bool
+}
+```
+
+**Tool definitions use OpenAI-compatible JSON Schema:**
+```json
+{
+  "type": "function",
+  "function": {
+    "name": "search_index",
+    "description": "Search indexed files",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "query": {"type": "string", "description": "Search query"}
+      },
+      "required": ["query"],
+      "additionalProperties": false
+    }
+  }
+}
 ```
 
 **Key components:**
+- **`LLMClient` interface** (`agent/ports_outbound.go`): Sends messages + tools to LLM
 - **`ToolExecutor` interface** (`agent/ports_outbound.go`): Defines contract for tool execution
+- **`LMStudioClient`** (`adapters/outbound/lmstudio_client.go`): OpenAI-compatible LLM adapter
 - **`IndexSearchToolExecutor`** (`adapters/outbound/`): Implements `search_index` tool for file search
-- **`SearchIndexToolArgs`** (`agent/entities.go`): Arguments structure for search tool
-- **`SearchResult`** (`agent/entities.go`, `indexing/value_objects.go`): Result structure
+- **`ToolDefinition`** (`agent/ports_outbound.go`): Domain representation of tool schema
 
 **Adding new tools:**
-1. Define argument struct in `agent/entities.go`
-2. Create tool executor adapter in `internal/adapters/outbound/`
-3. Implement `Execute`, `GetAvailableTools`, `HasTool`, `GetToolDefinitions`
+1. Add tool function to executor's `initTools()` method
+2. Add `ToolDefinition` to `GetToolDefinitions()` return value
+3. Implement the tool logic (receives JSON arguments string, returns JSON result string)
 4. Wire executor in entry point (`cmd/cli/main.go`)
 
 ---
@@ -427,6 +468,7 @@ User Question → Agent Task → LLM Response with ToolCall → ToolExecutor →
 - **Local development:** `just serve` or `just run` (uses `.env` with `localhost` addresses)
 - **Docker stack:** `just up` (services communicate via Docker network)
 - **Integration tests:** Set `LM_STUDIO_URL`, `LM_STUDIO_MODEL` in `.env`, run `just test-integration`
+- **Verbose tool logging:** Set `VERBOSE=true` to see tool calls and results in CLI output
 
 ---
 
@@ -460,6 +502,8 @@ User Question → Agent Task → LLM Response with ToolCall → ToolExecutor →
 - `IndexSearchToolExecutor` performs substring matching on file paths; extend for content search
 - Index search scores are heuristic (exact filename match > partial match)
 - Integration tests require external services (LM Studio, Kafka, Keycloak)
+- LM Studio requires models that support OpenAI-compatible tool calling (Qwen3, Llama 3.1+, Mistral, Hermes-2-Pro)
+- The `LM_STUDIO_MODEL` env var must match the exact model ID loaded in LM Studio (use `curl http://localhost:1234/v1/models` to discover)
 
 ---
 
