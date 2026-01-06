@@ -5,15 +5,17 @@ import "time"
 // Agent represents the aggregate root for the agent bounded context.
 // It manages the agent's state, tasks, and conversation history.
 // The agent follows the observe → decide → act → update loop.
+//
+//nolint:govet // fieldalignment: struct fields ordered for readability over memory layout
 type Agent struct {
 	ID               AgentID   `json:"id"`
-	CurrentIteration int       `json:"current_iteration"`
-	Messages         []Message `json:"messages"`
-	MaxIterations    int       `json:"max_iterations"`
 	SystemPrompt     string    `json:"system_prompt"`
+	Messages         []Message `json:"messages"`
 	Tasks            []Task    `json:"tasks"`
 	CreatedAt        time.Time `json:"created_at"`
 	UpdatedAt        time.Time `json:"updated_at"`
+	CurrentIteration int       `json:"current_iteration"`
+	MaxIterations    int       `json:"max_iterations"`
 }
 
 // NewAgent creates a new agent with the given ID and system prompt.
@@ -21,10 +23,10 @@ func NewAgent(id AgentID, systemPrompt string) Agent {
 	now := time.Now()
 	return Agent{
 		ID:            id,
+		MaxIterations: 10,
 		Messages:      make([]Message, 0),
 		SystemPrompt:  systemPrompt,
 		Tasks:         make([]Task, 0),
-		MaxIterations: 10,
 		CreatedAt:     now,
 		UpdatedAt:     now,
 	}

@@ -111,3 +111,91 @@ func Test_Index_Hash_With_Different_FileInfos_Should_Return_Different_Hash(t *te
 	// Assert
 	assert.That(t, "different file infos must produce different hashes", hash1 != hash2, true)
 }
+
+func Test_Index_Search_With_EmptyQuery_Should_ReturnEmptyResults(t *testing.T) {
+	// Arrange
+	index := indexing.Index{
+		ID: "search-test-index",
+		FileInfos: []indexing.FileInfo{
+			{AbsPath: "/path/to/file.go", Size: 1024},
+			{AbsPath: "/path/to/main.go", Size: 2048},
+		},
+	}
+
+	// Act
+	results := index.Search("", 10)
+
+	// Assert
+	assert.That(t, "empty query must return empty results", len(results), 0)
+}
+
+func Test_Index_Search_With_MatchingQuery_Should_ReturnMatchingFiles(t *testing.T) {
+	// Arrange
+	index := indexing.Index{
+		ID: "search-test-index",
+		FileInfos: []indexing.FileInfo{
+			{AbsPath: "/path/to/file.go", Size: 1024},
+			{AbsPath: "/path/to/main.go", Size: 2048},
+			{AbsPath: "/path/to/readme.md", Size: 512},
+		},
+	}
+
+	// Act
+	results := index.Search(".go", 10)
+
+	// Assert
+	assert.That(t, "search must return matching files", len(results), 2)
+}
+
+func Test_Index_Search_With_Limit_Should_RespectLimit(t *testing.T) {
+	// Arrange
+	index := indexing.Index{
+		ID: "search-test-index",
+		FileInfos: []indexing.FileInfo{
+			{AbsPath: "/path/to/file1.go", Size: 1024},
+			{AbsPath: "/path/to/file2.go", Size: 2048},
+			{AbsPath: "/path/to/file3.go", Size: 512},
+		},
+	}
+
+	// Act
+	results := index.Search(".go", 2)
+
+	// Assert
+	assert.That(t, "search must respect limit", len(results), 2)
+}
+
+func Test_Index_Search_With_CaseInsensitiveQuery_Should_ReturnMatches(t *testing.T) {
+	// Arrange
+	index := indexing.Index{
+		ID: "search-test-index",
+		FileInfos: []indexing.FileInfo{
+			{AbsPath: "/path/to/README.md", Size: 1024},
+			{AbsPath: "/path/to/readme.txt", Size: 2048},
+		},
+	}
+
+	// Act
+	results := index.Search("readme", 10)
+
+	// Assert
+	assert.That(t, "case-insensitive search must find both files", len(results), 2)
+}
+
+func Test_Index_Search_With_ExactFilename_Should_HaveHigherScore(t *testing.T) {
+	// Arrange
+	index := indexing.Index{
+		ID: "search-test-index",
+		FileInfos: []indexing.FileInfo{
+			{AbsPath: "/path/to/utils/main.go.bak", Size: 1024}, // contains "main.go" but not exact
+			{AbsPath: "/path/to/main.go", Size: 2048},           // exact filename match
+		},
+	}
+
+	// Act
+	results := index.Search("main.go", 10)
+
+	// Assert
+	assert.That(t, "search must return results", len(results), 2)
+	assert.That(t, "exact filename must have higher score", results[0].FilePath, "/path/to/main.go")
+}

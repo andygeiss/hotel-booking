@@ -72,8 +72,8 @@ The template includes two bounded contexts (`agent` and `indexing`), an HTTP ser
 
 | Context | Purpose | Location |
 |---------|---------|----------|
-| `agent` | LLM-based agent with observe→decide→act→update loop | `internal/domain/agent/` |
-| `indexing` | File indexing and repository management | `internal/domain/indexing/` |
+| `agent` | LLM-based agent with observe→decide→act→update loop, tool execution | `internal/domain/agent/` |
+| `indexing` | File indexing, search, and repository management | `internal/domain/indexing/` |
 | `event` | Domain event contracts and infrastructure | `internal/domain/event/` |
 
 ### Key Patterns
@@ -121,12 +121,13 @@ go-ddd-hex-starter/
 │   │   └── outbound/             # Driven adapters (repos, publishers, clients)
 │   │       ├── event_publisher.go
 │   │       ├── file_index_repository.go
+│   │       ├── index_search_tool_executor.go  # Agent tool executor for file search
 │   │       └── lmstudio_client.go
 │   │
 │   └── domain/                   # Domain layer (business logic)
 │       ├── agent/                # Agent bounded context
 │       │   ├── aggregate.go      # Agent aggregate root
-│       │   ├── entities.go       # Task, ToolCall entities
+│       │   ├── entities.go       # Task, ToolCall, SearchIndexToolArgs, SearchResult
 │       │   ├── events.go         # Domain events
 │       │   ├── ports_outbound.go # LLMClient, ToolExecutor interfaces
 │       │   ├── service.go        # TaskService (orchestrates agent loop)
@@ -138,13 +139,13 @@ go-ddd-hex-starter/
 │       │   ├── event_factory.go
 │       │   └── event_handler.go
 │       └── indexing/             # Indexing bounded context
-│           ├── aggregate.go      # Index aggregate root
+│           ├── aggregate.go      # Index aggregate root (with Search capability)
 │           ├── entities.go       # FileInfo entity
 │           ├── events.go         # EventFileIndexCreated
 │           ├── ports_inbound.go  # FileReader interface
 │           ├── ports_outbound.go # IndexRepository interface
-│           ├── service.go        # IndexingService
-│           └── value_objects.go  # IndexID
+│           ├── service.go        # IndexingService (CreateIndex, SearchFiles)
+│           └── value_objects.go  # IndexID, SearchResult
 │
 ├── tools/                        # Build and dev tooling (Python scripts)
 │   ├── change_me_local_secret.py # Generates per-machine OIDC secrets
@@ -320,6 +321,26 @@ The primary external dependency. Use its utilities instead of rolling custom imp
 - Static assets embedded via `//go:embed` and served at `/static`
 - Templates rendered via `templating.Engine.View()`
 
+### Agent Tool Execution Pattern
+
+The agent can invoke tools during its observe→decide→act loop. Tool execution follows this pattern:
+
+```
+User Question → Agent Task → LLM Response with ToolCall → ToolExecutor → Results → LLM → Final Answer
+```
+
+**Key components:**
+- **`ToolExecutor` interface** (`agent/ports_outbound.go`): Defines contract for tool execution
+- **`IndexSearchToolExecutor`** (`adapters/outbound/`): Implements `search_index` tool for file search
+- **`SearchIndexToolArgs`** (`agent/entities.go`): Arguments structure for search tool
+- **`SearchResult`** (`agent/entities.go`, `indexing/value_objects.go`): Result structure
+
+**Adding new tools:**
+1. Define argument struct in `agent/entities.go`
+2. Create tool executor adapter in `internal/adapters/outbound/`
+3. Implement `Execute`, `GetAvailableTools`, `HasTool`, `GetToolDefinitions`
+4. Wire executor in entry point (`cmd/cli/main.go`)
+
 ---
 
 ## 7. Using This Repo as a Template
@@ -436,7 +457,8 @@ The primary external dependency. Use its utilities instead of rolling custom imp
 ### Known Limitations
 
 - File-based repository (`JsonFileAccess`) is for demo only; replace with database for production
-- Agent tool executor in CLI is a sample implementation
+- `IndexSearchToolExecutor` performs substring matching on file paths; extend for content search
+- Index search scores are heuristic (exact filename match > partial match)
 - Integration tests require external services (LM Studio, Kafka, Keycloak)
 
 ---

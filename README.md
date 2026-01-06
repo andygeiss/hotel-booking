@@ -55,7 +55,8 @@ The template includes two bounded contexts (`agent` and `indexing`), an HTTP ser
 - **Domain-Driven Design** — Aggregates, entities, value objects, services, and domain events
 - **OIDC Authentication** — Keycloak integration with session management
 - **Event Streaming** — Kafka-based pub/sub for domain events
-- **LLM Agent Loop** — Observe → decide → act → update pattern with LM Studio
+- **LLM Agent with Tool Execution** — Observe → decide → act → update pattern with tool calling (file search, extensible)
+- **File Indexing & Search** — Index workspace files and search by filename with relevance scoring
 - **Progressive Web App** — Service worker, manifest, and offline support for installable web apps
 - **Production-Ready Docker** — Multi-stage build with PGO optimization (~5-10MB images)
 - **Developer Experience** — `just` task runner, golangci-lint, comprehensive test coverage
@@ -94,8 +95,8 @@ The template includes two bounded contexts (`agent` and `indexing`), an HTTP ser
 
 | Context | Purpose |
 |---------|---------|
-| `agent` | LLM-based agent with observe→decide→act→update loop |
-| `indexing` | File indexing and repository management |
+| `agent` | LLM-based agent with observe→decide→act→update loop, tool execution |
+| `indexing` | File indexing, search, and repository management |
 | `event` | Domain event contracts and infrastructure |
 
 For detailed architectural documentation, see [CONTEXT.md](CONTEXT.md).
@@ -193,11 +194,13 @@ To run the server locally (requires Kafka running on localhost:9092):
 just serve
 ```
 
-To run the CLI application:
+To run the CLI application (demonstrates agent with file search):
 
 ```bash
 just run
 ```
+
+The CLI agent can search indexed files using the `search_index` tool when processing queries.
 
 ---
 

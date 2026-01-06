@@ -174,3 +174,53 @@ func Test_ToolCall_ToMessage_With_FailedToolCall_Should_ReturnErrorMessage(t *te
 	assert.That(t, "message role must be tool", msg.Role, agent.RoleTool)
 	assert.That(t, "message content must contain error", msg.Content, "Error: tool failed")
 }
+
+func Test_SearchIndexToolArgs_NewSearchIndexToolArgs_Should_HaveDefaultLimit(t *testing.T) {
+	// Arrange & Act
+	args := agent.NewSearchIndexToolArgs("test query")
+
+	// Assert
+	assert.That(t, "query must match", args.Query, "test query")
+	assert.That(t, "default limit must be 10", args.Limit, 10)
+}
+
+func Test_SearchIndexToolArgs_WithLimit_Should_SetLimit(t *testing.T) {
+	// Arrange
+	args := agent.NewSearchIndexToolArgs("test query")
+
+	// Act
+	args = args.WithLimit(5)
+
+	// Assert
+	assert.That(t, "limit must be 5", args.Limit, 5)
+}
+
+func Test_SearchResult_NewSearchResult_Should_SetFilePath(t *testing.T) {
+	// Arrange & Act
+	result := agent.NewSearchResult("/path/to/file.go")
+
+	// Assert
+	assert.That(t, "file path must match", result.FilePath, "/path/to/file.go")
+}
+
+func Test_SearchResult_WithSnippet_Should_SetSnippet(t *testing.T) {
+	// Arrange
+	result := agent.NewSearchResult("/path/to/file.go")
+
+	// Act
+	result = result.WithSnippet("matching content")
+
+	// Assert
+	assert.That(t, "snippet must match", result.Snippet, "matching content")
+}
+
+func Test_SearchResult_WithScore_Should_SetScore(t *testing.T) {
+	// Arrange
+	result := agent.NewSearchResult("/path/to/file.go")
+
+	// Act
+	result = result.WithScore(0.95)
+
+	// Assert
+	assert.That(t, "score must match", result.Score, 0.95)
+}

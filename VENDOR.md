@@ -142,6 +142,13 @@ func NewFileIndexRepository(filename string) indexing.IndexRepository {
 }
 ```
 
+The `resource.Access[K, V]` interface provides CRUD operations:
+- `Create(ctx, key, value)` — Create new entry
+- `Read(ctx, key)` — Read entry by key
+- `Update(ctx, key, value)` — Update existing entry
+- `Delete(ctx, key)` — Delete entry
+- `ReadAll(ctx)` — Read all entries (useful for search operations)
+
 #### Cautions
 
 - **Version compatibility**: Always check release notes when upgrading; API changes may occur
@@ -258,6 +265,60 @@ Configuration via environment:
 | `SERVICE_RETRY_DELAY` | Delay between retries | `5s` |
 | `SERVICE_RETRY_MAX` | Maximum retry attempts | `3` |
 | `SERVICE_TIMEOUT` | External call timeout | `5s` |
+
+### Agent Tool Execution
+
+**Pattern for implementing tool executors** (in `internal/adapters/outbound/`):
+
+The `agent.ToolExecutor` interface enables LLM agents to invoke tools. Implement this pattern when adding new agent capabilities:
+
+```go
+// Define tool argument struct in agent/entities.go
+type SearchIndexToolArgs struct {
+    Query string `json:"query"`
+    Limit int    `json:"limit,omitempty"`
+}
+
+// Implement ToolExecutor in adapters/outbound/
+type IndexSearchToolExecutor struct {
+    tools           map[string]toolFunc
+    indexingService *indexing.IndexingService
+    indexID         indexing.IndexID
+}
+
+func (e *IndexSearchToolExecutor) Execute(ctx context.Context, toolName string, arguments string) (string, error) {
+    tool, ok := e.tools[toolName]
+    if !ok {
+        return "", fmt.Errorf("tool not found: %s", toolName)
+    }
+    return tool(ctx, arguments)
+}
+
+func (e *IndexSearchToolExecutor) GetAvailableTools() []string {
+    // Return list of tool names
+}
+
+func (e *IndexSearchToolExecutor) HasTool(name string) bool {
+    _, ok := e.tools[name]
+    return ok
+}
+
+func (e *IndexSearchToolExecutor) GetToolDefinitions() []agent.ToolDefinition {
+    // Return OpenAI-compatible tool definitions for LLM
+}
+```
+
+**When to use**:
+- Adding new capabilities the LLM agent can invoke (file search, API calls, etc.)
+- Each tool executor handles a related set of tools
+- Wire executors in entry points (`cmd/cli/main.go`)
+
+**Integration pattern**:
+```go
+// In cmd/cli/main.go
+toolExecutor := outbound.NewIndexSearchToolExecutor(indexingService, indexID)
+taskService := agent.NewTaskService(llmClient, toolExecutor, eventPublisher)
+```
 
 ---
 

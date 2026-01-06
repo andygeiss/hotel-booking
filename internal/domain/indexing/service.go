@@ -87,3 +87,17 @@ func (a *IndexingService) IndexFiles(ctx context.Context, path string) ([]string
 
 	return filePaths, nil
 }
+
+// SearchFiles searches the index for files matching the given query.
+// It returns a list of matching file paths with relevance information.
+func (a *IndexingService) SearchFiles(ctx context.Context, indexID IndexID, query string, limit int) ([]SearchResult, error) {
+	// Retrieve the index from the repository.
+	index, err := a.indexRepository.Read(ctx, indexID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Search the index for matching files.
+	results := index.Search(query, limit)
+	return results, nil
+}

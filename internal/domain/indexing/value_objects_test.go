@@ -45,3 +45,33 @@ func Test_IndexID_With_UUID_Format_Should_Be_Valid(t *testing.T) {
 	// Assert
 	assert.That(t, "IndexID must handle UUID format", string(id), expected)
 }
+
+func Test_SearchResult_NewSearchResult_Should_SetFilePath(t *testing.T) {
+	// Arrange & Act
+	result := indexing.NewSearchResult("/path/to/file.go")
+
+	// Assert
+	assert.That(t, "file path must match", result.FilePath, "/path/to/file.go")
+}
+
+func Test_SearchResult_WithSnippet_Should_SetSnippet(t *testing.T) {
+	// Arrange
+	result := indexing.NewSearchResult("/path/to/file.go")
+
+	// Act
+	result = result.WithSnippet("matching content")
+
+	// Assert
+	assert.That(t, "snippet must match", result.Snippet, "matching content")
+}
+
+func Test_SearchResult_WithScore_Should_SetScore(t *testing.T) {
+	// Arrange
+	result := indexing.NewSearchResult("/path/to/file.go")
+
+	// Act
+	result = result.WithScore(0.95)
+
+	// Assert
+	assert.That(t, "score must match", result.Score, 0.95)
+}

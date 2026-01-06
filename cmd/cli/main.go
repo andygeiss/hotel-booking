@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"sync"
@@ -16,52 +15,6 @@ import (
 	"github.com/andygeiss/go-ddd-hex-starter/internal/domain/indexing"
 )
 
-// cliToolExecutor is a simple tool executor for CLI demonstration.
-type cliToolExecutor struct {
-	tools map[string]func(ctx context.Context, args string) (string, error)
-}
-
-// newCLIToolExecutor creates a new CLI tool executor with sample tools.
-func newCLIToolExecutor() *cliToolExecutor {
-	executor := &cliToolExecutor{
-		tools: make(map[string]func(ctx context.Context, args string) (string, error)),
-	}
-	// Register a sample "echo" tool for demonstration
-	executor.tools["echo"] = echoTool
-	return executor
-}
-
-// echoTool is a sample tool that echoes the input.
-func echoTool(_ context.Context, args string) (string, error) {
-	if args == "" {
-		return "", errors.New("echo requires non-empty input")
-	}
-	return "Echo: " + args, nil
-}
-
-// Execute runs the specified tool with the given input arguments.
-func (e *cliToolExecutor) Execute(ctx context.Context, toolName string, arguments string) (string, error) {
-	if tool, ok := e.tools[toolName]; ok {
-		return tool(ctx, arguments)
-	}
-	return "", fmt.Errorf("tool not found: %s", toolName)
-}
-
-// GetAvailableTools returns the list of available tool names.
-func (e *cliToolExecutor) GetAvailableTools() []string {
-	tools := make([]string, 0, len(e.tools))
-	for name := range e.tools {
-		tools = append(tools, name)
-	}
-	return tools
-}
-
-// HasTool returns true if the specified tool is available.
-func (e *cliToolExecutor) HasTool(toolName string) bool {
-	_, ok := e.tools[toolName]
-	return ok
-}
-
 // getEnvOrDefault returns the environment variable value or default if not set.
 func getEnvOrDefault(key, defaultValue string) string {
 	if value := os.Getenv(key); value != "" {
@@ -74,16 +27,20 @@ func getEnvOrDefault(key, defaultValue string) string {
 func runAgentAnalysis(ctx context.Context, taskService *agent.TaskService, evt *indexing.EventFileIndexCreated) {
 	fmt.Printf("❯ agent: starting agent loop for index analysis...\n")
 
+	// Create agent with system prompt that explains available tools
 	agentInstance := agent.NewAgent(
 		agent.AgentID("agent-"+string(evt.IndexID)),
-		"You are a helpful assistant that analyzes file indexes. When given information about indexed files, provide a summary of the project structure.",
+		`You are a helpful assistant that analyzes file indexes. You have access to the search_index tool.
+When given information about indexed files, use the search_index tool to find relevant files and provide a summary.
+To search for files, call the search_index tool with a query parameter.
+Example: to find Go files, search for ".go" or specific filenames.`,
 	)
 	agentInstance.WithMaxIterations(5)
 
 	task := agent.NewTask(
 		agent.TaskID("task-analyze-"+string(evt.IndexID)),
 		"analyze-index",
-		fmt.Sprintf("Analyze the file index with ID '%s' containing %d files. Provide a brief summary.", evt.IndexID, evt.FileCount),
+		fmt.Sprintf("Analyze the file index with ID '%s' containing %d files. Use the search_index tool to find interesting files and provide a brief summary of the project structure.", evt.IndexID, evt.FileCount),
 	)
 
 	result, runErr := taskService.RunTask(ctx, &agentInstance, task)
@@ -138,11 +95,15 @@ func printIndexSummary(index *indexing.Index) {
 }
 
 // setupAgentComponents creates and returns the agent service components.
-func setupAgentComponents(eventPublisher event.EventPublisher) *agent.TaskService {
+// It uses the IndexSearchToolExecutor with the indexing service to enable file searching.
+func setupAgentComponents(eventPublisher event.EventPublisher, indexingService *indexing.IndexingService, indexID indexing.IndexID) *agent.TaskService {
 	lmStudioURL := getEnvOrDefault("LM_STUDIO_URL", "http://localhost:1234")
 	lmStudioModel := getEnvOrDefault("LM_STUDIO_MODEL", "default")
 	llmClient := outbound.NewLMStudioClient(lmStudioURL, lmStudioModel)
-	toolExecutor := newCLIToolExecutor()
+
+	// Create the tool executor with search_index capability
+	toolExecutor := outbound.NewIndexSearchToolExecutor(indexingService, indexID)
+
 	return agent.NewTaskService(llmClient, toolExecutor, eventPublisher)
 }
 
@@ -181,8 +142,21 @@ func main() {
 	indexRepository := outbound.NewFileIndexRepository(indexPath)
 	eventPublisher := outbound.NewEventPublisher(dispatcher)
 
-	// Setup the agent components.
-	taskService := setupAgentComponents(eventPublisher)
+	// Create the indexing service with all dependencies injected.
+	// This must be created before the agent components so the tool executor can use it.
+	indexingService := indexing.NewIndexingService(fileReader, indexRepository, eventPublisher)
+
+	// Use the service to create an index (this will also publish the event).
+	wd, err := os.Getwd()
+	if err != nil {
+		panic(err)
+	}
+
+	// Create the index ID from the working directory
+	indexID := indexing.IndexID(wd)
+
+	// Setup the agent components with the indexing service for search capability.
+	taskService := setupAgentComponents(eventPublisher, indexingService, indexID)
 
 	// WaitGroup and Once to coordinate agent completion and prevent duplicate processing
 	var wg sync.WaitGroup
@@ -190,21 +164,12 @@ func main() {
 	wg.Add(1)
 
 	// Subscribe to the EventFileIndexCreated event to start the agent loop.
-	err := eventSubscriber.Subscribe(
+	err = eventSubscriber.Subscribe(
 		ctx,
 		indexing.EventTopicFileIndexCreated,
 		func() event.Event { return indexing.NewEventFileIndexCreated() },
 		createAgentEventHandler(ctx, taskService, &wg, &once),
 	)
-	if err != nil {
-		panic(err)
-	}
-
-	// Create the indexing service with all dependencies injected.
-	indexingService := indexing.NewIndexingService(fileReader, indexRepository, eventPublisher)
-
-	// Use the service to create an index (this will also publish the event).
-	wd, err := os.Getwd()
 	if err != nil {
 		panic(err)
 	}
@@ -220,8 +185,7 @@ func main() {
 	waitForAgentCompletion(ctx, &wg)
 
 	// Read the index back from the repository to demonstrate the full cycle.
-	id := indexing.IndexID(wd)
-	index, err := indexRepository.Read(context.Background(), id)
+	index, err := indexRepository.Read(context.Background(), indexID)
 	if err != nil {
 		panic(err)
 	}

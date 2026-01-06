@@ -47,11 +47,11 @@ func (e *EventTaskStarted) WithTaskID(id TaskID) *EventTaskStarted {
 
 // EventTaskCompleted represents a task completed event.
 type EventTaskCompleted struct {
+	Name       string  `json:"name"`
+	Output     string  `json:"output"`
 	AgentID    AgentID `json:"agent_id"`
 	TaskID     TaskID  `json:"task_id"`
 	Iterations int     `json:"iterations"`
-	Name       string  `json:"name"`
-	Output     string  `json:"output"`
 }
 
 // NewEventTaskCompleted creates a new EventTaskCompleted instance.
@@ -97,10 +97,10 @@ func (e *EventTaskCompleted) WithTaskID(id TaskID) *EventTaskCompleted {
 // EventTaskFailed represents a task failed event.
 type EventTaskFailed struct {
 	AgentID    AgentID `json:"agent_id"`
-	TaskID     TaskID  `json:"task_id"`
 	Error      string  `json:"error"`
-	Iterations int     `json:"iterations"`
 	Name       string  `json:"name"`
+	TaskID     TaskID  `json:"task_id"`
+	Iterations int     `json:"iterations"`
 }
 
 // NewEventTaskFailed creates a new EventTaskFailed instance.
