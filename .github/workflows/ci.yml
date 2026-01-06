@@ -24,9 +24,6 @@ jobs:
       - name: Call just test
         run: just test
 
-      - name: Call just test
-        run: just benchmark
-
       - name: Upload to Codacy
         env:
           CODACY_PROJECT_TOKEN: ${{ secrets.CODACY_PROJECT_TOKEN }}
