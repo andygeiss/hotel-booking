@@ -72,23 +72,31 @@ lint:
     @golangci-lint run ./...
 
 # ======================================
-# Profile - CPU profiling and benchmarks
+# Profile - CPU profiling for PGO
 # ======================================
-# Runs go test benchmarks for each package with CPU profiling
-# Generates cpuprofile.pprof (merged) and cpuprofile.svg (visualization)
-# Packages profiled: cmd/cli, internal/adapters/inbound, internal/adapters/outbound
+# Runs go test benchmarks with CPU profiling for Profile-Guided Optimization
+# Generates cpuprofile.pprof and cpuprofile.svg in the repo root
 #
 # Requirements:
 # - `go` must be on PATH
-# - `go tool pprof -svg` requires Graphviz (`dot`) to be installed
+# - Graphviz (`dot`) must be installed for SVG generation (brew install graphviz)
+#
+# Usage:
+#   just profile              # Run benchmarks and generate profile
+#   go build -pgo=cpuprofile.pprof ./cmd/cli  # Build with PGO
 #
 # Output:
-# - Writes cpuprofile.pprof / cpuprofile.svg into the repo root.
-# - These are generated artifacts and are typically ignored by git.
+# - cpuprofile.pprof: CPU profile for PGO builds
+# - cpuprofile.svg: Visual flame graph of CPU usage
 
 profile:
-    @python3 tools/create_pgo.py
-
+    @echo "Running benchmarks with CPU profiling..."
+    @go test -bench=. -benchtime=10s -cpuprofile=cpuprofile.pprof ./cmd/server/...
+    @echo "Generating SVG visualization..."
+    @go tool pprof -svg cpuprofile.pprof > cpuprofile.svg
+    @echo "Profile written to cpuprofile.pprof"
+    @echo "SVG written to cpuprofile.svg"
+ 
 # ======================================
 # Run - Execute CLI application locally
 # ======================================
@@ -133,15 +141,26 @@ setup:
 # - The secret rotation runs before containers start to ensure Keycloak and app match.
 
 up: build
-    @python3 tools/change_me_local_secret.py
-    @docker-compose --env-file .env up -d
-    @echo "Waiting for Keycloak to be ready..."
-    @for i in {1..60}; do \
-      if podman exec keycloak test -d /opt/keycloak/data/import 2>/dev/null; then \
-        echo "✓ Keycloak is ready"; \
-        exit 0; \
-      fi; \
-      sleep 1; \
+    #!/usr/bin/env bash
+    set -eu
+    echo "Starting local secret rotation..."
+    SECRET=$(LC_ALL=C tr -dc 'A-Za-z0-9' < /dev/urandom | head -c 32)
+    PLACEHOLDER="CHANGE_ME_LOCAL_SECRET"
+    for file in .env .keycloak.json; do
+        if [[ -f "$file" ]] && grep -q "$PLACEHOLDER" "$file"; then
+            sed -i '' "s/$PLACEHOLDER/$SECRET/g" "$file"
+            echo "Updated secret in: $file"
+        fi
+    done
+    echo "Secret rotation complete."
+    docker-compose --env-file .env up -d
+    echo "Waiting for Keycloak to be ready..."
+    for i in {1..60}; do
+        if podman exec keycloak test -d /opt/keycloak/data/import 2>/dev/null; then
+            echo "✓ Keycloak is ready"
+            exit 0
+        fi
+        sleep 1
     done
 
 # ======================================
@@ -157,7 +176,7 @@ test:
     @echo "total coverage: $(go tool cover -func=coverage.pprof | grep total | awk '{print $3}')"
     @echo ""
     @echo "Running Python tests..."
-    @cd tools && python3 -m unittest change_me_local_secret_test create_pgo_test -v
+    @cd tools && python3 -m unittest create_pgo_test -v
 
 # ======================================
 # Test Integration - Run integration tests
