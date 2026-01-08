@@ -104,9 +104,12 @@ For detailed architectural documentation, see [CONTEXT.md](CONTEXT.md).
 
 ```
 go-ddd-hex-starter/
+├── .justfile                     # Task runner commands
 ├── cmd/                          # Application entry points
 │   ├── cli/                      # CLI application (indexing demo)
 │   └── server/                   # HTTP server (OIDC-protected UI)
+├── docker-compose.yml            # Dev stack (Keycloak, Kafka, app)
+├── Dockerfile                    # Multi-stage production build
 ├── internal/
 │   ├── adapters/
 │   │   ├── inbound/              # HTTP handlers, file readers, subscribers
@@ -114,10 +117,7 @@ go-ddd-hex-starter/
 │   └── domain/
 │       ├── event/                # Shared event infrastructure
 │       └── indexing/             # Indexing bounded context
-├── tools/                        # Build tooling (Python scripts)
-├── .justfile                     # Task runner commands
-├── docker-compose.yml            # Dev stack (Keycloak, Kafka, app)
-└── Dockerfile                    # Multi-stage production build
+└── tools/                        # Build tooling (Python scripts)
 ```
 
 ---
