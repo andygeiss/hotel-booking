@@ -50,14 +50,14 @@ The template includes an `indexing` bounded context, an HTTP server with OIDC au
 
 ## Key Features
 
-- **Hexagonal Architecture** — Clear separation between domain logic and infrastructure
+- **Developer Experience** — `just` task runner, golangci-lint, comprehensive test coverage
 - **Domain-Driven Design** — Aggregates, entities, value objects, services, and domain events
-- **OIDC Authentication** — Keycloak integration with session management
 - **Event Streaming** — Kafka-based pub/sub for domain events
 - **File Indexing & Search** — Index workspace files and search by filename with relevance scoring
-- **Progressive Web App** — Service worker, manifest, and offline support for installable web apps
+- **Hexagonal Architecture** — Clear separation between domain logic and infrastructure
+- **OIDC Authentication** — Keycloak integration with session management
 - **Production-Ready Docker** — Multi-stage build with PGO optimization (~5-10MB images)
-- **Developer Experience** — `just` task runner, golangci-lint, comprehensive test coverage
+- **Progressive Web App** — Service worker, manifest, and offline support for installable web apps
 
 ---
 
@@ -93,8 +93,8 @@ The template includes an `indexing` bounded context, an HTTP server with OIDC au
 
 | Context | Purpose |
 |---------|---------|
-| `indexing` | File indexing, search, and repository management |
 | `event` | Domain event contracts and infrastructure |
+| `indexing` | File indexing, search, and repository management |
 
 For detailed architectural documentation, see [CONTEXT.md](CONTEXT.md).
 
@@ -126,10 +126,10 @@ go-ddd-hex-starter/
 
 ### Prerequisites
 
-- **Go 1.25+**
 - **Docker** and **Docker Compose** (or Podman)
-- **just** task runner
+- **Go 1.25+**
 - **golangci-lint** (for linting/formatting)
+- **just** task runner
 
 ### Installation
 
