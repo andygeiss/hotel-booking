@@ -4,9 +4,9 @@ import (
 	"context"
 	"encoding/json"
 
+	"github.com/andygeiss/cloud-native-utils/event"
 	"github.com/andygeiss/cloud-native-utils/messaging"
 	"github.com/andygeiss/cloud-native-utils/service"
-	"github.com/andygeiss/go-ddd-hex-starter/internal/domain/event"
 )
 
 // This file contains the implementation of the EventSubscriber.

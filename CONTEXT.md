@@ -54,7 +54,7 @@ The template includes an `indexing` bounded context, an HTTP server with OIDC au
                            │ implements ports
 ┌──────────────────────────▼──────────────────────────────────┐
 │                     Domain Layer                            │
-│   Bounded contexts: indexing/, event/                       │
+│   Bounded contexts: indexing/                               │
 │   Aggregates, entities, value objects, services, ports      │
 │                   internal/domain/                          │
 └──────────────────────────┬──────────────────────────────────┘
@@ -71,7 +71,6 @@ The template includes an `indexing` bounded context, an HTTP server with OIDC au
 | Context | Purpose | Location |
 |---------|---------|----------|
 | `indexing` | File indexing, search, and repository management | `internal/domain/indexing/` |
-| `event` | Domain event contracts and infrastructure | `internal/domain/event/` |
 
 ### Key Patterns
 
@@ -79,7 +78,7 @@ The template includes an `indexing` bounded context, an HTTP server with OIDC au
 - **Adapters (implementations)** live in `internal/adapters/{inbound,outbound}/`
 - **Services** orchestrate use cases and coordinate between ports
 - **Aggregates** enforce consistency and business rules
-- **Domain Events** enable loose coupling between bounded contexts
+- **Domain Events** enable loose coupling between bounded contexts (via `cloud-native-utils/event`)
 
 ---
 
@@ -120,12 +119,6 @@ go-ddd-hex-starter/
 │   │       └── file_index_repository.go
 │   │
 │   └── domain/                   # Domain layer (business logic)
-│       ├── event/                # Shared event infrastructure
-│       │   ├── event.go          # Event interface
-│       │   ├── event_publisher.go
-│       │   ├── event_subscriber.go
-│       │   ├── event_factory.go
-│       │   └── event_handler.go
 │       └── indexing/             # Indexing bounded context
 │           ├── aggregate.go      # Index aggregate root (with Search capability)
 │           ├── entities.go       # FileInfo entity

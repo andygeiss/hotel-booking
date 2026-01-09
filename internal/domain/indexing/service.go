@@ -3,7 +3,7 @@ package indexing
 import (
 	"context"
 
-	"github.com/andygeiss/go-ddd-hex-starter/internal/domain/event"
+	"github.com/andygeiss/cloud-native-utils/event"
 )
 
 // The services in a domain context are responsible for managing the workflows.

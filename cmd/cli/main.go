@@ -7,10 +7,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/andygeiss/cloud-native-utils/event"
 	"github.com/andygeiss/cloud-native-utils/messaging"
 	"github.com/andygeiss/go-ddd-hex-starter/internal/adapters/inbound"
 	"github.com/andygeiss/go-ddd-hex-starter/internal/adapters/outbound"
-	"github.com/andygeiss/go-ddd-hex-starter/internal/domain/event"
 	"github.com/andygeiss/go-ddd-hex-starter/internal/domain/indexing"
 )
 

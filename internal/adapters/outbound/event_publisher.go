@@ -4,8 +4,7 @@ import (
 	"context"
 	"encoding/json"
 
-	"github.com/andygeiss/go-ddd-hex-starter/internal/domain/event"
-
+	"github.com/andygeiss/cloud-native-utils/event"
 	"github.com/andygeiss/cloud-native-utils/messaging"
 )
 

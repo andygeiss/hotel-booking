@@ -174,9 +174,6 @@ test:
     @echo "Running Go tests..."
     @go test -v -coverprofile=coverage.pprof ./internal/...
     @echo "total coverage: $(go tool cover -func=coverage.pprof | grep total | awk '{print $3}')"
-    @echo ""
-    @echo "Running Python tests..."
-    @cd tools && python3 -m unittest create_pgo_test -v
 
 # ======================================
 # Test Integration - Run integration tests

@@ -4,11 +4,10 @@ import (
 	"context"
 	"testing"
 
-	"github.com/andygeiss/go-ddd-hex-starter/internal/domain/event"
-	"github.com/andygeiss/go-ddd-hex-starter/internal/domain/indexing"
-
 	"github.com/andygeiss/cloud-native-utils/assert"
+	"github.com/andygeiss/cloud-native-utils/event"
 	"github.com/andygeiss/cloud-native-utils/resource"
+	"github.com/andygeiss/go-ddd-hex-starter/internal/domain/indexing"
 )
 
 // Every test should follow the Test_<struct>_<method>_With_<condition>_Should_<result> pattern.

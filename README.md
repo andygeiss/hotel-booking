@@ -77,7 +77,7 @@ The template includes an `indexing` bounded context, an HTTP server with OIDC au
                            │ implements ports
 ┌──────────────────────────▼──────────────────────────────────┐
 │                     Domain Layer                            │
-│   Bounded contexts: indexing/, event/                       │
+│   Bounded contexts: indexing/                               │
 │   Aggregates, entities, value objects, services, ports      │
 │                   internal/domain/                          │
 └──────────────────────────┬──────────────────────────────────┘
@@ -93,7 +93,6 @@ The template includes an `indexing` bounded context, an HTTP server with OIDC au
 
 | Context | Purpose |
 |---------|---------|
-| `event` | Domain event contracts and infrastructure |
 | `indexing` | File indexing, search, and repository management |
 
 For detailed architectural documentation, see [CONTEXT.md](CONTEXT.md).
@@ -115,7 +114,6 @@ go-ddd-hex-starter/
 │   │   ├── inbound/              # HTTP handlers, file readers, subscribers
 │   │   └── outbound/             # Repositories, publishers
 │   └── domain/
-│       ├── event/                # Shared event infrastructure
 │       └── indexing/             # Indexing bounded context
 └── tools/                        # Build tooling (Python scripts)
 ```

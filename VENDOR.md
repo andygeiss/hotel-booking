@@ -20,15 +20,14 @@ This project follows a **minimal dependency philosophy**. The primary external d
 
 ### cloud-native-utils
 
-- **Purpose**: Core infrastructure library providing HTTP server, authentication, messaging, logging, templating, and resilience patterns for cloud-native Go applications.
+- **Purpose**: Core infrastructure library providing HTTP server, authentication, messaging, logging, templating, event contracts, and resilience patterns for cloud-native Go applications.
 - **Repository**: https://github.com/andygeiss/cloud-native-utils
-- **Version**: v0.4.10 (see `go.mod`)
+- **Version**: v0.4.12 (see `go.mod`)
 
 #### Key Packages
 
 | Package | Import Path | Purpose |
-|---------|-------------|---------|
-| `logging` | `github.com/andygeiss/cloud-native-utils/logging` | Structured JSON logging with `slog` |
+|---------|-------------|---------|| `event` | `github.com/andygeiss/cloud-native-utils/event` | Domain event contracts (Event interface, EventPublisher, EventSubscriber) || `logging` | `github.com/andygeiss/cloud-native-utils/logging` | Structured JSON logging with `slog` |
 | `messaging` | `github.com/andygeiss/cloud-native-utils/messaging` | Kafka pub/sub abstraction |
 | `redirecting` | `github.com/andygeiss/cloud-native-utils/redirecting` | HTTP redirect helpers |
 | `resource` | `github.com/andygeiss/cloud-native-utils/resource` | Generic repository patterns (JSON file access) |
@@ -40,6 +39,7 @@ This project follows a **minimal dependency philosophy**. The primary external d
 
 | Concern | Use This | Instead Of |
 |---------|----------|------------|
+| Domain event contracts | `event.Event`, `event.EventPublisher` | Custom event interfaces |
 | HTTP server setup | `security.NewServer()` | Custom `http.Server` configuration |
 | HTTP routing with sessions | `security.NewServeMux()` | Plain `http.NewServeMux()` |
 | OIDC authentication | `security.WithAuth()` middleware | Custom OIDC implementation |
@@ -354,11 +354,12 @@ Update this file via the `VENDOR-maintainer` agent when dependencies change.
 
 ## Version Notes
 
-### cloud-native-utils v0.4.10
+### cloud-native-utils v0.4.12
 
-Current version. No breaking changes from v0.4.x series.
+Current version. Includes the `event` package with domain event contracts (`Event` interface, `EventPublisher`, `EventSubscriber`, `EventFactoryFn`, `EventHandlerFn`).
 
 Key capabilities:
+- Domain event contracts and infrastructure
 - OIDC integration with Keycloak
 - Kafka messaging abstraction
 - Generic repository pattern (`resource.Access[K, V]`)
