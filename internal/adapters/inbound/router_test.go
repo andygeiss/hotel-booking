@@ -11,7 +11,10 @@ import (
 	"testing"
 
 	"github.com/andygeiss/cloud-native-utils/assert"
+	"github.com/andygeiss/cloud-native-utils/messaging"
 	"github.com/andygeiss/go-ddd-hex-starter/internal/adapters/inbound"
+	"github.com/andygeiss/go-ddd-hex-starter/internal/adapters/outbound"
+	"github.com/andygeiss/go-ddd-hex-starter/internal/domain/booking"
 )
 
 // ============================================================================
@@ -33,6 +36,14 @@ func getRouterTestFS(t *testing.T) fs.FS {
 	return sub
 }
 
+func createTestReservationService(t *testing.T) *booking.ReservationService {
+	t.Helper()
+	reservationRepo := outbound.NewFileReservationRepository("test_reservations.json")
+	availabilityChecker := outbound.NewRepositoryAvailabilityChecker(reservationRepo)
+	eventPublisher := outbound.NewEventPublisher(messaging.NewInternalDispatcher())
+	return booking.NewReservationService(reservationRepo, availabilityChecker, eventPublisher)
+}
+
 // ============================================================================
 // Route Tests
 // ============================================================================
@@ -44,9 +55,10 @@ func Test_Route_Should_Return_Non_Nil_Mux(t *testing.T) {
 
 	ctx := context.Background()
 	logger := slog.Default()
+	reservationService := createTestReservationService(t)
 
 	// Act
-	mux := inbound.Route(ctx, getRouterTestFS(t), logger)
+	mux := inbound.Route(ctx, getRouterTestFS(t), logger, reservationService)
 
 	// Assert
 	assert.That(t, "mux must not be nil", mux != nil, true)
@@ -59,7 +71,8 @@ func Test_Route_Liveness_Endpoint_Should_Return_200(t *testing.T) {
 
 	ctx := context.Background()
 	logger := slog.Default()
-	mux := inbound.Route(ctx, getRouterTestFS(t), logger)
+	reservationService := createTestReservationService(t)
+	mux := inbound.Route(ctx, getRouterTestFS(t), logger, reservationService)
 
 	req := httptest.NewRequest(http.MethodGet, "/liveness", nil)
 	rec := httptest.NewRecorder()
@@ -78,7 +91,8 @@ func Test_Route_Readiness_Endpoint_Should_Return_200(t *testing.T) {
 
 	ctx := context.Background()
 	logger := slog.Default()
-	mux := inbound.Route(ctx, getRouterTestFS(t), logger)
+	reservationService := createTestReservationService(t)
+	mux := inbound.Route(ctx, getRouterTestFS(t), logger, reservationService)
 
 	req := httptest.NewRequest(http.MethodGet, "/readiness", nil)
 	rec := httptest.NewRecorder()
@@ -97,7 +111,8 @@ func Test_Route_UI_Endpoint_Without_Session_Should_Redirect_To_Login(t *testing.
 
 	ctx := context.Background()
 	logger := slog.Default()
-	mux := inbound.Route(ctx, getRouterTestFS(t), logger)
+	reservationService := createTestReservationService(t)
+	mux := inbound.Route(ctx, getRouterTestFS(t), logger, reservationService)
 
 	req := httptest.NewRequest(http.MethodGet, "/ui/", nil)
 	rec := httptest.NewRecorder()
@@ -118,7 +133,8 @@ func Test_Route_Login_Endpoint_Should_Return_200(t *testing.T) {
 
 	ctx := context.Background()
 	logger := slog.Default()
-	mux := inbound.Route(ctx, getRouterTestFS(t), logger)
+	reservationService := createTestReservationService(t)
+	mux := inbound.Route(ctx, getRouterTestFS(t), logger, reservationService)
 
 	req := httptest.NewRequest(http.MethodGet, "/ui/login", nil)
 	rec := httptest.NewRecorder()
@@ -137,7 +153,8 @@ func Test_Route_Login_Endpoint_Should_Return_HTML_Content(t *testing.T) {
 
 	ctx := context.Background()
 	logger := slog.Default()
-	mux := inbound.Route(ctx, getRouterTestFS(t), logger)
+	reservationService := createTestReservationService(t)
+	mux := inbound.Route(ctx, getRouterTestFS(t), logger, reservationService)
 
 	req := httptest.NewRequest(http.MethodGet, "/ui/login", nil)
 	rec := httptest.NewRecorder()
@@ -158,7 +175,8 @@ func Test_Route_Session_Endpoint_Without_Valid_Session_Should_Redirect_To_Login(
 
 	ctx := context.Background()
 	logger := slog.Default()
-	mux := inbound.Route(ctx, getRouterTestFS(t), logger)
+	reservationService := createTestReservationService(t)
+	mux := inbound.Route(ctx, getRouterTestFS(t), logger, reservationService)
 
 	// Note: Session endpoints with invalid/unknown session IDs redirect to login
 	// The WithAuth middleware handles session validation and redirects unauthenticated requests
@@ -179,7 +197,8 @@ func Test_Route_Session_Endpoint_Without_Trailing_Slash_Should_Redirect_To_Login
 
 	ctx := context.Background()
 	logger := slog.Default()
-	mux := inbound.Route(ctx, getRouterTestFS(t), logger)
+	reservationService := createTestReservationService(t)
+	mux := inbound.Route(ctx, getRouterTestFS(t), logger, reservationService)
 
 	// Note: Session endpoints with invalid/unknown session IDs redirect to login
 	// The WithAuth middleware handles session validation and redirects unauthenticated requests
@@ -200,7 +219,8 @@ func Test_Route_Unknown_Endpoint_Should_Return_404(t *testing.T) {
 
 	ctx := context.Background()
 	logger := slog.Default()
-	mux := inbound.Route(ctx, getRouterTestFS(t), logger)
+	reservationService := createTestReservationService(t)
+	mux := inbound.Route(ctx, getRouterTestFS(t), logger, reservationService)
 
 	req := httptest.NewRequest(http.MethodGet, "/unknown/path", nil)
 	rec := httptest.NewRecorder()

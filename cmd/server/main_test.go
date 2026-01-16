@@ -8,17 +8,28 @@ import (
 	"time"
 
 	"github.com/andygeiss/cloud-native-utils/logging"
+	"github.com/andygeiss/cloud-native-utils/messaging"
 	"github.com/andygeiss/go-ddd-hex-starter/internal/adapters/inbound"
+	"github.com/andygeiss/go-ddd-hex-starter/internal/adapters/outbound"
+	"github.com/andygeiss/go-ddd-hex-starter/internal/domain/booking"
 )
 
 // Benchmarks for Profile-Guided Optimization (PGO).
 // Run with: just profile
 // This generates cpuprofile.pprof for optimized builds.
 
+func createBenchReservationService() *booking.ReservationService {
+	reservationRepo := outbound.NewFileReservationRepository("bench_reservations.json")
+	availabilityChecker := outbound.NewRepositoryAvailabilityChecker(reservationRepo)
+	eventPublisher := outbound.NewEventPublisher(messaging.NewInternalDispatcher())
+	return booking.NewReservationService(reservationRepo, availabilityChecker, eventPublisher)
+}
+
 func Benchmark_Server_Integration_Liveness_Should_Respond_Fast(b *testing.B) {
 	ctx := context.Background()
 	logger := logging.NewJsonLogger()
-	mux := inbound.Route(ctx, efs, logger)
+	reservationService := createBenchReservationService()
+	mux := inbound.Route(ctx, efs, logger, reservationService)
 	server := httptest.NewServer(mux)
 	defer server.Close()
 
@@ -37,7 +48,8 @@ func Benchmark_Server_Integration_Liveness_Should_Respond_Fast(b *testing.B) {
 func Benchmark_Server_Integration_Static_CSS_Should_Serve_Fast(b *testing.B) {
 	ctx := context.Background()
 	logger := logging.NewJsonLogger()
-	mux := inbound.Route(ctx, efs, logger)
+	reservationService := createBenchReservationService()
+	mux := inbound.Route(ctx, efs, logger, reservationService)
 	server := httptest.NewServer(mux)
 	defer server.Close()
 
@@ -56,7 +68,8 @@ func Benchmark_Server_Integration_Static_CSS_Should_Serve_Fast(b *testing.B) {
 func Benchmark_Server_Integration_Login_Page_Should_Render_Fast(b *testing.B) {
 	ctx := context.Background()
 	logger := logging.NewJsonLogger()
-	mux := inbound.Route(ctx, efs, logger)
+	reservationService := createBenchReservationService()
+	mux := inbound.Route(ctx, efs, logger, reservationService)
 	server := httptest.NewServer(mux)
 	defer server.Close()
 

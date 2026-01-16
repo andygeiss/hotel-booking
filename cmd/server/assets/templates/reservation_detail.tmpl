@@ -1,0 +1,149 @@
+{{ define "reservation_detail" }}<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- PWA support -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <link rel="manifest" href="/manifest.json" />
+    <!-- Favicons -->
+    <link rel="icon" href="/static/img/favicon.ico" />
+    <link
+        rel="apple-touch-icon"
+        sizes="192x192"
+        href="/static/img/icon-192.png"
+    />
+    <link
+        rel="apple-touch-icon"
+        sizes="512x512"
+        href="/static/img/icon-512.png"
+    />
+    <link
+        rel="icon"
+        type="image/png"
+        sizes="192x192"
+        href="/static/img/icon-192.png"
+    />
+    <meta name="theme-color" content="#ffffff" />
+    <!-- Layer 1: Reset / foundation -->
+    <link rel="stylesheet" href="/static/css/base.css" />
+    <!-- Layer 2: Design tokens -->
+    <link rel="stylesheet" href="/static/css/theme.css" />
+    <!-- Layer 3: Components / layout -->
+    <link rel="stylesheet" href="/static/css/styles.css" />
+    <script src="/static/js/htmx.min.js" defer></script>
+    <title>{{ .Title }}</title>
+</head>
+<body>
+    <!-- Header Navigation -->
+    <header class="nav">
+        <div class="nav__brand">{{ .AppName }}</div>
+
+        <!-- Mobile nav toggle -->
+        <input type="checkbox" id="nav-toggle" class="nav__toggle" />
+        <label
+            for="nav-toggle"
+            class="nav__toggle-label"
+            aria-label="Toggle navigation"
+        >
+            <span class="nav__hamburger"></span>
+        </label>
+
+        <!-- Navigation links -->
+        <nav class="nav__links">
+            <a href="/ui/" class="nav__link">Home</a>
+            <a href="/ui/reservations" class="nav__link">Reservations</a>
+            <a href="/auth/logout/{{ .SessionID }}" class="nav__link">Logout</a>
+        </nav>
+    </header>
+
+    <div class="container">
+        <main>
+            <div class="card">
+                <div class="card__header">
+                    <h1>Reservation Details</h1>
+                    <span class="badge badge-{{ .Reservation.StatusClass }}">{{ .Reservation.Status }}</span>
+                </div>
+                <div class="card__body">
+                    <div class="detail-grid">
+                        <div class="detail-item">
+                            <label>Reservation ID</label>
+                            <p>{{ .Reservation.ID }}</p>
+                        </div>
+                        <div class="detail-item">
+                            <label>Room</label>
+                            <p>{{ .Reservation.RoomID }}</p>
+                        </div>
+                        <div class="detail-item">
+                            <label>Check-In</label>
+                            <p>{{ .Reservation.CheckIn }}</p>
+                        </div>
+                        <div class="detail-item">
+                            <label>Check-Out</label>
+                            <p>{{ .Reservation.CheckOut }}</p>
+                        </div>
+                        <div class="detail-item">
+                            <label>Nights</label>
+                            <p>{{ .Reservation.Nights }}</p>
+                        </div>
+                        <div class="detail-item">
+                            <label>Total Amount</label>
+                            <p>{{ .Reservation.TotalAmount }}</p>
+                        </div>
+                        <div class="detail-item">
+                            <label>Created At</label>
+                            <p>{{ .Reservation.CreatedAt }}</p>
+                        </div>
+                        {{ if .Reservation.CancellationReason }}
+                        <div class="detail-item">
+                            <label>Cancellation Reason</label>
+                            <p>{{ .Reservation.CancellationReason }}</p>
+                        </div>
+                        {{ end }}
+                    </div>
+
+                    {{ if .Reservation.Guests }}
+                    <h3 class="mt-4">Guests</h3>
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Phone</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {{ range .Reservation.Guests }}
+                            <tr>
+                                <td>{{ .Name }}</td>
+                                <td>{{ .Email }}</td>
+                                <td>{{ .PhoneNumber }}</td>
+                            </tr>
+                            {{ end }}
+                        </tbody>
+                    </table>
+                    {{ end }}
+                </div>
+                <div class="card__footer">
+                    <a href="/ui/reservations" class="btn">Back to Reservations</a>
+                    {{ if .Reservation.CanCancel }}
+                    <button
+                        class="btn btn-danger"
+                        hx-post="/ui/reservations/{{ .Reservation.ID }}/cancel"
+                        hx-confirm="Are you sure you want to cancel this reservation?"
+                    >Cancel Reservation</button>
+                    {{ end }}
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Mobile action bar -->
+    <nav class="action-bar" aria-label="Quick actions">
+        <a href="/ui/" class="action-bar__item">Home</a>
+        <a href="/ui/reservations" class="action-bar__item">Reservations</a>
+    </nav>
+</body>
+</html>
+{{ end }}

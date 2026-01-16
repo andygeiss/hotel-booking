@@ -384,6 +384,22 @@ p {
     margin-bottom: var(--space-2);
 }
 
+.form-row {
+    display: flex;
+    gap: var(--space-4);
+}
+
+.form-row .form-group {
+    flex: 1;
+}
+
+.form-actions {
+    display: flex;
+    gap: var(--space-4);
+    justify-content: flex-end;
+    margin-top: var(--space-6);
+}
+
 /* ========================================
    CARDS - Glassmorphism
    ======================================== */

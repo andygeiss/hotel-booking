@@ -1,0 +1,162 @@
+{{ define "reservation_form" }}<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- PWA support -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <link rel="manifest" href="/manifest.json" />
+    <!-- Favicons -->
+    <link rel="icon" href="/static/img/favicon.ico" />
+    <link
+        rel="apple-touch-icon"
+        sizes="192x192"
+        href="/static/img/icon-192.png"
+    />
+    <link
+        rel="apple-touch-icon"
+        sizes="512x512"
+        href="/static/img/icon-512.png"
+    />
+    <link
+        rel="icon"
+        type="image/png"
+        sizes="192x192"
+        href="/static/img/icon-192.png"
+    />
+    <meta name="theme-color" content="#ffffff" />
+    <!-- Layer 1: Reset / foundation -->
+    <link rel="stylesheet" href="/static/css/base.css" />
+    <!-- Layer 2: Design tokens -->
+    <link rel="stylesheet" href="/static/css/theme.css" />
+    <!-- Layer 3: Components / layout -->
+    <link rel="stylesheet" href="/static/css/styles.css" />
+    <script src="/static/js/htmx.min.js" defer></script>
+    <title>{{ .Title }}</title>
+</head>
+<body>
+    <!-- Header Navigation -->
+    <header class="nav">
+        <div class="nav__brand">{{ .AppName }}</div>
+
+        <!-- Mobile nav toggle -->
+        <input type="checkbox" id="nav-toggle" class="nav__toggle" />
+        <label
+            for="nav-toggle"
+            class="nav__toggle-label"
+            aria-label="Toggle navigation"
+        >
+            <span class="nav__hamburger"></span>
+        </label>
+
+        <!-- Navigation links -->
+        <nav class="nav__links">
+            <a href="/ui/" class="nav__link">Home</a>
+            <a href="/ui/reservations" class="nav__link">Reservations</a>
+            <a href="/auth/logout/{{ .SessionID }}" class="nav__link">Logout</a>
+        </nav>
+    </header>
+
+    <div class="container">
+        <main>
+            <div class="card">
+                <div class="card__header">
+                    <h1>New Reservation</h1>
+                </div>
+                <div class="card__body">
+                    {{ if .Error }}
+                    <div class="alert alert-danger mb-4">{{ .Error }}</div>
+                    {{ end }}
+
+                    <form method="POST" action="/ui/reservations" class="form">
+                        <div class="form-group">
+                            <label for="room_id">Room</label>
+                            <select id="room_id" name="room_id" class="form-input" required>
+                                <option value="">Select a room...</option>
+                                {{ range .Rooms }}
+                                <option value="{{ .ID }}">{{ .Name }} - {{ .Price }}/night</option>
+                                {{ end }}
+                            </select>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="check_in">Check-In Date</label>
+                                <input
+                                    type="date"
+                                    id="check_in"
+                                    name="check_in"
+                                    class="form-input"
+                                    min="{{ .MinDate }}"
+                                    required
+                                />
+                            </div>
+                            <div class="form-group">
+                                <label for="check_out">Check-Out Date</label>
+                                <input
+                                    type="date"
+                                    id="check_out"
+                                    name="check_out"
+                                    class="form-input"
+                                    min="{{ .MinDate }}"
+                                    required
+                                />
+                            </div>
+                        </div>
+
+                        <h3 class="mt-4 mb-2">Guest Information</h3>
+
+                        <div class="form-group">
+                            <label for="guest_name">Guest Name</label>
+                            <input
+                                type="text"
+                                id="guest_name"
+                                name="guest_name"
+                                class="form-input"
+                                value="{{ .GuestName }}"
+                                required
+                            />
+                        </div>
+
+                        <div class="form-group">
+                            <label for="guest_email">Guest Email</label>
+                            <input
+                                type="email"
+                                id="guest_email"
+                                name="guest_email"
+                                class="form-input"
+                                value="{{ .GuestEmail }}"
+                                required
+                            />
+                        </div>
+
+                        <div class="form-group">
+                            <label for="guest_phone">Guest Phone</label>
+                            <input
+                                type="tel"
+                                id="guest_phone"
+                                name="guest_phone"
+                                class="form-input"
+                                placeholder="+1 (555) 123-4567"
+                            />
+                        </div>
+
+                        <div class="form-actions">
+                            <a href="/ui/reservations" class="btn">Cancel</a>
+                            <button type="submit" class="btn btn-primary">Create Reservation</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Mobile action bar -->
+    <nav class="action-bar" aria-label="Quick actions">
+        <a href="/ui/" class="action-bar__item">Home</a>
+        <a href="/ui/reservations" class="action-bar__item">Reservations</a>
+    </nav>
+</body>
+</html>
+{{ end }}

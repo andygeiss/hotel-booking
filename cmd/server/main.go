@@ -7,11 +7,13 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/andygeiss/go-ddd-hex-starter/internal/adapters/inbound"
-
 	"github.com/andygeiss/cloud-native-utils/logging"
+	"github.com/andygeiss/cloud-native-utils/messaging"
 	"github.com/andygeiss/cloud-native-utils/security"
 	"github.com/andygeiss/cloud-native-utils/service"
+	"github.com/andygeiss/go-ddd-hex-starter/internal/adapters/inbound"
+	"github.com/andygeiss/go-ddd-hex-starter/internal/adapters/outbound"
+	"github.com/andygeiss/go-ddd-hex-starter/internal/domain/booking"
 )
 
 //go:embed assets
@@ -26,8 +28,14 @@ func main() {
 	// We use the logging.NewJsonLogger function from the cloud-native-utils/logging package.
 	logger := logging.NewJsonLogger()
 
+	// Initialize booking domain dependencies.
+	reservationRepo := outbound.NewFileReservationRepository("reservations.json")
+	availabilityChecker := outbound.NewRepositoryAvailabilityChecker(reservationRepo)
+	eventPublisher := outbound.NewEventPublisher(messaging.NewInternalDispatcher())
+	reservationService := booking.NewReservationService(reservationRepo, availabilityChecker, eventPublisher)
+
 	// Create a new service with the configuration.
-	mux := inbound.Route(ctx, efs, logger)
+	mux := inbound.Route(ctx, efs, logger, reservationService)
 	srv := security.NewServer(mux)
 	defer func() { _ = srv.Close() }()
 

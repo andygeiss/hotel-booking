@@ -76,6 +76,9 @@ services:
     env_file:
       # Load all environment variables from .env into the container
       - .env
+    volumes:
+      # Persist reservation data across container restarts
+      - ./reservations.json:/reservations.json
     ports:
       # HTTP server (localhost only - use reverse proxy in production)
       - "8080:8080"

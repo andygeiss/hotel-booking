@@ -9,12 +9,13 @@ import (
 	"github.com/andygeiss/cloud-native-utils/logging"
 	"github.com/andygeiss/cloud-native-utils/security"
 	"github.com/andygeiss/cloud-native-utils/templating"
+	"github.com/andygeiss/go-ddd-hex-starter/internal/domain/booking"
 )
 
 // Route creates a new mux with the liveness and readiness probe (/liveness, /readiness),
 // the static assets endpoint (/) and the ui endpoints (/ui).
 // The efs parameter accepts any fs.FS implementation (embed.FS, fs.Sub result, etc.).
-func Route(ctx context.Context, efs fs.FS, logger *slog.Logger) *http.ServeMux {
+func Route(ctx context.Context, efs fs.FS, logger *slog.Logger, reservationService *booking.ReservationService) *http.ServeMux {
 	// Create a new mux with liveness and readyness endpoint.
 	// Embed the assets into the mux.
 	mux, serverSessions := security.NewServeMux(ctx, efs)
@@ -48,6 +49,21 @@ func Route(ctx context.Context, efs fs.FS, logger *slog.Logger) *http.ServeMux {
 	// Add the service worker endpoint for the PWA.
 	// This endpoint serves the sw.js file for offline caching and installability.
 	mux.HandleFunc("GET /sw.js", logging.WithLogging(logger, HttpViewServiceWorker(e)))
+
+	// Add the reservations list endpoint.
+	mux.HandleFunc("GET /ui/reservations", logging.WithLogging(logger, security.WithAuth(serverSessions, HttpViewReservations(e, reservationService))))
+
+	// Add the new reservation form endpoint.
+	mux.HandleFunc("GET /ui/reservations/new", logging.WithLogging(logger, security.WithAuth(serverSessions, HttpViewReservationForm(e))))
+
+	// Add the create reservation endpoint.
+	mux.HandleFunc("POST /ui/reservations", logging.WithLogging(logger, security.WithAuth(serverSessions, HttpCreateReservation(e, reservationService))))
+
+	// Add the reservation detail endpoint.
+	mux.HandleFunc("GET /ui/reservations/{id}", logging.WithLogging(logger, security.WithAuth(serverSessions, HttpViewReservationDetail(e, reservationService))))
+
+	// Add the cancel reservation endpoint.
+	mux.HandleFunc("POST /ui/reservations/{id}/cancel", logging.WithLogging(logger, security.WithAuth(serverSessions, HttpCancelReservation(reservationService))))
 
 	return mux
 }

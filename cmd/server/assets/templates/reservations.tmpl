@@ -1,4 +1,4 @@
-{{ define "index" }}<!doctype html>
+{{ define "reservations" }}<!doctype html>
 <html lang="en">
 <head>
     <meta charset="UTF-8" />
@@ -59,22 +59,56 @@
     </header>
 
     <div class="container">
-        <main class="flex-center content-view">
-            <div class="card text-center">
+        <main>
+            <div class="card">
                 <div class="card__header">
-                    <h1>Welcome, {{ .Name }}!</h1>
-                    <div class="flex-center">
-                        <img
-                            src="/static/img/icon-192.png"
-                            alt="Logo"
-                            width="200"
-                            height="200"
-                        />
-                    </div>
+                    <h1>My Reservations</h1>
                 </div>
                 <div class="card__body">
-                    <p class="mb-4 text-muted">Book your perfect stay with us</p>
-                    <a href="/ui/reservations" class="btn btn-primary btn-lg">Start Booking</a>
+                    <div class="mb-4">
+                        <a href="/ui/reservations/new" class="btn btn-primary">New Reservation</a>
+                    </div>
+
+                    {{ if .Reservations }}
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Room</th>
+                                <th>Check-In</th>
+                                <th>Check-Out</th>
+                                <th>Status</th>
+                                <th>Amount</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {{ range .Reservations }}
+                            <tr>
+                                <td>{{ .RoomID }}</td>
+                                <td>{{ .CheckIn }}</td>
+                                <td>{{ .CheckOut }}</td>
+                                <td>
+                                    <span class="badge badge-{{ .StatusClass }}">{{ .Status }}</span>
+                                </td>
+                                <td>{{ .TotalAmount }}</td>
+                                <td>
+                                    <a href="/ui/reservations/{{ .ID }}" class="btn btn-sm">View</a>
+                                    {{ if .CanCancel }}
+                                    <button
+                                        class="btn btn-sm btn-danger"
+                                        hx-post="/ui/reservations/{{ .ID }}/cancel"
+                                        hx-confirm="Are you sure you want to cancel this reservation?"
+                                        hx-swap="outerHTML"
+                                    >Cancel</button>
+                                    {{ end }}
+                                </td>
+                            </tr>
+                            {{ end }}
+                        </tbody>
+                    </table>
+                    {{ else }}
+                    <p class="text-muted">You have no reservations yet.</p>
+                    {{ end }}
                 </div>
             </div>
         </main>
@@ -84,6 +118,7 @@
     <nav class="action-bar" aria-label="Quick actions">
         <a href="/ui/" class="action-bar__item">Home</a>
         <a href="/ui/reservations" class="action-bar__item">Reservations</a>
+        <a href="/ui/reservations/new" class="action-bar__item">New</a>
     </nav>
 </body>
 </html>
