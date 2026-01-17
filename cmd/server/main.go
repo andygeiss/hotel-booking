@@ -38,8 +38,8 @@ func main() {
 	}
 	defer db.Close()
 
-	// Shared event dispatcher (using internal dispatcher for now, can be switched to Kafka).
-	dispatcher := messaging.NewInternalDispatcher()
+	// Shared event dispatcher using Kafka for distributed event messaging.
+	dispatcher := messaging.NewExternalDispatcher()
 
 	// Initialize reservation bounded context.
 	reservationRepo := outbound.NewPostgresReservationRepository(db)

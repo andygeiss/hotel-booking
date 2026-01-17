@@ -42,6 +42,10 @@ func Route(ctx context.Context, efs fs.FS, logger *slog.Logger, reservationServi
 	// This endpoint is used to forward the user to the login page of the OIDC provider.
 	mux.HandleFunc("GET /ui/login", logging.WithLogging(logger, HttpViewLogin(e)))
 
+	// Add the error endpoint for displaying user-friendly error pages.
+	// This endpoint accepts query parameters: title, message, and details.
+	mux.HandleFunc("GET /ui/error", logging.WithLogging(logger, HttpViewError(e)))
+
 	// Add the manifest endpoint for the PWA.
 	// This endpoint serves the manifest.json file for Progressive Web App support.
 	mux.HandleFunc("GET /manifest.json", logging.WithLogging(logger, HttpViewManifest(e)))

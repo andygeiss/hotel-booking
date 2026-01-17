@@ -1,0 +1,91 @@
+{{ define "error" }}<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- PWA support -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <link rel="manifest" href="/manifest.json" />
+    <!-- Favicons -->
+    <link rel="icon" href="/static/img/favicon.ico" />
+    <link
+        rel="apple-touch-icon"
+        sizes="192x192"
+        href="/static/img/icon-192.png"
+    />
+    <link
+        rel="apple-touch-icon"
+        sizes="512x512"
+        href="/static/img/icon-512.png"
+    />
+    <link
+        rel="icon"
+        type="image/png"
+        sizes="192x192"
+        href="/static/img/icon-192.png"
+    />
+    <meta name="theme-color" content="#ffffff" />
+    <!-- Layer 1: Reset / foundation -->
+    <link rel="stylesheet" href="/static/css/base.css" />
+    <!-- Layer 2: Design tokens -->
+    <link rel="stylesheet" href="/static/css/theme.css" />
+    <!-- Layer 3: Components / layout -->
+    <link rel="stylesheet" href="/static/css/styles.css" />
+    <script src="/static/js/htmx.min.js" defer></script>
+    <title>{{ .Title }}</title>
+</head>
+<body>
+    <!-- Header Navigation -->
+    <header class="nav">
+        <div class="nav__brand">{{ .AppName }}</div>
+
+        <!-- Mobile nav toggle -->
+        <input type="checkbox" id="nav-toggle" class="nav__toggle" />
+        <label
+            for="nav-toggle"
+            class="nav__toggle-label"
+            aria-label="Toggle navigation"
+        >
+            <span class="nav__hamburger"></span>
+        </label>
+
+        <!-- Navigation links -->
+        <nav class="nav__links">
+            <a href="/ui/login" class="nav__link">Sign In</a>
+        </nav>
+    </header>
+
+    <div class="container">
+        <main class="flex-center content-view">
+            <div class="card text-center">
+                <div class="card__header">
+                    <h1>{{ .ErrorTitle }}</h1>
+                </div>
+                <div class="card__body">
+                    <div class="alert alert-danger mb-4">{{ .ErrorMessage }}</div>
+                    {{ if .ErrorDetails }}
+                    <p class="text-muted mb-4">{{ .ErrorDetails }}</p>
+                    {{ end }}
+                    <a href="/ui/login" class="btn btn-primary">Back to Login</a>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Mobile action bar -->
+    <nav class="action-bar" aria-label="Quick actions">
+        <a href="/ui/login" class="action-bar__item">Sign In</a>
+    </nav>
+
+    <!-- Service Worker Registration -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js')
+                .then((reg) => console.log('Service Worker registered', reg.scope))
+                .catch((err) => console.warn('Service Worker registration failed', err));
+        }
+    </script>
+</body>
+</html>
+{{ end }}

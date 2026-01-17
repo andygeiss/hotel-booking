@@ -237,6 +237,7 @@ hotel-booking/
 │   └── assets/
 │       ├── static/               # CSS, JS, images (embedded)
 │       └── templates/            # HTML templates (*.tmpl, embedded)
+│           └── error.tmpl        # User-friendly error page
 ├── docker-compose.yml            # Dev stack (PostgreSQL, Keycloak, Kafka, app)
 ├── Dockerfile                    # Multi-stage production build
 ├── migrations/
@@ -246,6 +247,7 @@ hotel-booking/
 │   │   ├── inbound/              # HTTP handlers, event subscribers
 │   │   │   ├── router.go         # HTTP routing & middleware
 │   │   │   ├── http_{feature}.go # HTTP handlers
+│   │   │   ├── http_error.go     # Error page handler
 │   │   │   └── event_subscriber.go
 │   │   └── outbound/             # Repositories, gateways, publishers
 │   │       ├── postgres_connection.go
@@ -366,6 +368,7 @@ Once the application is running:
 | `/ui/reservations` | POST | Create reservation |
 | `/ui/reservations/{id}` | GET | Reservation detail |
 | `/ui/reservations/{id}/cancel` | POST | Cancel reservation |
+| `/ui/error` | GET | Error page (query params: title, message, details) |
 
 ---
 

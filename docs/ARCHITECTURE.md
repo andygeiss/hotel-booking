@@ -156,6 +156,7 @@ internal/adapters/inbound/
 ├── router.go                       # HTTP routing + middleware composition
 ├── http_{feature}.go               # HTTP handler for feature
 ├── http_{feature}_test.go          # Handler tests
+├── http_error.go                   # Error page handler
 └── event_subscriber.go             # Event subscription handler
 
 internal/adapters/outbound/
@@ -791,7 +792,61 @@ func HttpViewReservations(e *templating.Engine, reservationService *reservation.
 
 ---
 
-### 3.4 Router Middleware Composition
+### 3.4 Error Page Handler Pattern
+
+**Pattern**: Dedicated error page handler that accepts error details via query parameters.
+
+**Location**: `internal/adapters/inbound/http_error.go`
+
+```go
+type HttpViewErrorResponse struct {
+    AppName      string
+    Title        string
+    ErrorTitle   string
+    ErrorMessage string
+    ErrorDetails string
+}
+
+func HttpViewError(e *templating.Engine) http.HandlerFunc {
+    appName := os.Getenv("APP_NAME")
+    pageTitle := appName + " - Error"
+
+    return func(w http.ResponseWriter, r *http.Request) {
+        errorTitle := r.URL.Query().Get("title")
+        errorMessage := r.URL.Query().Get("message")
+        errorDetails := r.URL.Query().Get("details")
+
+        // Set defaults if not provided
+        if errorTitle == "" {
+            errorTitle = "An Error Occurred"
+        }
+        if errorMessage == "" {
+            errorMessage = "Something went wrong. Please try again."
+        }
+
+        data := HttpViewErrorResponse{
+            AppName:      appName,
+            Title:        pageTitle,
+            ErrorTitle:   errorTitle,
+            ErrorMessage: errorMessage,
+            ErrorDetails: errorDetails,
+        }
+
+        HttpView(e, "error", data)(w, r)
+    }
+}
+```
+
+**Usage**: Redirect to error page with URL-encoded parameters:
+```
+/ui/error?title=Authentication%20Failed&message=Invalid%20credentials&details=oauth2%3A%20unauthorized_client
+```
+
+**Template Location**: `cmd/server/assets/templates/error.tmpl`
+
+---
+
+### 3.5 Router Middleware Composition
 
 **Pattern**: Functional middleware chain, explicit composition per route.
 
@@ -821,7 +876,7 @@ func Route(ctx context.Context, efs fs.FS, logger *slog.Logger,
 
 ---
 
-### 3.5 Mock Adapter Pattern
+### 3.6 Mock Adapter Pattern
 
 **Pattern**: Configurable mock for production/testing with error injection and state tracking.
 
