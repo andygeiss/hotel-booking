@@ -2,7 +2,7 @@
 <img src="https://github.com/andygeiss/hotel-booking/blob/main/cmd/server/assets/static/img/icon-192.png?raw=true" width="100"/>
 </p>
 
-# Go Hotel Booking
+# Hotel Booking
 
 [![Go Reference](https://pkg.go.dev/badge/github.com/andygeiss/hotel-booking.svg)](https://pkg.go.dev/github.com/andygeiss/hotel-booking)
 [![License](https://img.shields.io/github/license/andygeiss/hotel-booking)](https://github.com/andygeiss/hotel-booking/blob/master/LICENSE)
@@ -24,7 +24,7 @@ A hotel reservation and payment management system built with Go, demonstrating D
 - [Overview](#overview)
 - [Key Features](#key-features)
 - [Architecture](#architecture)
-- [Domain Model](#domain-model)
+- [Bounded Contexts](#bounded-contexts)
 - [Project Structure](#project-structure)
 - [Getting Started](#getting-started)
 - [Usage](#usage)
@@ -42,84 +42,129 @@ This repository provides a reference implementation for structuring Go applicati
 
 - Organize code using **Hexagonal Architecture** (Ports & Adapters)
 - Apply **Domain-Driven Design** tactical patterns (aggregates, entities, value objects, domain events)
-- Implement the **Saga Pattern** for distributed workflow orchestration
+- Structure code into **Bounded Contexts** with clear boundaries
+- Implement **Event-Driven Communication** between contexts via Kafka
+- Use the **Saga Pattern** for cross-context workflow orchestration
 - Integrate authentication via **OIDC/Keycloak**
-- Implement event-driven communication with **Apache Kafka**
-
-The template includes a fully-featured **Booking** bounded context with reservations, payments, availability checking, and orchestrated workflows.
+- Persist data with **PostgreSQL**
 
 ---
 
 ## Key Features
 
-- **Complete Booking Domain** — Reservations, payments, availability checking, and guest management
+- **Bounded Context Architecture** — Separate reservation, payment, and orchestration contexts
 - **Developer Experience** — `just` task runner, golangci-lint, comprehensive test coverage
 - **Domain-Driven Design** — Aggregates, entities, value objects, domain services, and domain events
-- **Event Streaming** — Kafka-based pub/sub for domain events
+- **Event-Driven Communication** — Kafka-based pub/sub for inter-context messaging
 - **Hexagonal Architecture** — Clear separation between domain logic and infrastructure
 - **OIDC Authentication** — Keycloak integration with session management
-- **Production-Ready Docker** — Multi-stage build with PGO optimization (~5-10MB images)
-- **Progressive Web App** — Service worker, manifest, and offline support for installable web apps
-- **Saga Pattern** — Orchestrated booking workflow with compensation on failure
+- **PostgreSQL Persistence** — Production-ready database with proper schema
+- **Production-Ready Docker** — Multi-stage build with PGO optimization
+- **Progressive Web App** — Service worker, manifest, and offline support
+- **Saga Pattern** — Event-driven booking workflow with compensation on failure
 
 ---
 
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    Entry Points (cmd/)                      │
-│                       server/main.go                        │
-└──────────────────────────┬──────────────────────────────────┘
-                           │
-┌──────────────────────────▼──────────────────────────────────┐
-│                  Inbound Adapters                           │
-│   HTTP handlers, event subscribers                          │
-│              internal/adapters/inbound/                     │
-└──────────────────────────┬──────────────────────────────────┘
-                           │ implements ports
-┌──────────────────────────▼──────────────────────────────────┐
-│                     Domain Layer                            │
-│   Bounded contexts: booking/                                │
-│   Aggregates, entities, value objects, services, ports      │
-│                   internal/domain/                          │
-└──────────────────────────┬──────────────────────────────────┘
-                           │ defines ports
-┌──────────────────────────▼──────────────────────────────────┐
-│                  Outbound Adapters                          │
-│   Event publisher, repositories, payment gateway, notifier  │
-│              internal/adapters/outbound/                    │
-└─────────────────────────────────────────────────────────────┘
+                    ┌─────────────────────────────────────────┐
+                    │            Entry Point                  │
+                    │         cmd/server/main.go              │
+                    │      (DI wiring, bootstrap)             │
+                    └─────────────────┬───────────────────────┘
+                                      │
+         ┌────────────────────────────┼────────────────────────────┐
+         │                            │                            │
+         ▼                            ▼                            ▼
+┌─────────────────┐          ┌─────────────────┐          ┌──────────────────┐
+│ Inbound Adapter │          │  Domain Layer   │          │Outbound Adapter  │
+│  (HTTP, Events) │─────────▶│ (Bounded Ctxs)  │◀─────────│ (Repos, Gateways)│
+│                 │          │                 │          │                  │
+│ implements      │          │   defines       │          │ implements       │
+│ domain ports    │          │   ports         │          │ domain ports     │
+└─────────────────┘          └─────────────────┘          └──────────────────┘
+                                      │
+                    ┌─────────────────┴──────────────┐
+                    │                                │
+         ┌──────────┴──────────┐                     │
+         │                     │                     │
+         ▼                     ▼                     ▼
+┌─────────────────┐   ┌─────────────────┐   ┌─────────────────┐
+│   Reservation   │   │     Payment     │   │  Orchestration  │
+│    Context      │   │     Context     │   │     Layer       │
+│                 │   │                 │   │                 │
+│ aggregate.go    │   │ aggregate.go    │   │ booking_svc.go  │
+│ service.go      │   │ service.go      │   │ event_handlers  │
+│ events.go       │   │ events.go       │   │                 │
+└─────────────────┘   └─────────────────┘   └─────────────────┘
+         │                     │                     │
+         └─────────────────────┴─────────────────────┘
+                               │
+                    ┌──────────┴──────────┐
+                    │    Shared Kernel    │
+                    │  (Money, IDs)       │
+                    └─────────────────────┘
 ```
 
-### Bounded Contexts
+### Event-Driven Communication
 
-| Context | Purpose |
-|---------|---------|
-| `booking` | Hotel reservations, payments, availability, and booking orchestration |
+Bounded contexts communicate via domain events through Kafka:
+
+```
+┌─────────────────┐     reservation.created      ┌─────────────────┐
+│   Reservation   │ ─────────────────────────▶   │     Payment     │
+│    Context      │                              │     Context     │
+└─────────────────┘                              └─────────────────┘
+                                                          │
+                        payment.authorized                │
+         ┌────────────────────────────────────────────────┘
+         │
+         ▼
+┌─────────────────┐     payment.captured         ┌─────────────────┐
+│  Orchestration  │ ─────────────────────────▶   │   Reservation   │
+│     Layer       │                              │     Context     │
+└─────────────────┘                              └─────────────────┘
+```
+
+**Event Topics:**
+- `reservation.created` — Payment context subscribes to authorize payment
+- `reservation.confirmed` — Notification context subscribes
+- `reservation.cancelled` — Notification context subscribes
+- `payment.authorized` — Orchestration subscribes to capture payment
+- `payment.captured` — Reservation context subscribes to confirm reservation
+- `payment.failed` — Orchestration subscribes for compensation
 
 ---
 
-## Domain Model
+## Bounded Contexts
 
-The booking domain implements a complete hotel reservation system with two aggregate roots:
+The domain is split into three bounded contexts with clear responsibilities:
 
-### Reservation Aggregate
+| Context | Purpose | Key Aggregates |
+|---------|---------|----------------|
+| **Reservation** | Room booking lifecycle | `Reservation` |
+| **Payment** | Payment processing | `Payment` |
+| **Orchestration** | Cross-context coordination | Saga coordination |
+
+### Reservation Context
+
+The Reservation aggregate manages the complete booking lifecycle:
 
 ```
 Reservation (Aggregate Root)
 ├── ReservationID (Value Object)
-├── GuestInfo (Entity)
-│   ├── GuestID
-│   ├── Email
-│   └── Name
+├── GuestID (Value Object)
 ├── RoomID (Value Object)
 ├── DateRange (Value Object)
 │   ├── CheckIn
 │   └── CheckOut
-├── Money (Value Object)
-│   ├── Amount
-│   └── Currency
+├── TotalAmount (Money - Shared Kernel)
+├── Guests (Entity Collection)
+│   └── GuestInfo
+│       ├── Name
+│       ├── Email
+│       └── PhoneNumber
 └── ReservationStatus (Value Object)
     States: pending → confirmed → active → completed
                   ↘ cancelled
@@ -132,33 +177,38 @@ Reservation (Aggregate Root)
 - Same-day checkout/check-in allowed (no overlap)
 - Cancelled reservations don't block availability
 
-### Payment Aggregate
+### Payment Context
+
+The Payment aggregate handles payment processing with retry support:
 
 ```
 Payment (Aggregate Root)
 ├── PaymentID (Value Object)
-├── ReservationID (links to Reservation)
-├── Money (Value Object)
+├── ReservationID (Shared Kernel)
+├── Amount (Money - Shared Kernel)
+├── PaymentMethod
+├── TransactionID
 ├── PaymentStatus (Value Object)
 │   States: pending → authorized → captured
 │                  ↘ failed      ↘ refunded
-└── PaymentAttempts (Entity Collection)
+└── Attempts (Entity Collection)
     └── PaymentAttempt
-        ├── Sequence
         ├── Status
         ├── ErrorCode
-        └── Timestamp
+        └── AttemptedAt
 ```
 
 **Business Rules:**
 - Authorization-Capture pattern (Authorize → Capture)
-- Failed payments can be retried (max 3 attempts)
+- Failed payments can be retried
 - Only captured payments can be refunded
 
-### Booking Orchestration (Saga Pattern)
+### Orchestration Layer (Saga Pattern)
+
+Event-driven workflow coordination with compensation:
 
 ```
-CompleteBooking Workflow:
+Booking Workflow:
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
 │ 1. Create       │───▶│ 2. Authorize    │───▶│ 3. Capture      │
 │    Reservation  │    │    Payment      │    │    Payment      │
@@ -175,18 +225,6 @@ CompleteBooking Workflow:
                        └─────────────────┘    └─────────────────┘
 ```
 
-### Domain Events
-
-| Event | Trigger |
-|-------|---------|
-| `ReservationCreated` | New reservation created (pending) |
-| `ReservationConfirmed` | Reservation confirmed after payment |
-| `ReservationCancelled` | Reservation cancelled by guest or system |
-| `PaymentAuthorized` | Payment authorization successful |
-| `PaymentCaptured` | Payment captured (charged) |
-| `PaymentFailed` | Payment attempt failed |
-| `PaymentRefunded` | Payment refunded to guest |
-
 ---
 
 ## Project Structure
@@ -195,33 +233,48 @@ CompleteBooking Workflow:
 hotel-booking/
 ├── .justfile                     # Task runner commands
 ├── cmd/server/                   # HTTP server entry point
-│   ├── main.go                   # Bootstrap: DI, server setup, lifecycle
+│   ├── main.go                   # DI wiring, bootstrap, lifecycle
 │   └── assets/
 │       ├── static/               # CSS, JS, images (embedded)
 │       └── templates/            # HTML templates (*.tmpl, embedded)
-├── docker-compose.yml            # Dev stack (Keycloak, Kafka, app)
+├── docker-compose.yml            # Dev stack (PostgreSQL, Keycloak, Kafka, app)
 ├── Dockerfile                    # Multi-stage production build
+├── migrations/
+│   └── init.sql                  # PostgreSQL schema
 ├── internal/
 │   ├── adapters/
 │   │   ├── inbound/              # HTTP handlers, event subscribers
 │   │   │   ├── router.go         # HTTP routing & middleware
-│   │   │   ├── http_booking_*.go # Booking UI handlers
+│   │   │   ├── http_{feature}.go # HTTP handlers
 │   │   │   └── event_subscriber.go
 │   │   └── outbound/             # Repositories, gateways, publishers
-│   │       ├── file_*_repository.go      # JSON file storage
-│   │       ├── repository_availability_checker.go
-│   │       ├── mock_payment_gateway.go   # Payment simulation
-│   │       ├── mock_notification_service.go
+│   │       ├── postgres_connection.go
+│   │       ├── postgres_reservation_repository.go
+│   │       ├── postgres_payment_repository.go
+│   │       ├── repository_{checker}.go
+│   │       ├── mock_{service}.go
 │   │       └── event_publisher.go
 │   └── domain/
-│       └── booking/              # Booking bounded context
-│           ├── reservation.go    # Reservation aggregate
-│           ├── payment.go        # Payment aggregate
-│           ├── reservation_service.go
-│           ├── payment_service.go
-│           ├── orchestration_service.go  # Saga workflow
-│           └── ports.go          # Interface definitions
-└── reservations.json             # Runtime data (created by app)
+│       ├── shared/               # Shared kernel
+│       │   └── types.go          # Cross-context types (Money, ReservationID)
+│       ├── reservation/          # Reservation bounded context
+│       │   ├── aggregate.go      # Reservation aggregate + value objects
+│       │   ├── entities.go       # DateRange, GuestInfo
+│       │   ├── events.go         # Domain events
+│       │   ├── ports.go          # Interface definitions
+│       │   └── service.go        # ReservationService
+│       ├── payment/              # Payment bounded context
+│       │   ├── aggregate.go      # Payment aggregate + status
+│       │   ├── entities.go       # PaymentAttempt
+│       │   ├── events.go         # Domain events
+│       │   ├── ports.go          # Interface definitions
+│       │   └── service.go        # PaymentService
+│       └── orchestration/        # Cross-context coordination
+│           ├── booking_service.go    # Saga coordinator
+│           ├── event_handlers.go     # Event subscriptions
+│           └── ports.go              # NotificationService interface
+└── docs/
+    └── ARCHITECTURE.md           # Detailed architecture documentation
 ```
 
 ---
@@ -259,7 +312,7 @@ hotel-booking/
    ```bash
    just up
    ```
-   This generates secrets, builds the Docker image, and starts Keycloak, Kafka, and the application.
+   This builds the Docker image and starts PostgreSQL, Keycloak, Kafka, and the application.
 
 5. **Access the application:**
    - **App:** http://localhost:8080/ui
@@ -283,6 +336,12 @@ hotel-booking/
 | `just test-integration` | Run integration tests |
 | `just up` | Start full development stack |
 
+### Run Single Test
+
+```bash
+go test -v -run TestFunctionName ./internal/domain/reservation/...
+```
+
 ### Booking Workflow
 
 Once the application is running:
@@ -291,7 +350,7 @@ Once the application is running:
 2. **View Reservations** at `/ui/reservations` to see your bookings
 3. **Create Reservation** at `/ui/reservations/new`:
    - Select a room and dates
-   - Total is calculated automatically (nights × room price)
+   - Total is calculated automatically (nights x room price)
    - Submit to create a pending reservation
 4. **View Details** at `/ui/reservations/{id}` to see reservation status
 5. **Cancel Reservation** from the detail page (if >24 hours before check-in)
@@ -320,11 +379,11 @@ Run all unit tests with coverage:
 just test
 ```
 
-This generates `coverage.pprof` with coverage metrics.
+This generates `.coverage.pprof` with coverage metrics.
 
 ### Integration Tests
 
-Integration tests require external services (Kafka, Keycloak):
+Integration tests require external services (PostgreSQL, Kafka, Keycloak):
 
 ```bash
 just test-integration
@@ -336,16 +395,20 @@ just test-integration
 - Integration tests are tagged with `//go:build integration`
 - Test fixtures live in `testdata/` directories
 
-### Domain Test Coverage
+### Test Naming Convention
 
-The domain layer includes comprehensive tests for:
+Tests follow the pattern: `Test_{Component}_{Scenario}_Should_{ExpectedResult}`
 
-| Component | Test Coverage |
-|-----------|---------------|
-| **Reservation Aggregate** | State transitions, validation, overlap detection, cancellation rules |
-| **Payment Aggregate** | Authorization-capture flow, retry logic, attempt tracking |
-| **Value Objects** | Money formatting, ID types, date range calculations |
-| **Business Rules** | 24-hour cancellation policy, minimum stay, future check-in |
+```go
+// Domain unit tests
+func Test_Reservation_Confirm_From_Pending_Should_Change_Status(t *testing.T)
+
+// Service tests
+func Test_ReservationService_CreateReservation_Should_Succeed(t *testing.T)
+
+// HTTP handler tests
+func Test_Route_Liveness_Endpoint_Should_Return_200(t *testing.T)
+```
 
 ---
 
@@ -358,12 +421,17 @@ Configuration is managed via environment variables. Copy `.env.example` to `.env
 | `APP_NAME` | Display name for UI and PWA | `Hotel Booking` |
 | `APP_DESCRIPTION` | Application description | `Hotel reservation and payment management system` |
 | `APP_SHORTNAME` | Docker image/container name | `hotel-booking` |
-| `APP_VERSION` | Version for PWA cache busting | `1.0.0` |
 | `KAFKA_BROKERS` | Kafka broker addresses | `localhost:9092` |
 | `OIDC_CLIENT_ID` | OIDC client ID | `hotel-booking` |
 | `OIDC_CLIENT_SECRET` | OIDC client secret | Auto-generated |
 | `OIDC_ISSUER` | Keycloak realm URL | `http://localhost:8180/realms/local` |
 | `PORT` | HTTP server port | `8080` |
+| `POSTGRES_HOST` | PostgreSQL host | `localhost` |
+| `POSTGRES_PORT` | PostgreSQL port | `5432` |
+| `POSTGRES_USER` | PostgreSQL user | `booking` |
+| `POSTGRES_PASSWORD` | PostgreSQL password | `booking_secret` |
+| `POSTGRES_DB` | PostgreSQL database | `booking_db` |
+| `POSTGRES_SSLMODE` | SSL mode | `disable` |
 
 See `.env.example` for the complete list with documentation.
 
@@ -389,28 +457,33 @@ See `.env.example` for the complete list with documentation.
 3. **Configure project identity:**
    ```bash
    cp .env.example .env
-   # Edit APP_NAME, APP_SHORTNAME, APP_DESCRIPTION, APP_VERSION
+   # Edit APP_NAME, APP_SHORTNAME, APP_DESCRIPTION
    ```
 
 4. **Add your domain logic:**
    - Create bounded contexts in `internal/domain/`
+   - Add shared types to `internal/domain/shared/`
    - Implement adapters in `internal/adapters/`
-   - Wire up entry points in `cmd/`
+   - Wire up in `cmd/server/main.go`
 
 ### What to Keep
 
 - Directory structure (`cmd/`, `internal/adapters/`, `internal/domain/`)
 - Hexagonal architecture pattern
+- Bounded context organization
+- Event-driven communication pattern
 - `cloud-native-utils` as infrastructure library
 - `context.Context` threading through all layers
 
 ### What to Customize
 
-- Bounded contexts and domain logic (replace `booking/` with your domain)
+- Bounded contexts (replace `reservation/`, `payment/`, `orchestration/` with your domains)
+- Shared kernel types in `internal/domain/shared/`
 - Static assets and templates in `cmd/server/assets/`
+- PostgreSQL schema in `migrations/`
 - Environment configuration in `.env`
 - Docker Compose services as needed
-- Swap mock adapters (payment gateway, notification service) for real implementations
+- Swap mock adapters for real implementations
 
 ---
 
@@ -419,7 +492,8 @@ See `.env.example` for the complete list with documentation.
 1. Ensure all tests pass: `just test`
 2. Ensure code is formatted and linted: `just fmt && just lint`
 3. Follow hexagonal architecture patterns (ports in domain, adapters in adapters/)
-4. Update documentation if architecture changes
+4. Maintain bounded context boundaries (communicate via events, not direct calls)
+5. Update documentation if architecture changes
 
 ---
 
