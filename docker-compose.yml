@@ -23,7 +23,8 @@ services:
     depends_on:
       - keycloak
       - kafka
-      - postgres
+      - postgres-reservation
+      - postgres-payment
     env_file:
       # Load all environment variables from .env into the container
       - .env
@@ -94,30 +95,57 @@ services:
     restart: unless-stopped
 
   # ======================================
-  # PostgreSQL - Relational Database
+  # PostgreSQL - Reservation Database
   # ======================================
-  # Primary data store for domain aggregates (reservations, payments)
-  # Replaces file-based JSON persistence for production use
-  postgres:
+  # Data store for the Reservation bounded context
+  # Contains reservations and reservation_guests tables
+  postgres-reservation:
     image: postgres:16-alpine
-    container_name: postgres
+    container_name: postgres-reservation
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-booking}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-booking_secret}
-      POSTGRES_DB: ${POSTGRES_DB:-booking_db}
+      POSTGRES_USER: ${RESERVATION_DB_USER:-reservation}
+      POSTGRES_PASSWORD: ${RESERVATION_DB_PASSWORD:-reservation_secret}
+      POSTGRES_DB: ${RESERVATION_DB_NAME:-reservation_db}
     volumes:
       # Persist data across container restarts
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_reservation_data:/var/lib/postgresql/data
       # Initialize schema on first run
-      - ./migrations/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - ./migrations/reservation/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     ports:
       - "5432:5432"
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-booking}"]
+      test: ["CMD-SHELL", "pg_isready -U ${RESERVATION_DB_USER:-reservation}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ======================================
+  # PostgreSQL - Payment Database
+  # ======================================
+  # Data store for the Payment bounded context
+  # Contains payments and payment_attempts tables
+  postgres-payment:
+    image: postgres:16-alpine
+    container_name: postgres-payment
+    environment:
+      POSTGRES_USER: ${PAYMENT_DB_USER:-payment}
+      POSTGRES_PASSWORD: ${PAYMENT_DB_PASSWORD:-payment_secret}
+      POSTGRES_DB: ${PAYMENT_DB_NAME:-payment_db}
+    volumes:
+      # Persist data across container restarts
+      - postgres_payment_data:/var/lib/postgresql/data
+      # Initialize schema on first run
+      - ./migrations/payment/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ports:
+      - "5433:5432"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${PAYMENT_DB_USER:-payment}"]
       interval: 5s
       timeout: 5s
       retries: 5
 
 volumes:
-  postgres_data:
+  postgres_reservation_data:
+  postgres_payment_data:

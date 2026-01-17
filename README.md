@@ -46,7 +46,7 @@ This repository provides a reference implementation for structuring Go applicati
 - Implement **Event-Driven Communication** between contexts via Kafka
 - Use the **Saga Pattern** for cross-context workflow orchestration
 - Integrate authentication via **OIDC/Keycloak**
-- Persist data with **PostgreSQL**
+- Persist data with **PostgreSQL** (separate databases per bounded context)
 
 ---
 
@@ -58,7 +58,7 @@ This repository provides a reference implementation for structuring Go applicati
 - **Event-Driven Communication** — Kafka-based pub/sub for inter-context messaging
 - **Hexagonal Architecture** — Clear separation between domain logic and infrastructure
 - **OIDC Authentication** — Keycloak integration with session management
-- **PostgreSQL Persistence** — Production-ready database with proper schema
+- **PostgreSQL Persistence** — Separate databases per bounded context (reservation_db, payment_db)
 - **Production-Ready Docker** — Multi-stage build with PGO optimization
 - **Progressive Web App** — Service worker, manifest, and offline support
 - **Saga Pattern** — Event-driven booking workflow with compensation on failure
@@ -142,11 +142,11 @@ Bounded contexts communicate via domain events through Kafka:
 
 The domain is split into three bounded contexts with clear responsibilities:
 
-| Context | Purpose | Key Aggregates |
-|---------|---------|----------------|
-| **Reservation** | Room booking lifecycle | `Reservation` |
-| **Payment** | Payment processing | `Payment` |
-| **Orchestration** | Cross-context coordination | Saga coordination |
+| Context | Purpose | Key Aggregates | Database |
+|---------|---------|----------------|----------|
+| **Reservation** | Room booking lifecycle | `Reservation` | `reservation_db` |
+| **Payment** | Payment processing | `Payment` | `payment_db` |
+| **Orchestration** | Cross-context coordination | Saga coordination | — |
 
 ### Reservation Context
 
@@ -239,10 +239,13 @@ hotel-booking/
 │       ├── static/               # CSS, JS, images (embedded)
 │       └── templates/            # HTML templates (*.tmpl, embedded)
 │           └── error.tmpl        # User-friendly error page
-├── docker-compose.yml            # Dev stack (PostgreSQL, Keycloak, Kafka, app)
+├── docker-compose.yml            # Dev stack (PostgreSQL x2, Keycloak, Kafka, app)
 ├── Dockerfile                    # Multi-stage production build
 ├── migrations/
-│   └── init.sql                  # PostgreSQL schema
+│   ├── reservation/
+│   │   └── init.sql              # Reservation database schema
+│   └── payment/
+│       └── init.sql              # Payment database schema
 ├── internal/
 │   ├── adapters/
 │   │   ├── inbound/              # HTTP handlers, event subscribers
@@ -315,7 +318,7 @@ hotel-booking/
    ```bash
    just up
    ```
-   This builds the Docker image and starts PostgreSQL, Keycloak, Kafka, and the application.
+   This builds the Docker image and starts two PostgreSQL databases (reservation_db, payment_db), Keycloak, Kafka, and the application.
 
 5. **Access the application:**
    - **App:** http://localhost:8080/ui
@@ -400,7 +403,7 @@ This generates `.coverage.pprof` with coverage metrics.
 
 ### Integration Tests
 
-Integration tests require external services (PostgreSQL, Kafka, Keycloak):
+Integration tests require external services (PostgreSQL databases, Kafka, Keycloak):
 
 ```bash
 just test-integration
@@ -443,12 +446,18 @@ Configuration is managed via environment variables. Copy `.env.example` to `.env
 | `OIDC_CLIENT_SECRET` | OIDC client secret | Auto-generated |
 | `OIDC_ISSUER` | Keycloak realm URL | `http://localhost:8180/realms/local` |
 | `PORT` | HTTP server port | `8080` |
-| `POSTGRES_HOST` | PostgreSQL host | `localhost` |
-| `POSTGRES_PORT` | PostgreSQL port | `5432` |
-| `POSTGRES_USER` | PostgreSQL user | `booking` |
-| `POSTGRES_PASSWORD` | PostgreSQL password | `booking_secret` |
-| `POSTGRES_DB` | PostgreSQL database | `booking_db` |
-| `POSTGRES_SSLMODE` | SSL mode | `disable` |
+| `RESERVATION_DB_HOST` | Reservation database host | `localhost` |
+| `RESERVATION_DB_PORT` | Reservation database port | `5432` |
+| `RESERVATION_DB_USER` | Reservation database user | `reservation` |
+| `RESERVATION_DB_PASSWORD` | Reservation database password | `reservation_secret` |
+| `RESERVATION_DB_NAME` | Reservation database name | `reservation_db` |
+| `RESERVATION_DB_SSLMODE` | SSL mode | `disable` |
+| `PAYMENT_DB_HOST` | Payment database host | `localhost` |
+| `PAYMENT_DB_PORT` | Payment database port | `5433` |
+| `PAYMENT_DB_USER` | Payment database user | `payment` |
+| `PAYMENT_DB_PASSWORD` | Payment database password | `payment_secret` |
+| `PAYMENT_DB_NAME` | Payment database name | `payment_db` |
+| `PAYMENT_DB_SSLMODE` | SSL mode | `disable` |
 
 See `.env.example` for the complete list with documentation.
 
@@ -497,7 +506,7 @@ See `.env.example` for the complete list with documentation.
 - Bounded contexts (replace `reservation/`, `payment/`, `orchestration/` with your domains)
 - Shared kernel types in `internal/domain/shared/`
 - Static assets and templates in `cmd/server/assets/`
-- PostgreSQL schema in `migrations/`
+- PostgreSQL schemas in `migrations/reservation/` and `migrations/payment/`
 - Environment configuration in `.env`
 - Docker Compose services as needed
 - Swap mock adapters for real implementations
