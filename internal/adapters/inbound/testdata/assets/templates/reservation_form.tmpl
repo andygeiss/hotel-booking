@@ -1,0 +1,23 @@
+{{ define "reservation_form" }}<!DOCTYPE html>
+<html>
+<head><title>{{ .Title }}</title></head>
+<body>
+<h1>New Reservation</h1>
+<p>AppName: {{ .AppName }}</p>
+<p>Session: {{ .SessionID }}</p>
+{{ if .Error }}
+<p class="error">{{ .Error }}</p>
+{{ end }}
+<form method="POST" action="/ui/reservations/new">
+  <p>Min Date: {{ .MinDate }}</p>
+  <p>Guest Name: {{ .GuestName }}</p>
+  <p>Guest Email: {{ .GuestEmail }}</p>
+  <select name="room_id">
+  {{ range .Rooms }}
+    <option value="{{ .ID }}">{{ .Name }} - {{ .Price }}</option>
+  {{ end }}
+  </select>
+</form>
+</body>
+</html>
+{{ end }}

@@ -1,13 +1,359 @@
 package inbound_test
 
 import (
+	"embed"
+	"io"
+	"net/http"
+	"net/http/httptest"
+	"net/url"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/andygeiss/cloud-native-utils/assert"
+	"github.com/andygeiss/cloud-native-utils/messaging"
+	"github.com/andygeiss/cloud-native-utils/templating"
+	"github.com/andygeiss/hotel-booking/internal/adapters/inbound"
+	"github.com/andygeiss/hotel-booking/internal/adapters/outbound"
+	"github.com/andygeiss/hotel-booking/internal/domain/reservation"
 )
 
 // ============================================================================
-// HttpBookingReservationForm Tests
+// Test Assets
+// ============================================================================
+
+//go:embed testdata/assets/templates/*.tmpl testdata/assets/static/css/*.css
+var formTestAssets embed.FS
+
+// ============================================================================
+// Helper Functions
+// ============================================================================
+
+func createFormTestService(repo *mockReservationRepository) *reservation.Service {
+	availabilityChecker := outbound.NewRepositoryAvailabilityChecker(repo)
+	eventPublisher := outbound.NewEventPublisher(messaging.NewInternalDispatcher())
+	return reservation.NewService(repo, availabilityChecker, eventPublisher)
+}
+
+// ============================================================================
+// HttpViewReservationForm Tests
+// ============================================================================
+
+func Test_HttpViewReservationForm_Without_Session_Should_Redirect_To_Login(t *testing.T) {
+	// Arrange
+	t.Setenv("APP_NAME", "TestApp")
+	t.Setenv("APP_DESCRIPTION", "Test Description")
+
+	e := templating.NewEngine(formTestAssets)
+	e.Parse("testdata/assets/templates/*.tmpl")
+
+	handler := inbound.HttpViewReservationForm(e)
+	req := httptest.NewRequest(http.MethodGet, "/ui/reservations/new", nil)
+	rec := httptest.NewRecorder()
+
+	// Act
+	handler(rec, req)
+
+	// Assert
+	assert.That(t, "status code must be 303 (redirect)", rec.Code, http.StatusSeeOther)
+	location := rec.Header().Get("Location")
+	assert.That(t, "location must contain login", containsString(location, "/ui/login"), true)
+}
+
+func Test_HttpViewReservationForm_With_Valid_Session_Should_Return_200(t *testing.T) {
+	// Arrange
+	t.Setenv("APP_NAME", "TestApp")
+	t.Setenv("APP_DESCRIPTION", "Test Description")
+
+	e := templating.NewEngine(formTestAssets)
+	e.Parse("testdata/assets/templates/*.tmpl")
+
+	handler := inbound.HttpViewReservationForm(e)
+	req := httptest.NewRequest(http.MethodGet, "/ui/reservations/new", nil)
+	req = addAuthContext(req, "test-session-123", "test@example.com")
+	rec := httptest.NewRecorder()
+
+	// Act
+	handler(rec, req)
+
+	// Assert
+	assert.That(t, "status code must be 200", rec.Code, http.StatusOK)
+}
+
+func Test_HttpViewReservationForm_Should_Render_App_Name(t *testing.T) {
+	// Arrange
+	t.Setenv("APP_NAME", "TestApp")
+	t.Setenv("APP_DESCRIPTION", "Test Description")
+
+	e := templating.NewEngine(formTestAssets)
+	e.Parse("testdata/assets/templates/*.tmpl")
+
+	handler := inbound.HttpViewReservationForm(e)
+	req := httptest.NewRequest(http.MethodGet, "/ui/reservations/new", nil)
+	req = addAuthContext(req, "test-session-123", "test@example.com")
+	rec := httptest.NewRecorder()
+
+	// Act
+	handler(rec, req)
+
+	// Assert
+	body, _ := io.ReadAll(rec.Body)
+	bodyStr := string(body)
+	assert.That(t, "body must contain app name", containsString(bodyStr, "TestApp"), true)
+}
+
+func Test_HttpViewReservationForm_Should_Render_Guest_Email(t *testing.T) {
+	// Arrange
+	t.Setenv("APP_NAME", "TestApp")
+	t.Setenv("APP_DESCRIPTION", "Test Description")
+
+	e := templating.NewEngine(formTestAssets)
+	e.Parse("testdata/assets/templates/*.tmpl")
+
+	handler := inbound.HttpViewReservationForm(e)
+	req := httptest.NewRequest(http.MethodGet, "/ui/reservations/new", nil)
+	req = addAuthContext(req, "test-session-123", "test@example.com")
+	rec := httptest.NewRecorder()
+
+	// Act
+	handler(rec, req)
+
+	// Assert
+	body, _ := io.ReadAll(rec.Body)
+	bodyStr := string(body)
+	assert.That(t, "body must contain guest email", containsString(bodyStr, "test@example.com"), true)
+}
+
+func Test_HttpViewReservationForm_Should_Render_Rooms(t *testing.T) {
+	// Arrange
+	t.Setenv("APP_NAME", "TestApp")
+	t.Setenv("APP_DESCRIPTION", "Test Description")
+
+	e := templating.NewEngine(formTestAssets)
+	e.Parse("testdata/assets/templates/*.tmpl")
+
+	handler := inbound.HttpViewReservationForm(e)
+	req := httptest.NewRequest(http.MethodGet, "/ui/reservations/new", nil)
+	req = addAuthContext(req, "test-session-123", "test@example.com")
+	rec := httptest.NewRecorder()
+
+	// Act
+	handler(rec, req)
+
+	// Assert
+	body, _ := io.ReadAll(rec.Body)
+	bodyStr := string(body)
+	assert.That(t, "body must contain room-101", containsString(bodyStr, "room-101"), true)
+}
+
+// ============================================================================
+// HttpCreateReservation Tests
+// ============================================================================
+
+func Test_HttpCreateReservation_Without_Session_Should_Redirect_To_Login(t *testing.T) {
+	// Arrange
+	t.Setenv("APP_NAME", "TestApp")
+	t.Setenv("APP_DESCRIPTION", "Test Description")
+
+	e := templating.NewEngine(formTestAssets)
+	e.Parse("testdata/assets/templates/*.tmpl")
+
+	repo := newMockReservationRepository()
+	service := createFormTestService(repo)
+
+	handler := inbound.HttpCreateReservation(e, service)
+	req := httptest.NewRequest(http.MethodPost, "/ui/reservations/new", nil)
+	rec := httptest.NewRecorder()
+
+	// Act
+	handler(rec, req)
+
+	// Assert
+	assert.That(t, "status code must be 303 (redirect)", rec.Code, http.StatusSeeOther)
+	location := rec.Header().Get("Location")
+	assert.That(t, "location must contain login", containsString(location, "/ui/login"), true)
+}
+
+func Test_HttpCreateReservation_With_Missing_Fields_Should_Show_Error(t *testing.T) {
+	// Arrange
+	t.Setenv("APP_NAME", "TestApp")
+	t.Setenv("APP_DESCRIPTION", "Test Description")
+
+	e := templating.NewEngine(formTestAssets)
+	e.Parse("testdata/assets/templates/*.tmpl")
+
+	repo := newMockReservationRepository()
+	service := createFormTestService(repo)
+
+	handler := inbound.HttpCreateReservation(e, service)
+
+	// Create request with empty form
+	form := url.Values{}
+	req := httptest.NewRequest(http.MethodPost, "/ui/reservations/new", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req = addAuthContext(req, "test-session-123", "test@example.com")
+	rec := httptest.NewRecorder()
+
+	// Act
+	handler(rec, req)
+
+	// Assert
+	assert.That(t, "status code must be 200 (form re-rendered with error)", rec.Code, http.StatusOK)
+	body, _ := io.ReadAll(rec.Body)
+	bodyStr := string(body)
+	assert.That(t, "body must contain error message", containsString(bodyStr, "required"), true)
+}
+
+func Test_HttpCreateReservation_With_Invalid_Room_Should_Show_Error(t *testing.T) {
+	// Arrange
+	t.Setenv("APP_NAME", "TestApp")
+	t.Setenv("APP_DESCRIPTION", "Test Description")
+
+	e := templating.NewEngine(formTestAssets)
+	e.Parse("testdata/assets/templates/*.tmpl")
+
+	repo := newMockReservationRepository()
+	service := createFormTestService(repo)
+
+	handler := inbound.HttpCreateReservation(e, service)
+
+	// Create request with invalid room
+	checkIn := time.Now().AddDate(0, 0, 7).Format("2006-01-02")
+	checkOut := time.Now().AddDate(0, 0, 10).Format("2006-01-02")
+	form := url.Values{
+		"room_id":     {"invalid-room"},
+		"check_in":    {checkIn},
+		"check_out":   {checkOut},
+		"guest_name":  {"Test Guest"},
+		"guest_email": {"test@example.com"},
+	}
+	req := httptest.NewRequest(http.MethodPost, "/ui/reservations/new", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req = addAuthContext(req, "test-session-123", "test@example.com")
+	rec := httptest.NewRecorder()
+
+	// Act
+	handler(rec, req)
+
+	// Assert
+	assert.That(t, "status code must be 200 (form re-rendered with error)", rec.Code, http.StatusOK)
+	body, _ := io.ReadAll(rec.Body)
+	bodyStr := string(body)
+	assert.That(t, "body must contain error message", containsString(bodyStr, "Invalid room"), true)
+}
+
+func Test_HttpCreateReservation_With_Valid_Data_Should_Redirect_To_Reservations(t *testing.T) {
+	// Arrange
+	t.Setenv("APP_NAME", "TestApp")
+	t.Setenv("APP_DESCRIPTION", "Test Description")
+
+	e := templating.NewEngine(formTestAssets)
+	e.Parse("testdata/assets/templates/*.tmpl")
+
+	repo := newMockReservationRepository()
+	service := createFormTestService(repo)
+
+	handler := inbound.HttpCreateReservation(e, service)
+
+	// Create request with valid data
+	checkIn := time.Now().AddDate(0, 0, 7).Format("2006-01-02")
+	checkOut := time.Now().AddDate(0, 0, 10).Format("2006-01-02")
+	form := url.Values{
+		"room_id":     {"room-101"},
+		"check_in":    {checkIn},
+		"check_out":   {checkOut},
+		"guest_name":  {"Test Guest"},
+		"guest_email": {"test@example.com"},
+		"guest_phone": {"+1234567890"},
+	}
+	req := httptest.NewRequest(http.MethodPost, "/ui/reservations/new", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req = addAuthContext(req, "test-session-123", "test@example.com")
+	rec := httptest.NewRecorder()
+
+	// Act
+	handler(rec, req)
+
+	// Assert
+	assert.That(t, "status code must be 303 (redirect)", rec.Code, http.StatusSeeOther)
+	location := rec.Header().Get("Location")
+	assert.That(t, "location must redirect to reservations", containsString(location, "/ui/reservations"), true)
+}
+
+func Test_HttpCreateReservation_Should_Create_Reservation_In_Repository(t *testing.T) {
+	// Arrange
+	t.Setenv("APP_NAME", "TestApp")
+	t.Setenv("APP_DESCRIPTION", "Test Description")
+
+	e := templating.NewEngine(formTestAssets)
+	e.Parse("testdata/assets/templates/*.tmpl")
+
+	repo := newMockReservationRepository()
+	service := createFormTestService(repo)
+
+	handler := inbound.HttpCreateReservation(e, service)
+
+	// Create request with valid data
+	checkIn := time.Now().AddDate(0, 0, 7).Format("2006-01-02")
+	checkOut := time.Now().AddDate(0, 0, 10).Format("2006-01-02")
+	form := url.Values{
+		"room_id":     {"room-101"},
+		"check_in":    {checkIn},
+		"check_out":   {checkOut},
+		"guest_name":  {"Test Guest"},
+		"guest_email": {"test@example.com"},
+		"guest_phone": {"+1234567890"},
+	}
+	req := httptest.NewRequest(http.MethodPost, "/ui/reservations/new", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req = addAuthContext(req, "test-session-123", "test@example.com")
+	rec := httptest.NewRecorder()
+
+	// Act
+	handler(rec, req)
+
+	// Assert
+	assert.That(t, "repository must have 1 reservation", len(repo.reservations), 1)
+}
+
+func Test_HttpCreateReservation_With_Invalid_CheckIn_Date_Format_Should_Show_Error(t *testing.T) {
+	// Arrange
+	t.Setenv("APP_NAME", "TestApp")
+	t.Setenv("APP_DESCRIPTION", "Test Description")
+
+	e := templating.NewEngine(formTestAssets)
+	e.Parse("testdata/assets/templates/*.tmpl")
+
+	repo := newMockReservationRepository()
+	service := createFormTestService(repo)
+
+	handler := inbound.HttpCreateReservation(e, service)
+
+	// Create request with invalid date format
+	form := url.Values{
+		"room_id":     {"room-101"},
+		"check_in":    {"invalid-date"},
+		"check_out":   {"2024-01-20"},
+		"guest_name":  {"Test Guest"},
+		"guest_email": {"test@example.com"},
+	}
+	req := httptest.NewRequest(http.MethodPost, "/ui/reservations/new", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req = addAuthContext(req, "test-session-123", "test@example.com")
+	rec := httptest.NewRecorder()
+
+	// Act
+	handler(rec, req)
+
+	// Assert
+	assert.That(t, "status code must be 200 (form re-rendered with error)", rec.Code, http.StatusOK)
+	body, _ := io.ReadAll(rec.Body)
+	bodyStr := string(body)
+	assert.That(t, "body must contain error message", containsString(bodyStr, "Invalid check-in date"), true)
+}
+
+// ============================================================================
+// Unit Tests for Room Configuration
 // ============================================================================
 
 type roomOption struct {
@@ -37,10 +383,7 @@ func getRoomPricesForTest() map[string]int64 {
 }
 
 func Test_GetDefaultRooms_Should_Return_Five_Rooms(t *testing.T) {
-	// Arrange
-	// No setup needed
-
-	// Act
+	// Arrange & Act
 	rooms := getDefaultRoomsForTest()
 
 	// Assert
@@ -63,43 +406,8 @@ func Test_GetDefaultRooms_Should_Have_Standard_Rooms(t *testing.T) {
 	assert.That(t, "must have 2 standard rooms at $99.00", foundStandard, 2)
 }
 
-func Test_GetDefaultRooms_Should_Have_Deluxe_Rooms(t *testing.T) {
-	// Arrange
-	rooms := getDefaultRoomsForTest()
-
-	// Act
-	foundDeluxe := 0
-	for _, room := range rooms {
-		if room.Price == "$149.00" {
-			foundDeluxe++
-		}
-	}
-
-	// Assert
-	assert.That(t, "must have 2 deluxe rooms at $149.00", foundDeluxe, 2)
-}
-
-func Test_GetDefaultRooms_Should_Have_Suite(t *testing.T) {
-	// Arrange
-	rooms := getDefaultRoomsForTest()
-
-	// Act
-	foundSuite := 0
-	for _, room := range rooms {
-		if room.Price == "$249.00" {
-			foundSuite++
-		}
-	}
-
-	// Assert
-	assert.That(t, "must have 1 suite at $249.00", foundSuite, 1)
-}
-
 func Test_GetRoomPrices_Should_Return_All_Room_Prices(t *testing.T) {
-	// Arrange
-	// No setup needed
-
-	// Act
+	// Arrange & Act
 	prices := getRoomPricesForTest()
 
 	// Assert
@@ -110,35 +418,7 @@ func Test_GetRoomPrices_Should_Have_Correct_Standard_Price(t *testing.T) {
 	// Arrange
 	prices := getRoomPricesForTest()
 
-	// Act
-	room101Price := prices["room-101"]
-	room102Price := prices["room-102"]
-
-	// Assert
-	assert.That(t, "room-101 price must be 9900", room101Price, int64(9900))
-	assert.That(t, "room-102 price must be 9900", room102Price, int64(9900))
-}
-
-func Test_GetRoomPrices_Should_Have_Correct_Deluxe_Price(t *testing.T) {
-	// Arrange
-	prices := getRoomPricesForTest()
-
-	// Act
-	room201Price := prices["room-201"]
-	room202Price := prices["room-202"]
-
-	// Assert
-	assert.That(t, "room-201 price must be 14900", room201Price, int64(14900))
-	assert.That(t, "room-202 price must be 14900", room202Price, int64(14900))
-}
-
-func Test_GetRoomPrices_Should_Have_Correct_Suite_Price(t *testing.T) {
-	// Arrange
-	prices := getRoomPricesForTest()
-
-	// Act
-	room301Price := prices["room-301"]
-
-	// Assert
-	assert.That(t, "room-301 price must be 24900", room301Price, int64(24900))
+	// Act & Assert
+	assert.That(t, "room-101 price must be 9900", prices["room-101"], int64(9900))
+	assert.That(t, "room-102 price must be 9900", prices["room-102"], int64(9900))
 }

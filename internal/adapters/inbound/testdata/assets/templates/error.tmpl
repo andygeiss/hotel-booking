@@ -1,0 +1,11 @@
+{{ define "error" }}<!DOCTYPE html>
+<html>
+<head><title>{{ .Title }}</title></head>
+<body>
+<h1>{{ .ErrorTitle }}</h1>
+<p>AppName: {{ .AppName }}</p>
+<p>Message: {{ .ErrorMessage }}</p>
+<p>Details: {{ .ErrorDetails }}</p>
+</body>
+</html>
+{{ end }}

@@ -1,0 +1,22 @@
+{{ define "reservations" }}<!DOCTYPE html>
+<html>
+<head><title>{{ .Title }}</title></head>
+<body>
+<h1>Reservations</h1>
+<p>AppName: {{ .AppName }}</p>
+<p>Session: {{ .SessionID }}</p>
+<ul>
+{{ range .Reservations }}
+<li>
+  <span class="id">{{ .ID }}</span>
+  <span class="room">{{ .RoomID }}</span>
+  <span class="checkin">{{ .CheckIn }}</span>
+  <span class="checkout">{{ .CheckOut }}</span>
+  <span class="status {{ .StatusClass }}">{{ .Status }}</span>
+  <span class="amount">{{ .TotalAmount }}</span>
+</li>
+{{ end }}
+</ul>
+</body>
+</html>
+{{ end }}

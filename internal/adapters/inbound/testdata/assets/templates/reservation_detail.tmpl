@@ -1,0 +1,29 @@
+{{ define "reservation_detail" }}<!DOCTYPE html>
+<html>
+<head><title>{{ .Title }}</title></head>
+<body>
+<h1>Reservation Detail</h1>
+<p>AppName: {{ .AppName }}</p>
+<p>Session: {{ .SessionID }}</p>
+<div class="reservation">
+  <p class="id">ID: {{ .Reservation.ID }}</p>
+  <p class="room">Room: {{ .Reservation.RoomID }}</p>
+  <p class="checkin">Check-in: {{ .Reservation.CheckIn }}</p>
+  <p class="checkout">Check-out: {{ .Reservation.CheckOut }}</p>
+  <p class="status {{ .Reservation.StatusClass }}">Status: {{ .Reservation.Status }}</p>
+  <p class="amount">Total: {{ .Reservation.TotalAmount }}</p>
+  <p class="created">Created: {{ .Reservation.CreatedAt }}</p>
+  <p class="nights">Nights: {{ .Reservation.Nights }}</p>
+  {{ if .Reservation.CancellationReason }}
+  <p class="cancellation-reason">Cancellation Reason: {{ .Reservation.CancellationReason }}</p>
+  {{ end }}
+  <h2>Guests</h2>
+  <ul>
+  {{ range .Reservation.Guests }}
+    <li>{{ .Name }} - {{ .Email }} - {{ .PhoneNumber }}</li>
+  {{ end }}
+  </ul>
+</div>
+</body>
+</html>
+{{ end }}
