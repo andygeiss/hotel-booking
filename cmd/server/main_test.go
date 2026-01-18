@@ -12,7 +12,6 @@ import (
 
 	"github.com/andygeiss/cloud-native-utils/logging"
 	"github.com/andygeiss/cloud-native-utils/messaging"
-	"github.com/andygeiss/cloud-native-utils/web"
 	"github.com/andygeiss/hotel-booking/internal/adapters/inbound"
 	"github.com/andygeiss/hotel-booking/internal/adapters/outbound"
 	"github.com/andygeiss/hotel-booking/internal/domain/orchestration"
@@ -78,7 +77,12 @@ func Benchmark_Server_Integration_Liveness_Should_Respond_Fast(b *testing.B) {
 	ctx := context.Background()
 	logger := logging.NewJsonLogger()
 	reservationService := createBenchReservationService()
-	mux := inbound.Route(ctx, efs, logger, reservationService)
+	mux := inbound.Route(inbound.RouterConfig{
+		Ctx:                ctx,
+		EFS:                efs,
+		Logger:             logger,
+		ReservationService: reservationService,
+	})
 	server := httptest.NewServer(mux)
 	defer server.Close()
 
@@ -98,7 +102,12 @@ func Benchmark_Server_Integration_Static_CSS_Should_Serve_Fast(b *testing.B) {
 	ctx := context.Background()
 	logger := logging.NewJsonLogger()
 	reservationService := createBenchReservationService()
-	mux := inbound.Route(ctx, efs, logger, reservationService)
+	mux := inbound.Route(inbound.RouterConfig{
+		Ctx:                ctx,
+		EFS:                efs,
+		Logger:             logger,
+		ReservationService: reservationService,
+	})
 	server := httptest.NewServer(mux)
 	defer server.Close()
 
@@ -118,7 +127,12 @@ func Benchmark_Server_Integration_Login_Page_Should_Render_Fast(b *testing.B) {
 	ctx := context.Background()
 	logger := logging.NewJsonLogger()
 	reservationService := createBenchReservationService()
-	mux := inbound.Route(ctx, efs, logger, reservationService)
+	mux := inbound.Route(inbound.RouterConfig{
+		Ctx:                ctx,
+		EFS:                efs,
+		Logger:             logger,
+		ReservationService: reservationService,
+	})
 	server := httptest.NewServer(mux)
 	defer server.Close()
 
@@ -141,12 +155,17 @@ func Benchmark_Server_Integration_MCP_Tools_List_Should_Be_Fast(b *testing.B) {
 	paymentService := createBenchPaymentService()
 	availabilityChecker := outbound.NewRepositoryAvailabilityChecker(newMockReservationRepository())
 
-	mux := inbound.Route(ctx, efs, logger, reservationService)
-
-	// Add MCP endpoint with tools registered.
+	// Build MCP server with tools registered.
 	mcpServer := buildMCPServer(reservationService, availabilityChecker, paymentService)
-	mcpHandler := web.NewMCPHandler(mcpServer)
-	mux.Handle("POST /mcp", logging.WithLogging(logger, mcpHandler.Handler()))
+
+	mux := inbound.Route(inbound.RouterConfig{
+		Ctx:                ctx,
+		EFS:                efs,
+		Logger:             logger,
+		ReservationService: reservationService,
+		MCPServer:          mcpServer,
+		// Verifier is nil - no auth for benchmarks
+	})
 
 	server := httptest.NewServer(mux)
 	defer server.Close()

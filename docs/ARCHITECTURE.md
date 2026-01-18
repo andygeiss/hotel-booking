@@ -64,7 +64,7 @@ This system manages hotel room reservations and associated payments. It demonstr
 
 ```go
 require (
-    github.com/andygeiss/cloud-native-utils v0.5.5  // Logging, messaging, web, templating, MCP
+    github.com/andygeiss/cloud-native-utils v0.5.6  // Logging, messaging, web, templating, MCP
     github.com/jackc/pgx/v5 v5.8.0                  // PostgreSQL driver
 )
 ```
@@ -138,7 +138,7 @@ hotel-booking/
 ├── internal/
 │   ├── adapters/
 │   │   ├── inbound/                # HTTP handlers, event subscribers
-│   │   │   ├── router.go           # HTTP route definitions
+│   │   │   ├── router.go           # HTTP route definitions, RouterConfig
 │   │   │   ├── http_*.go           # HTTP handler implementations
 │   │   │   └── event_subscriber.go # Event subscription adapter
 │   │   └── outbound/               # Repository implementations, gateways
@@ -738,6 +738,37 @@ The `Payment` aggregate contains a `ReservationID` field but this is **not** a d
 | GET | `/liveness` | (built-in) | No | Health check |
 | GET | `/readiness` | (built-in) | No | Readiness check |
 
+### Router Configuration
+
+All HTTP routing is configured through the `RouterConfig` struct in `internal/adapters/inbound/router.go`:
+
+```go
+type RouterConfig struct {
+    Ctx                context.Context       // Route initialization context
+    EFS                fs.FS                 // Embedded static assets and templates
+    Logger             *slog.Logger          // Request logging middleware
+    ReservationService *reservation.Service  // Reservation domain operations
+    MCPServer          *mcp.Server           // MCP endpoint (optional, nil to disable)
+    Verifier           *oidc.IDTokenVerifier // Bearer auth (required if MCPServer set)
+}
+```
+
+**Usage in main.go:**
+```go
+mcpServer := buildMCPServer(reservationService, availabilityChecker, paymentService)
+
+mux := inbound.Route(inbound.RouterConfig{
+    Ctx:                ctx,
+    EFS:                efs,
+    Logger:             logger,
+    ReservationService: reservationService,
+    MCPServer:          mcpServer,
+    Verifier:           verifier,
+})
+```
+
+This pattern consolidates all routing dependencies and keeps endpoint registration in one place. The MCP endpoint is only registered when `MCPServer` is non-nil, and Bearer token authentication is only applied when `Verifier` is also provided.
+
 ### View Response Pattern
 
 Each view handler defines its own response struct:
@@ -1281,7 +1312,7 @@ var efs embed.FS
 - **Keycloak** provides OIDC/OAuth2 authentication
 - Sessions managed via `cloud-native-utils/web` package
 - Protected routes use `web.WithAuth` middleware
-- MCP endpoint uses OAuth 2.1 Bearer token authentication via `WithBearerAuth` middleware
+- MCP endpoint uses OAuth 2.1 Bearer token authentication via `web.WithBearerAuth` middleware from `cloud-native-utils` (v0.5.6+)
 
 ### Keycloak Configuration
 

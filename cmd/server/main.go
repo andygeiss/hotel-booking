@@ -128,13 +128,18 @@ func main() {
 	mcpClientID := env.Get("MCP_CLIENT_ID", "hotel-booking-mcp")
 	verifier := provider.Verifier(&oidc.Config{ClientID: mcpClientID})
 
-	// Create a new service with the configuration.
-	mux := inbound.Route(ctx, efs, logger, reservationService)
-
-	// Add MCP endpoint with OAuth 2.1 Bearer token authentication.
+	// Build the MCP server with all tools registered.
 	mcpServer := buildMCPServer(reservationService, availabilityChecker, paymentService)
-	mcpHandler := web.NewMCPHandler(mcpServer)
-	mux.Handle("POST /mcp", logging.WithLogging(logger, inbound.WithBearerAuth(verifier, mcpHandler.Handler())))
+
+	// Create router with all dependencies via RouterConfig.
+	mux := inbound.Route(inbound.RouterConfig{
+		Ctx:                ctx,
+		EFS:                efs,
+		Logger:             logger,
+		ReservationService: reservationService,
+		MCPServer:          mcpServer,
+		Verifier:           verifier,
+	})
 
 	srv := web.NewServer(mux)
 	defer func() { _ = srv.Close() }()

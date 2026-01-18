@@ -9,14 +9,18 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/andygeiss/cloud-native-utils/assert"
+	"github.com/andygeiss/cloud-native-utils/mcp"
 	"github.com/andygeiss/cloud-native-utils/messaging"
 	"github.com/andygeiss/hotel-booking/internal/adapters/inbound"
 	"github.com/andygeiss/hotel-booking/internal/adapters/outbound"
 	"github.com/andygeiss/hotel-booking/internal/domain/reservation"
 )
+
+// Note: containsString helper is defined in http_index_test.go and shared across the test package
 
 // ============================================================================
 // Test Assets
@@ -101,7 +105,12 @@ func Test_Route_Should_Return_Non_Nil_Mux(t *testing.T) {
 	reservationService := createTestReservationService(t)
 
 	// Act
-	mux := inbound.Route(ctx, getRouterTestFS(t), logger, reservationService)
+	mux := inbound.Route(inbound.RouterConfig{
+		Ctx:                ctx,
+		EFS:                getRouterTestFS(t),
+		Logger:             logger,
+		ReservationService: reservationService,
+	})
 
 	// Assert
 	assert.That(t, "mux must not be nil", mux != nil, true)
@@ -115,7 +124,12 @@ func Test_Route_Liveness_Endpoint_Should_Return_200(t *testing.T) {
 	ctx := context.Background()
 	logger := slog.Default()
 	reservationService := createTestReservationService(t)
-	mux := inbound.Route(ctx, getRouterTestFS(t), logger, reservationService)
+	mux := inbound.Route(inbound.RouterConfig{
+		Ctx:                ctx,
+		EFS:                getRouterTestFS(t),
+		Logger:             logger,
+		ReservationService: reservationService,
+	})
 
 	req := httptest.NewRequest(http.MethodGet, "/liveness", nil)
 	rec := httptest.NewRecorder()
@@ -135,7 +149,12 @@ func Test_Route_Readiness_Endpoint_Should_Return_200(t *testing.T) {
 	ctx := context.Background()
 	logger := slog.Default()
 	reservationService := createTestReservationService(t)
-	mux := inbound.Route(ctx, getRouterTestFS(t), logger, reservationService)
+	mux := inbound.Route(inbound.RouterConfig{
+		Ctx:                ctx,
+		EFS:                getRouterTestFS(t),
+		Logger:             logger,
+		ReservationService: reservationService,
+	})
 
 	req := httptest.NewRequest(http.MethodGet, "/readiness", nil)
 	rec := httptest.NewRecorder()
@@ -155,7 +174,12 @@ func Test_Route_UI_Endpoint_Without_Session_Should_Redirect_To_Login(t *testing.
 	ctx := context.Background()
 	logger := slog.Default()
 	reservationService := createTestReservationService(t)
-	mux := inbound.Route(ctx, getRouterTestFS(t), logger, reservationService)
+	mux := inbound.Route(inbound.RouterConfig{
+		Ctx:                ctx,
+		EFS:                getRouterTestFS(t),
+		Logger:             logger,
+		ReservationService: reservationService,
+	})
 
 	req := httptest.NewRequest(http.MethodGet, "/ui/", nil)
 	rec := httptest.NewRecorder()
@@ -177,7 +201,12 @@ func Test_Route_Login_Endpoint_Should_Return_200(t *testing.T) {
 	ctx := context.Background()
 	logger := slog.Default()
 	reservationService := createTestReservationService(t)
-	mux := inbound.Route(ctx, getRouterTestFS(t), logger, reservationService)
+	mux := inbound.Route(inbound.RouterConfig{
+		Ctx:                ctx,
+		EFS:                getRouterTestFS(t),
+		Logger:             logger,
+		ReservationService: reservationService,
+	})
 
 	req := httptest.NewRequest(http.MethodGet, "/ui/login", nil)
 	rec := httptest.NewRecorder()
@@ -197,7 +226,12 @@ func Test_Route_Login_Endpoint_Should_Return_HTML_Content(t *testing.T) {
 	ctx := context.Background()
 	logger := slog.Default()
 	reservationService := createTestReservationService(t)
-	mux := inbound.Route(ctx, getRouterTestFS(t), logger, reservationService)
+	mux := inbound.Route(inbound.RouterConfig{
+		Ctx:                ctx,
+		EFS:                getRouterTestFS(t),
+		Logger:             logger,
+		ReservationService: reservationService,
+	})
 
 	req := httptest.NewRequest(http.MethodGet, "/ui/login", nil)
 	rec := httptest.NewRecorder()
@@ -219,7 +253,12 @@ func Test_Route_Session_Endpoint_Without_Valid_Session_Should_Redirect_To_Login(
 	ctx := context.Background()
 	logger := slog.Default()
 	reservationService := createTestReservationService(t)
-	mux := inbound.Route(ctx, getRouterTestFS(t), logger, reservationService)
+	mux := inbound.Route(inbound.RouterConfig{
+		Ctx:                ctx,
+		EFS:                getRouterTestFS(t),
+		Logger:             logger,
+		ReservationService: reservationService,
+	})
 
 	// Note: Session endpoints with invalid/unknown session IDs redirect to login
 	// The WithAuth middleware handles session validation and redirects unauthenticated requests
@@ -241,7 +280,12 @@ func Test_Route_Session_Endpoint_Without_Trailing_Slash_Should_Redirect_To_Login
 	ctx := context.Background()
 	logger := slog.Default()
 	reservationService := createTestReservationService(t)
-	mux := inbound.Route(ctx, getRouterTestFS(t), logger, reservationService)
+	mux := inbound.Route(inbound.RouterConfig{
+		Ctx:                ctx,
+		EFS:                getRouterTestFS(t),
+		Logger:             logger,
+		ReservationService: reservationService,
+	})
 
 	// Note: Session endpoints with invalid/unknown session IDs redirect to login
 	// The WithAuth middleware handles session validation and redirects unauthenticated requests
@@ -263,7 +307,12 @@ func Test_Route_Unknown_Endpoint_Should_Return_404(t *testing.T) {
 	ctx := context.Background()
 	logger := slog.Default()
 	reservationService := createTestReservationService(t)
-	mux := inbound.Route(ctx, getRouterTestFS(t), logger, reservationService)
+	mux := inbound.Route(inbound.RouterConfig{
+		Ctx:                ctx,
+		EFS:                getRouterTestFS(t),
+		Logger:             logger,
+		ReservationService: reservationService,
+	})
 
 	req := httptest.NewRequest(http.MethodGet, "/unknown/path", nil)
 	rec := httptest.NewRecorder()
@@ -273,4 +322,65 @@ func Test_Route_Unknown_Endpoint_Should_Return_404(t *testing.T) {
 
 	// Assert
 	assert.That(t, "status code must be 404", rec.Code, http.StatusNotFound)
+}
+
+// ============================================================================
+// MCP Endpoint Tests
+// ============================================================================
+
+func Test_Route_MCP_Endpoint_Without_MCPServer_Should_Return_404(t *testing.T) {
+	// Arrange
+	t.Setenv("APP_NAME", "TestApp")
+	t.Setenv("APP_DESCRIPTION", "Test Description")
+
+	ctx := context.Background()
+	logger := slog.Default()
+	reservationService := createTestReservationService(t)
+	mux := inbound.Route(inbound.RouterConfig{
+		Ctx:                ctx,
+		EFS:                getRouterTestFS(t),
+		Logger:             logger,
+		ReservationService: reservationService,
+		// MCPServer is nil - endpoint should not be registered
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/mcp", nil)
+	rec := httptest.NewRecorder()
+
+	// Act
+	mux.ServeHTTP(rec, req)
+
+	// Assert
+	assert.That(t, "status code must be 404", rec.Code, http.StatusNotFound)
+}
+
+func Test_Route_MCP_Endpoint_With_MCPServer_Should_Return_200(t *testing.T) {
+	// Arrange
+	t.Setenv("APP_NAME", "TestApp")
+	t.Setenv("APP_DESCRIPTION", "Test Description")
+
+	ctx := context.Background()
+	logger := slog.Default()
+	reservationService := createTestReservationService(t)
+	mcpServer := mcp.NewServer("test-server", "1.0.0")
+
+	mux := inbound.Route(inbound.RouterConfig{
+		Ctx:                ctx,
+		EFS:                getRouterTestFS(t),
+		Logger:             logger,
+		ReservationService: reservationService,
+		MCPServer:          mcpServer,
+		// Verifier is nil - no auth required for unit test
+	})
+
+	initReq := `{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}}`
+	req := httptest.NewRequest(http.MethodPost, "/mcp", strings.NewReader(initReq))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+
+	// Act
+	mux.ServeHTTP(rec, req)
+
+	// Assert
+	assert.That(t, "status code must be 200", rec.Code, http.StatusOK)
 }

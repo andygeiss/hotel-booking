@@ -3,8 +3,7 @@ module github.com/andygeiss/hotel-booking
 go 1.25.5
 
 require (
-	github.com/andygeiss/assert v0.0.11
-	github.com/andygeiss/cloud-native-utils v0.5.5
+	github.com/andygeiss/cloud-native-utils v0.5.6
 	github.com/coreos/go-oidc/v3 v3.17.0
 	github.com/jackc/pgx/v5 v5.8.0
 )
