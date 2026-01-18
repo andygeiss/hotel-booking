@@ -775,6 +775,95 @@ if r.Header.Get("HX-Request") == "true" {
 http.Redirect(w, r, "/ui/reservations", http.StatusSeeOther)
 ```
 
+### MCP Tools
+
+The MCP (Model Context Protocol) endpoint exposes domain functionality to AI models. Tools are defined in each bounded context following the same pattern as `events.go` and `ports.go`.
+
+**Architecture:**
+```
+internal/domain/reservation/
+├── tools.go          # MCP tools for reservation operations
+
+internal/domain/payment/
+├── tools.go          # MCP tools for payment operations
+```
+
+**Tool Registration in `main.go`:**
+```go
+func buildMCPServer(
+    reservationService *reservation.Service,
+    availabilityChecker reservation.AvailabilityChecker,
+    paymentService *payment.Service,
+) *mcp.Server {
+    server := mcp.NewServer(
+        env.Get("APP_SHORTNAME", "mcp-server"),
+        env.Get("APP_VERSION", "1.0.0"),
+    )
+
+    reservation.RegisterTools(server, reservationService, availabilityChecker)
+    payment.RegisterTools(server, paymentService)
+
+    return server
+}
+```
+
+**Available Tools:**
+
+| Tool | Context | Description |
+|------|---------|-------------|
+| `get_reservation` | Reservation | Get reservation details by ID |
+| `list_reservations` | Reservation | List all reservations for a guest |
+| `cancel_reservation` | Reservation | Cancel a reservation with reason |
+| `check_availability` | Reservation | Check room availability for date range |
+| `get_payment` | Payment | Get payment details by ID |
+| `capture_payment` | Payment | Capture an authorized payment |
+| `refund_payment` | Payment | Refund a captured payment |
+
+**Tool Implementation Pattern:**
+```go
+func newGetReservationTool(service *Service) mcp.Tool {
+    return mcp.NewTool(
+        "get_reservation",
+        "Get reservation details by ID.",
+        mcp.NewObjectSchema(
+            map[string]mcp.Property{
+                "id": mcp.NewStringProperty("The reservation ID"),
+            },
+            []string{"id"},
+        ),
+        func(ctx context.Context, params mcp.ToolsCallParams) (mcp.ToolsCallResult, error) {
+            id, _ := params.Arguments["id"].(string)
+            reservation, err := service.GetReservation(ctx, ReservationID(id))
+            if err != nil {
+                return mcp.ToolsCallResult{}, err
+            }
+            data, _ := json.MarshalIndent(reservation, "", "  ")
+            return mcp.ToolsCallResult{
+                Content: []mcp.ContentBlock{mcp.NewTextContent(string(data))},
+            }, nil
+        },
+    )
+}
+```
+
+**Testing MCP Tools:**
+```bash
+# Initialize MCP session
+curl -X POST http://localhost:8080/mcp \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}}'
+
+# List available tools
+curl -X POST http://localhost:8080/mcp \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":2,"method":"tools/list"}'
+
+# Call a tool
+curl -X POST http://localhost:8080/mcp \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"check_availability","arguments":{"room_id":"room-101","check_in":"2024-06-01T14:00:00Z","check_out":"2024-06-05T11:00:00Z"}}}'
+```
+
 ---
 
 ## Testing Strategy
@@ -788,7 +877,17 @@ internal/domain/reservation/
 ├── aggregate.go
 ├── aggregate_test.go      # Aggregate unit tests
 ├── service.go
-└── service_test.go        # Service integration tests
+├── service_test.go        # Service integration tests
+├── tools.go
+└── tools_test.go          # MCP tools tests
+
+internal/domain/payment/
+├── aggregate.go
+├── aggregate_test.go      # Aggregate unit tests
+├── service.go
+├── service_test.go        # Service integration tests
+├── tools.go
+└── tools_test.go          # MCP tools tests
 
 internal/adapters/inbound/
 ├── router.go
@@ -1003,7 +1102,8 @@ internal/domain/newcontext/
 ├── entities.go
 ├── ports.go
 ├── events.go
-└── service.go
+├── service.go
+└── tools.go          # MCP tools (optional)
 ```
 
 2. Create database migration with key/value schema:
@@ -1035,6 +1135,19 @@ postgres-newcontext:
 newcontextDB, _ := sql.Open("pgx", newcontextDSN)
 newcontextRepo := resource.NewPostgresAccess[newcontext.ID, newcontext.Aggregate](newcontextDB)
 newcontextService := newcontext.NewService(newcontextRepo, publisher)
+```
+
+5. (Optional) Register MCP tools:
+
+```go
+// In tools.go
+func RegisterTools(server *mcp.Server, service *Service) {
+    server.RegisterTool(newGetTool(service))
+    // ... more tools
+}
+
+// In main.go buildMCPServer function
+newcontext.RegisterTools(server, newcontextService)
 ```
 
 ### Implementing a New Outbound Adapter

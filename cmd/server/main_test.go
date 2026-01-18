@@ -6,11 +6,13 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/andygeiss/cloud-native-utils/logging"
 	"github.com/andygeiss/cloud-native-utils/messaging"
+	"github.com/andygeiss/cloud-native-utils/web"
 	"github.com/andygeiss/hotel-booking/internal/adapters/inbound"
 	"github.com/andygeiss/hotel-booking/internal/adapters/outbound"
 	"github.com/andygeiss/hotel-booking/internal/domain/orchestration"
@@ -126,6 +128,44 @@ func Benchmark_Server_Integration_Login_Page_Should_Render_Fast(b *testing.B) {
 
 	for b.Loop() {
 		resp, _ := client.Get(server.URL + "/ui/login")
+		if resp != nil {
+			_ = resp.Body.Close()
+		}
+	}
+}
+
+func Benchmark_Server_Integration_MCP_Tools_List_Should_Be_Fast(b *testing.B) {
+	ctx := context.Background()
+	logger := logging.NewJsonLogger()
+	reservationService := createBenchReservationService()
+	paymentService := createBenchPaymentService()
+	availabilityChecker := outbound.NewRepositoryAvailabilityChecker(newMockReservationRepository())
+
+	mux := inbound.Route(ctx, efs, logger, reservationService)
+
+	// Add MCP endpoint with tools registered.
+	mcpServer := buildMCPServer(reservationService, availabilityChecker, paymentService)
+	mcpHandler := web.NewMCPHandler(mcpServer)
+	mux.Handle("POST /mcp", logging.WithLogging(logger, mcpHandler.Handler()))
+
+	server := httptest.NewServer(mux)
+	defer server.Close()
+
+	client := &http.Client{
+		Timeout: 5 * time.Second,
+	}
+
+	// Initialize MCP session first.
+	initReq := `{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"bench","version":"1.0"}}}`
+	resp, _ := client.Post(server.URL+"/mcp", "application/json", strings.NewReader(initReq))
+	if resp != nil {
+		_ = resp.Body.Close()
+	}
+
+	toolsListReq := `{"jsonrpc":"2.0","id":2,"method":"tools/list"}`
+
+	for b.Loop() {
+		resp, _ := client.Post(server.URL+"/mcp", "application/json", strings.NewReader(toolsListReq))
 		if resp != nil {
 			_ = resp.Body.Close()
 		}

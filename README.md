@@ -268,13 +268,15 @@ hotel-booking/
 │       │   ├── entities.go       # DateRange, GuestInfo
 │       │   ├── events.go         # Domain events
 │       │   ├── ports.go          # Interface definitions
-│       │   └── service.go        # ReservationService
+│       │   ├── service.go        # ReservationService
+│       │   └── tools.go          # MCP tools
 │       ├── payment/              # Payment bounded context
 │       │   ├── aggregate.go      # Payment aggregate + status
 │       │   ├── entities.go       # PaymentAttempt
 │       │   ├── events.go         # Domain events
 │       │   ├── ports.go          # Interface definitions
-│       │   └── service.go        # PaymentService
+│       │   ├── service.go        # PaymentService
+│       │   └── tools.go          # MCP tools
 │       └── orchestration/        # Cross-context coordination
 │           ├── booking_service.go    # Saga coordinator
 │           ├── event_handlers.go     # Event subscriptions

@@ -27,13 +27,20 @@ import (
 var efs embed.FS
 
 // buildMCPServer creates the MCP server with all tools registered.
-func buildMCPServer() *mcp.Server {
+func buildMCPServer(
+	reservationService *reservation.Service,
+	availabilityChecker reservation.AvailabilityChecker,
+	paymentService *payment.Service,
+) *mcp.Server {
 	server := mcp.NewServer(
 		env.Get("APP_SHORTNAME", "mcp-server"),
 		env.Get("APP_VERSION", "1.0.0"),
 	)
-	// TODO: register MCP tools here
-	// server.RegisterTool(tool)
+
+	// Register tools from each bounded context.
+	reservation.RegisterTools(server, reservationService, availabilityChecker)
+	payment.RegisterTools(server, paymentService)
+
 	return server
 }
 
@@ -109,7 +116,7 @@ func main() {
 	mux := inbound.Route(ctx, efs, logger, reservationService)
 
 	// Add MCP endpoint for AI tool integration.
-	mcpServer := buildMCPServer()
+	mcpServer := buildMCPServer(reservationService, availabilityChecker, paymentService)
 	mcpHandler := web.NewMCPHandler(mcpServer)
 	mux.Handle("POST /mcp", logging.WithLogging(logger, mcpHandler.Handler()))
 
