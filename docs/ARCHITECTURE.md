@@ -270,7 +270,7 @@ type Reservation struct {
 
 ```
 ┌─────────┐     Confirm()      ┌───────────┐     Activate()     ┌────────┐     Complete()    ┌───────────┐
-│ pending │──────────────────► │ confirmed │───────────────────►│ active │─────────────────►│ completed │
+│ pending │──────────────────► │ confirmed │───────────────────►│ active │──────────────────►│ completed │
 └────┬────┘                    └─────┬─────┘                    └────────┘                   └───────────┘
      │                               │
      │ Cancel()                      │ Cancel()
@@ -310,7 +310,7 @@ type Payment struct {
 ```
 ┌─────────┐    Authorize()    ┌────────────┐    Capture()    ┌──────────┐
 │ pending │──────────────────►│ authorized │────────────────►│ captured │
-└────┬────┘                   └─────┬──────┘                 └────┬─────┘
+└────┬────┘                   └─────┬──────┘                 └─────┬────┘
      │                              │                              │
      │ Fail()                       │ Fail()                       │ Refund()
      ▼                              ▼                              ▼
@@ -610,7 +610,7 @@ func (e *EventCreated) WithReservationID(id ReservationID) *EventCreated {
 │   │                     │        ConfirmReservation                      │              │
 │   │                     │                        │                       │              │
 │   │                     │  reservation.confirmed │                       │              │
-│   │                     │──────────────────────────────────────────────►│              │
+│   │                     │───────────────────────────────────────────────►│              │
 │   │                     │                        │                       │              │
 │   │◄────────────────────│                        │    SendNotification   │              │
 │   │   Booking Complete  │                        │                       │              │
