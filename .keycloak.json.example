@@ -10,6 +10,16 @@
       "secret": "CHANGE_ME_LOCAL_SECRET",
       "serviceAccountsEnabled": true,
       "standardFlowEnabled": true
+    },
+    {
+      "clientId": "hotel-booking-mcp",
+      "directAccessGrantsEnabled": true,
+      "name": "hotel-booking-mcp",
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "CHANGE_ME_LOCAL_SECRET",
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false
     }
   ],
   "enabled": true,

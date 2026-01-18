@@ -3,12 +3,13 @@ module github.com/andygeiss/hotel-booking
 go 1.25.5
 
 require (
+	github.com/andygeiss/assert v0.0.11
 	github.com/andygeiss/cloud-native-utils v0.5.5
+	github.com/coreos/go-oidc/v3 v3.17.0
 	github.com/jackc/pgx/v5 v5.8.0
 )
 
 require (
-	github.com/coreos/go-oidc/v3 v3.17.0 // indirect
 	github.com/go-jose/go-jose/v4 v4.1.3 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect

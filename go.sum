@@ -1,3 +1,5 @@
+github.com/andygeiss/assert v0.0.11 h1:FNN6QFI7nHujsnvjPBTC2QBqe/uhZcfpBDlLKFh1cTM=
+github.com/andygeiss/assert v0.0.11/go.mod h1:fCwXr8GkRVuJWDwiCS73+NTcHXyhQSx4uqV/0Fl5T3g=
 github.com/andygeiss/cloud-native-utils v0.5.5 h1:hRCqIH7wk0KHgUHNkoLi/EZY6o38dsCHo5Jgk5G8Kfo=
 github.com/andygeiss/cloud-native-utils v0.5.5/go.mod h1:iGPEgj+kUac9xHH2L1Uoxv1/7PjcuhIjh/aIKc8RRR8=
 github.com/coreos/go-oidc/v3 v3.17.0 h1:hWBGaQfbi0iVviX4ibC7bk8OKT5qNr4klBaCHVNvehc=

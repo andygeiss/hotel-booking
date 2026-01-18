@@ -734,7 +734,7 @@ The `Payment` aggregate contains a `ReservationID` field but this is **not** a d
 | POST | `/ui/reservations/{id}/cancel` | `HttpCancelReservation` | Yes | Cancel reservation |
 | GET | `/manifest.json` | `HttpViewManifest` | No | PWA manifest |
 | GET | `/sw.js` | `HttpViewServiceWorker` | No | Service worker |
-| POST | `/mcp` | `mcpHandler.Handler()` | No | MCP JSON-RPC endpoint |
+| POST | `/mcp` | `mcpHandler.Handler()` | Bearer | MCP JSON-RPC endpoint (OAuth 2.1) |
 | GET | `/liveness` | (built-in) | No | Health check |
 | GET | `/readiness` | (built-in) | No | Readiness check |
 
@@ -847,22 +847,40 @@ func newGetReservationTool(service *Service) mcp.Tool {
 ```
 
 **Testing MCP Tools:**
+
+The MCP endpoint requires OAuth 2.1 Bearer token authentication. First obtain a token from Keycloak:
+
 ```bash
+# Get access token from Keycloak (service account / client credentials flow)
+TOKEN=$(curl -s -X POST "http://localhost:8180/realms/local/protocol/openid-connect/token" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "client_id=hotel-booking-mcp" \
+  -d "grant_type=client_credentials" \
+  -d "client_secret=<your-client-secret>" | jq -r '.access_token')
+
 # Initialize MCP session
 curl -X POST http://localhost:8080/mcp \
+  -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}}'
 
 # List available tools
 curl -X POST http://localhost:8080/mcp \
+  -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc":"2.0","id":2,"method":"tools/list"}'
 
 # Call a tool
 curl -X POST http://localhost:8080/mcp \
+  -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"check_availability","arguments":{"room_id":"room-101","check_in":"2024-06-01T14:00:00Z","check_out":"2024-06-05T11:00:00Z"}}}'
 ```
+
+**Note:** The `hotel-booking-mcp` client must be configured in Keycloak with:
+- Access Type: confidential
+- Service Accounts Enabled: Yes
+- Valid scopes: openid, email, profile
 
 ---
 
@@ -1240,6 +1258,10 @@ services:
 | `PAYMENT_DB_USER` | `payment` | Payment DB user |
 | `PAYMENT_DB_PASSWORD` | `payment_secret` | Payment DB password |
 | `PAYMENT_DB_NAME` | `payment_db` | Payment DB name |
+| `OIDC_ISSUER` | `http://localhost:8180/realms/local` | Keycloak OIDC issuer URL |
+| `OIDC_CLIENT_ID` | `hotel-booking` | OIDC client ID for web UI |
+| `OIDC_CLIENT_SECRET` | - | OIDC client secret |
+| `MCP_CLIENT_ID` | `hotel-booking-mcp` | OAuth client ID for MCP endpoint |
 
 ### Embedded Filesystem
 
@@ -1259,6 +1281,18 @@ var efs embed.FS
 - **Keycloak** provides OIDC/OAuth2 authentication
 - Sessions managed via `cloud-native-utils/web` package
 - Protected routes use `web.WithAuth` middleware
+- MCP endpoint uses OAuth 2.1 Bearer token authentication via `WithBearerAuth` middleware
+
+### Keycloak Configuration
+
+The `.keycloak.json` file defines two OAuth clients:
+
+| Client ID | Purpose | Flow |
+|-----------|---------|------|
+| `hotel-booking` | Web UI authentication | Authorization Code (browser) |
+| `hotel-booking-mcp` | MCP endpoint authentication | Client Credentials (machine-to-machine) |
+
+Both clients share the same secret (managed by `tools/change_me_local_secret.py`).
 
 ### Authorization
 

@@ -20,6 +20,7 @@ import (
 	"github.com/andygeiss/hotel-booking/internal/domain/orchestration"
 	"github.com/andygeiss/hotel-booking/internal/domain/payment"
 	"github.com/andygeiss/hotel-booking/internal/domain/reservation"
+	"github.com/coreos/go-oidc/v3/oidc"
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
@@ -112,13 +113,28 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Initialize OIDC provider for MCP token verification.
+	// This connects to Keycloak to validate Bearer tokens for the MCP endpoint.
+	// Reuses the existing OIDC_ISSUER environment variable for consistency.
+	oidcIssuer := env.Get("OIDC_ISSUER", "http://localhost:8180/realms/local")
+	provider, err := oidc.NewProvider(ctx, oidcIssuer)
+	if err != nil {
+		logger.Error("failed to initialize OIDC provider", "error", err)
+		os.Exit(1)
+	}
+
+	// Configure token verifier for MCP client.
+	// Uses a separate client ID for machine-to-machine MCP authentication.
+	mcpClientID := env.Get("MCP_CLIENT_ID", "hotel-booking-mcp")
+	verifier := provider.Verifier(&oidc.Config{ClientID: mcpClientID})
+
 	// Create a new service with the configuration.
 	mux := inbound.Route(ctx, efs, logger, reservationService)
 
-	// Add MCP endpoint for AI tool integration.
+	// Add MCP endpoint with OAuth 2.1 Bearer token authentication.
 	mcpServer := buildMCPServer(reservationService, availabilityChecker, paymentService)
 	mcpHandler := web.NewMCPHandler(mcpServer)
-	mux.Handle("POST /mcp", logging.WithLogging(logger, mcpHandler.Handler()))
+	mux.Handle("POST /mcp", logging.WithLogging(logger, inbound.WithBearerAuth(verifier, mcpHandler.Handler())))
 
 	srv := web.NewServer(mux)
 	defer func() { _ = srv.Close() }()
