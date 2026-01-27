@@ -1,0 +1,36 @@
+# Git
+.git
+.gitignore
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+
+# Build artifacts
+bin/
+*.exe
+*.test
+*.out
+
+# Documentation
+*.md
+docs/
+LICENSE
+
+# Development files
+.env
+.envrc
+justfile
+Makefile
+
+# Test and profile data
+coverage.out
+*.pprof
+!.cpuprofile.pprof
+
+# Docker
+Dockerfile
+.dockerignore
+docker-compose*.yml
