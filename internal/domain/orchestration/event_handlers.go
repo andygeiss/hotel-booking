@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/andygeiss/cloud-native-utils/messaging"
 	"github.com/andygeiss/cloud-native-utils/service"
@@ -72,8 +73,9 @@ func (h *EventHandlers) handleReservationCreated(msg messaging.Message) (messagi
 
 	ctx := context.Background()
 
-	// Generate a payment ID based on the reservation ID
-	paymentID := payment.PaymentID(fmt.Sprintf("pay-%s", evt.ReservationID))
+	// Generate a payment ID from the reservation's underlying UUID (strip the "res-" prefix
+	// so payment IDs read as "pay-<uuid>" rather than "pay-res-<uuid>").
+	paymentID := payment.PaymentID(fmt.Sprintf("pay-%s", strings.TrimPrefix(string(evt.ReservationID), "res-")))
 
 	// Authorize payment for the reservation
 	_, err := h.paymentService.AuthorizePaymentForReservation(

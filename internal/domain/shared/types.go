@@ -6,11 +6,18 @@ package shared
 import (
 	"fmt"
 	"strings"
+
+	"github.com/andygeiss/cloud-native-utils/security"
 )
 
 // ReservationID is a strongly-typed identifier for reservations.
 // Shared because Payment needs to reference it.
 type ReservationID string
+
+// NewReservationID generates a new ReservationID with the canonical "res-" prefix.
+func NewReservationID() ReservationID {
+	return ReservationID("res-" + security.GenerateID())
+}
 
 // Money represents a monetary value in the smallest currency unit (cents).
 // Shared because both Reservation and Payment use it.
