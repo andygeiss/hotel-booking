@@ -567,17 +567,7 @@ func (e *EventCreated) WithReservationID(id ReservationID) *EventCreated {
 
 ### Event Topics
 
-| Context | Topic | Trigger |
-|---------|-------|---------|
-| Reservation | `reservation.created` | New reservation created |
-| Reservation | `reservation.confirmed` | Payment captured |
-| Reservation | `reservation.activated` | Guest checked in |
-| Reservation | `reservation.completed` | Guest checked out |
-| Reservation | `reservation.cancelled` | Reservation cancelled |
-| Payment | `payment.authorized` | Payment authorization succeeded |
-| Payment | `payment.captured` | Payment finalized |
-| Payment | `payment.failed` | Payment processing failed |
-| Payment | `payment.refunded` | Payment refunded |
+See [API Contracts § Domain Event Topics](./api-contracts.md#domain-event-topics) for the canonical table with publishers, subscribers, and payload schemas. Topic constants are defined in `internal/domain/{reservation,payment}/events.go`.
 
 ### Event Flow
 
@@ -722,21 +712,7 @@ The `Payment` aggregate contains a `ReservationID` field but this is **not** a d
 
 ### HTTP Routes
 
-| Method | Path | Handler | Auth | Description |
-|--------|------|---------|------|-------------|
-| GET | `/ui/` | `HttpViewIndex` | Yes | Dashboard |
-| GET | `/ui/login` | `HttpViewLogin` | No | OIDC login redirect |
-| GET | `/ui/error` | `HttpViewError` | No | Error page |
-| GET | `/ui/reservations` | `HttpViewReservations` | Yes | List reservations |
-| GET | `/ui/reservations/new` | `HttpViewReservationForm` | Yes | New reservation form |
-| POST | `/ui/reservations` | `HttpCreateReservation` | Yes | Create reservation |
-| GET | `/ui/reservations/{id}` | `HttpViewReservationDetail` | Yes | Reservation detail |
-| POST | `/ui/reservations/{id}/cancel` | `HttpCancelReservation` | Yes | Cancel reservation |
-| GET | `/manifest.json` | `HttpViewManifest` | No | PWA manifest |
-| GET | `/sw.js` | `HttpViewServiceWorker` | No | Service worker |
-| POST | `/mcp` | `mcpHandler.Handler()` | Bearer | MCP JSON-RPC endpoint (OAuth 2.1) |
-| GET | `/liveness` | (built-in) | No | Health check |
-| GET | `/readiness` | (built-in) | No | Readiness check |
+See [API Contracts § HTTP Endpoints](./api-contracts.md#http-endpoints) for the canonical route catalog (methods, paths, auth, handlers).
 
 ### Router Configuration
 
@@ -838,17 +814,7 @@ func buildMCPServer(
 }
 ```
 
-**Available Tools:**
-
-| Tool | Context | Description |
-|------|---------|-------------|
-| `get_reservation` | Reservation | Get reservation details by ID |
-| `list_reservations` | Reservation | List all reservations for a guest |
-| `cancel_reservation` | Reservation | Cancel a reservation with reason |
-| `check_availability` | Reservation | Check room availability for date range |
-| `get_payment` | Payment | Get payment details by ID |
-| `capture_payment` | Payment | Capture an authorized payment |
-| `refund_payment` | Payment | Refund a captured payment |
+**Available Tools:** See [API Contracts § MCP Tools](./api-contracts.md#mcp-tools) for the canonical catalog with parameters.
 
 **Tool Implementation Pattern:**
 ```go
@@ -1274,25 +1240,7 @@ services:
 
 ### Environment Variables
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `PORT` | `8080` | HTTP server port |
-| `APP_NAME` | - | Application display name |
-| `APP_SHORTNAME` | - | Short name for Docker image |
-| `RESERVATION_DB_HOST` | `localhost` | Reservation DB host |
-| `RESERVATION_DB_PORT` | `5432` | Reservation DB port |
-| `RESERVATION_DB_USER` | `reservation` | Reservation DB user |
-| `RESERVATION_DB_PASSWORD` | `reservation_secret` | Reservation DB password |
-| `RESERVATION_DB_NAME` | `reservation_db` | Reservation DB name |
-| `PAYMENT_DB_HOST` | `localhost` | Payment DB host |
-| `PAYMENT_DB_PORT` | `5433` | Payment DB port |
-| `PAYMENT_DB_USER` | `payment` | Payment DB user |
-| `PAYMENT_DB_PASSWORD` | `payment_secret` | Payment DB password |
-| `PAYMENT_DB_NAME` | `payment_db` | Payment DB name |
-| `OIDC_ISSUER` | `http://localhost:8180/realms/local` | Keycloak OIDC issuer URL |
-| `OIDC_CLIENT_ID` | `hotel-booking` | OIDC client ID for web UI |
-| `OIDC_CLIENT_SECRET` | - | OIDC client secret |
-| `MCP_CLIENT_ID` | `hotel-booking-mcp` | OAuth client ID for MCP endpoint |
+See [Deployment Guide § Environment Variables](./deployment-guide.md#environment-variables) for the complete, authoritative catalog with defaults and descriptions.
 
 ### Embedded Filesystem
 

@@ -1,0 +1,214 @@
+# Component Inventory
+
+Catalog of every handler, service, adapter, and domain type shipped by the server, grouped by hexagonal role.
+
+---
+
+Architecture narrative lives in [ARCHITECTURE.md](./ARCHITECTURE.md); this inventory is keyed to files and types.
+
+---
+
+## Inbound Adapters (`internal/adapters/inbound/`)
+
+### Router
+
+| Component | File | Role |
+|-----------|------|------|
+| `RouterConfig` struct | `router.go` | Consolidates all routing dependencies (Ctx, EFS, Logger, MCPServer, ReservationService, Verifier) |
+| `Route(RouterConfig) *http.ServeMux` | `router.go` | Builds the full mux; wraps every handler with `logging.WithLogging` and auth where needed |
+
+### HTTP View Handlers (SSR via `cloud-native-utils/templating`)
+
+See [API Contracts § HTTP Endpoints](./api-contracts.md#http-endpoints) for method/path/auth/handler details. All files live under `internal/adapters/inbound/http_*.go`.
+
+All handlers are created by a **factory function** that closes over its dependencies (`templating.Engine`, `reservation.Service`). `APP_NAME`/`APP_DESCRIPTION` are read at closure construction time, not per-request.
+
+### Event Subscription
+
+| Component | File | Role |
+|-----------|------|------|
+| `EventSubscriber` | `event_subscriber.go` | Generic topic → handler bridge using `messaging.Dispatcher`. Decodes JSON payload into a factory-created event type, invokes the domain handler, returns `messaging.MessageState`. |
+
+### View DTOs
+
+- `HttpViewIndexResponse` — session identity for dashboard
+- `HttpViewLoginResponse`, `HttpViewErrorResponse`, `HttpViewManifestResponse`, `HttpViewServiceWorkerResponse`
+- `ReservationListItem`, `HttpViewReservationsResponse`
+- `GuestInfoView`, `ReservationDetailView`, `HttpViewReservationDetailResponse`
+- `RoomOption`, `HttpViewReservationFormResponse`
+- Helpers: `reservationStatusClass(status)` (maps `ReservationStatus` → bootstrap-style CSS class)
+- Form parsing: `reservationFormInput`, `parseReservationForm(r)`
+
+### Embedded Templates (`cmd/server/assets/templates/`)
+
+- `index.tmpl`, `login.tmpl`, `error.tmpl`
+- `reservations.tmpl`, `reservation_form.tmpl`, `reservation_detail.tmpl`
+- `manifest.tmpl`, `sw.tmpl`
+
+Test fixtures live under `internal/adapters/inbound/testdata/assets/templates/` (mirrored names).
+
+---
+
+## Outbound Adapters (`internal/adapters/outbound/`)
+
+| Component | File | Role | Implements |
+|-----------|------|------|------------|
+| `EventPublisher` | `event_publisher.go` | JSON-encodes domain events and publishes to Kafka via `messaging.Dispatcher` | `reservation.EventPublisher`, `payment.EventPublisher` (both are aliases for `event.EventPublisher`) |
+| `RepositoryAvailabilityChecker` | `repository_availability_checker.go` | Implements room availability by scanning all reservations from the repository | `reservation.AvailabilityChecker` |
+| `MockNotificationService` | `mock_notification_service.go` | Logs notification events via `slog` | `orchestration.NotificationService` |
+| `MockPaymentGateway` | `mock_payment_gateway.go` | In-memory simulated gateway with `ShouldFail` + `FailureRate` knobs | `payment.PaymentGateway` |
+
+### Repositories (no local adapter file — wired directly in `main.go`)
+
+- Reservation: `resource.NewPostgresAccess[reservation.ReservationID, reservation.Reservation](reservationDB)`
+- Payment: `resource.NewPostgresAccess[payment.PaymentID, payment.Payment](paymentDB)`
+
+Both rely on the `resource.Access[K, V]` interface from `cloud-native-utils` (`Create`, `Read`, `Update`, `Delete`, `ReadAll`).
+
+---
+
+## Domain — Reservation (`internal/domain/reservation/`)
+
+### Aggregate & Value Objects
+
+- `Reservation` (aggregate root, `aggregate.go`)
+- `DateRange` (value object, `entities.go`)
+- `GuestInfo` (entity inside aggregate, `entities.go`)
+- Local ID types: `GuestID`, `RoomID`
+- Type aliases: `ReservationID = shared.ReservationID`, `Money = shared.Money`
+
+### State Enum
+
+`ReservationStatus`: `StatusPending`, `StatusConfirmed`, `StatusActive`, `StatusCompleted`, `StatusCancelled`
+
+### Errors
+
+`ErrInvalidDateRange`, `ErrCheckInPast`, `ErrMinimumStay`, `ErrInvalidStateTransition`, `ErrCannotCancelNearCheckIn`, `ErrCannotCancelActive`, `ErrCannotCancelCompleted`, `ErrAlreadyCancelled`, `ErrNoGuests`
+
+### Service (`service.go`)
+
+`Service` with dependencies (`reservationRepo`, `availabilityChecker`, `publisher`). Public methods:
+
+- `CreateReservation` — availability check → aggregate → persist → publish `reservation.created`
+- `ConfirmReservation` — load → `Confirm()` → update → publish `reservation.confirmed`
+- `CancelReservation` — load → `Cancel(reason)` → update → publish `reservation.cancelled`
+- `ActivateReservation` / `CompleteReservation` — similar, publish `reservation.activated` / `reservation.completed`
+- `GetReservation`, `ListReservationsByGuest`
+- `ConfirmReservationOnPaymentCaptured`, `CancelReservationOnPaymentFailed` — event-driven entry points
+- Helper: `NewEventCreatedFromValues(...)`
+
+### Events (`events.go`)
+
+Types: `EventCreated`, `EventConfirmed`, `EventActivated`, `EventCompleted`, `EventCancelled`. Topic constants: `EventTopicCreated`, `EventTopicConfirmed`, `EventTopicActivated`, `EventTopicCompleted`, `EventTopicCancelled` (all `reservation.*`).
+
+### Ports (`ports.go`)
+
+- `ReservationRepository = resource.Access[ReservationID, Reservation]`
+- `AvailabilityChecker` (`IsRoomAvailable`, `GetOverlappingReservations`)
+- `EventPublisher = event.EventPublisher`
+
+### MCP Tools (`tools.go`)
+
+`RegisterTools(server, service, checker)` registers:
+
+- `get_reservation`
+- `list_reservations` (by guest email)
+- `cancel_reservation` (requires reason)
+- `check_availability` (room + RFC3339 dates)
+
+---
+
+## Domain — Payment (`internal/domain/payment/`)
+
+### Aggregate & Entity
+
+- `Payment` (aggregate root, `aggregate.go`)
+- `PaymentAttempt` (entity collection inside aggregate, `entities.go`)
+- Local ID: `PaymentID`
+- Type aliases: `ReservationID = shared.ReservationID`, `Money = shared.Money`
+
+### State Enum
+
+`PaymentStatus`: `StatusPending`, `StatusAuthorized`, `StatusCaptured`, `StatusFailed`, `StatusRefunded`
+
+### Errors
+
+`ErrInvalidPaymentTransition`, `ErrAlreadyAuthorized`, `ErrNotAuthorized`, `ErrAlreadyCaptured`, `ErrNotCaptured`, `ErrAlreadyRefunded`, `ErrCannotRefund`
+
+### Service (`service.go`)
+
+- `AuthorizePayment` — creates aggregate → gateway authorize → persist → publish `payment.authorized` (or `payment.failed` on gateway error)
+- `CapturePayment` — load → gateway capture → update → publish `payment.captured` (or `payment.failed`)
+- `RefundPayment` — load → gateway refund → update → publish `payment.refunded`
+- `GetPayment`
+- Event-driven entries: `AuthorizePaymentForReservation`, `CapturePaymentOnAuthorization`
+- Convenience: `NewMoney(amount, currency)` (re-export of `shared.NewMoney`)
+
+### Events (`events.go`)
+
+`EventAuthorized`, `EventCaptured`, `EventFailed`, `EventRefunded`. Topics: `payment.authorized`, `payment.captured`, `payment.failed`, `payment.refunded`.
+
+### Ports (`ports.go`)
+
+- `PaymentRepository = resource.Access[PaymentID, Payment]`
+- `PaymentGateway` (`Authorize`, `Capture`, `Refund`)
+- `EventPublisher = event.EventPublisher`
+
+### MCP Tools (`tools.go`)
+
+- `get_payment`
+- `capture_payment`
+- `refund_payment`
+
+---
+
+## Domain — Orchestration (`internal/domain/orchestration/`)
+
+### Services
+
+| Component | File | Role |
+|-----------|------|------|
+| `BookingService` | `booking_service.go` | Saga coordinator. `InitiateBooking` starts the event-driven flow; `CompleteBooking` runs the saga synchronously (useful for tests). Event callbacks: `OnPaymentAuthorized`, `OnPaymentCaptured`, `OnPaymentFailed`. `CancelBookingWithRefund` handles manual cancellation + notification. |
+| `EventHandlers` | `event_handlers.go` | Subscribes to `reservation.created`, `payment.authorized`, `payment.captured`, `payment.failed` via `messaging.Dispatcher`. Maps events to `BookingService` methods. |
+
+### Port
+
+- `NotificationService` interface (`ports.go`): `SendReservationConfirmation`, `SendCancellationNotice`, `SendPaymentReceipt`
+
+---
+
+## Shared Kernel (`internal/domain/shared/`)
+
+| Type | Kind | Purpose |
+|------|------|---------|
+| `ReservationID` | named string | Cross-context identity |
+| `Money` | value object | `{Currency, Amount}` with `NewMoney`, `FormatAmount` |
+
+---
+
+## Entry Point (`cmd/server/`)
+
+| Component | File | Role |
+|-----------|------|------|
+| `main` | `main.go` | DI wiring, Postgres pools, Kafka dispatcher, OIDC provider + verifier, MCP server, router, HTTP server + graceful shutdown |
+| `buildMCPServer` | `main.go` | Constructs `*mcp.Server` and registers reservation + payment tools |
+| `efs` | `main.go` (`//go:embed assets`) | Embedded filesystem for static assets and templates |
+| Benchmarks | `main_test.go` | PGO profiling coverage: `/liveness`, `/static/css/base.css`, `/ui/login`, `/mcp tools/list`, domain lifecycles |
+
+---
+
+## Third-Party Building Blocks (`github.com/andygeiss/cloud-native-utils v0.5.6`)
+
+Used throughout the codebase:
+
+- `env.Get(key, default)` — typed env lookups (used for every config value)
+- `logging.NewJsonLogger` — structured JSON logger
+- `logging.WithLogging(logger, handler)` — request logging middleware
+- `messaging.Dispatcher`, `messaging.NewExternalDispatcher`, `messaging.NewInternalDispatcher`, `messaging.Message`, `messaging.MessageState`
+- `resource.Access[K, V]`, `resource.NewPostgresAccess[K, V](db)` — key/value aggregate repository
+- `event.Event`, `event.EventPublisher` — domain event contract
+- `mcp.Server`, `mcp.NewTool`, `mcp.NewObjectSchema`, `mcp.NewStringProperty`, `mcp.ContentBlock`, `mcp.NewTextContent`
+- `templating.Engine`, `templating.NewEngine(fs).Parse(glob)` — SSR
+- `web.NewServeMux`, `web.NewServer`, `web.WithAuth`, `web.WithBearerAuth`, `web.NewMCPHandler`, `web.ContextSessionID/Email/Name/Issuer/Subject/Verified`
+- `service.Context`, `service.RegisterOnContextDone`, `service.Wrap`
+- `security.GenerateID()` — random ID generator used for reservation IDs
