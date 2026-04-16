@@ -5,7 +5,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/andygeiss/cloud-native-utils/security"
 	"github.com/andygeiss/cloud-native-utils/templating"
 	"github.com/andygeiss/cloud-native-utils/web"
 	"github.com/andygeiss/hotel-booking/internal/domain/reservation"
@@ -156,7 +155,7 @@ func HttpCreateReservation(e *templating.Engine, reservationService *reservation
 		totalAmount := shared.NewMoney(getRoomPrices()[input.roomID]*int64(nights), "USD")
 		guests := []reservation.GuestInfo{reservation.NewGuestInfo(input.guestName, input.guestEmail, input.guestPhone)}
 
-		_, err := reservationService.CreateReservation(ctx, shared.ReservationID(security.GenerateID()), reservation.GuestID(email), reservation.RoomID(input.roomID), reservation.NewDateRange(input.checkIn, input.checkOut), totalAmount, guests)
+		_, err := reservationService.CreateReservation(ctx, shared.NewReservationID(), reservation.GuestID(email), reservation.RoomID(input.roomID), reservation.NewDateRange(input.checkIn, input.checkOut), totalAmount, guests)
 		if err != nil {
 			renderReservationFormWithError(e, w, r, appName, title, sessionID, err.Error(), input.guestName, input.guestEmail)
 			return

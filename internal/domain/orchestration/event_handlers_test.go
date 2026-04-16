@@ -199,7 +199,7 @@ func Test_HandleReservationCreated_Should_Trigger_Payment_Authorization(t *testi
 	_, _ = svc.dispatcher.triggerEvent(reservation.EventTopicCreated, data)
 
 	// Assert
-	paymentID := payment.PaymentID("pay-res-001")
+	paymentID := payment.PaymentID("pay-001")
 	storedPayment, err := svc.paymentRepo.Read(ctx, paymentID)
 	assert.That(t, "payment must exist", err == nil, true)
 	assert.That(t, "payment must be authorized", storedPayment.Status, payment.StatusAuthorized)

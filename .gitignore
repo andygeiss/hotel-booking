@@ -17,3 +17,11 @@ bin
 # Profiler artifacts
 .coverage.*
 .cpuprofile.*
+
+# BMAD specific folders
+.claude
+_bmad
+_bmad-output
+
+# BMAD workflow state (regenerable; see docs/README.md)
+docs/project-scan-report.json

@@ -2,6 +2,8 @@
 
 ## Documentation Policy
 
+> **Where do I document X?** See [`docs/README.md`](./docs/README.md) for the canonical ownership map across `CLAUDE.md`, `docs/ARCHITECTURE.md`, and the reference catalogs in `docs/`.
+
 ### Update CLAUDE.md when changes affect:
 1. **Architecture** - New patterns, packages, dependencies
 2. **API surface** - New handlers, routes, MCP tools
@@ -14,25 +16,28 @@
 2. **Setup instructions** - New prerequisites, environment variables
 
 ### Documentation Checklist (before commit):
-- [ ] New terms → Ubiquitous Language?
-- [ ] Roadmap item completed → Mark as [x]?
-- [ ] New pattern/gotcha → Add to relevant section?
-- [ ] New HTTP handler → Add to Quick Reference?
-- [ ] New MCP tool → Add to MCP Tools section?
-- [ ] New environment variable → Add to Environment Variables?
+- [ ] New terms → CLAUDE.md § Ubiquitous Language?
+- [ ] Roadmap item completed → Mark as [x] in CLAUDE.md § Roadmap?
+- [ ] New pattern/gotcha → CLAUDE.md § Gotchas?
+- [ ] New HTTP handler → `docs/api-contracts.md`?
+- [ ] New MCP tool → `docs/api-contracts.md`?
+- [ ] New domain error → CLAUDE.md § Domain Errors?
+- [ ] New state transition → `docs/ARCHITECTURE.md` aggregate state machine?
+- [ ] New environment variable → `docs/deployment-guide.md`?
 
 ### Documentation Update Matrix
 
-| Change Type | CLAUDE.md Section | README.md |
-|-------------|-------------------|-----------|
-| New HTTP handler | Quick Reference | - |
-| New MCP tool | MCP Tools | - |
-| New domain error | Domain Errors | - |
-| New state transition | State Machines | - |
-| Feature complete | Roadmap [x] | Features section |
-| New gotcha | Gotchas | - |
-| Architectural decision | Decisions | - |
-| New environment variable | Environment Variables | Setup |
+| Change Type | Canonical Doc | Also touch CLAUDE.md? | README.md |
+|-------------|---------------|-----------------------|-----------|
+| New HTTP handler | `docs/api-contracts.md` | no | - |
+| New MCP tool | `docs/api-contracts.md` | no | - |
+| New domain error | CLAUDE.md § Domain Errors | yes | - |
+| New state transition | `docs/ARCHITECTURE.md` § aggregate | no | - |
+| Feature complete | CLAUDE.md § Roadmap | yes (mark `[x]`) | Features section |
+| New gotcha | CLAUDE.md § Gotchas | yes | - |
+| Architectural decision | CLAUDE.md § Decisions | yes | - |
+| New environment variable | `docs/deployment-guide.md` | no | Setup |
+| New event topic | `docs/api-contracts.md` § Domain Event Topics | no | - |
 
 ---
 
@@ -58,7 +63,7 @@
 | Type | Format | Example |
 |------|--------|---------|
 | ReservationID | `res-{uuid}` | `res-abc123` |
-| PaymentID | `pay-{reservationID}` | `pay-res-abc123` |
+| PaymentID | `pay-{uuid}` (stripping `res-` prefix from ReservationID) | `pay-abc123` |
 | GuestID | Email address | `john@example.com` |
 | RoomID | `room-{number}` | `room-101` |
 
@@ -66,37 +71,7 @@
 
 ## State Machines
 
-### Reservation States
-
-```
-[Pending] ──→ [Confirmed] ──→ [Active] ──→ [Completed]
-    │             │              │
-    ▼             ▼              ▼
-[Cancelled]  [Cancelled]   [Cancelled]
-```
-
-| Transition | Trigger | Validation |
-|------------|---------|------------|
-| Pending → Confirmed | Payment captured | - |
-| Confirmed → Active | Check-in | - |
-| Active → Completed | Check-out | - |
-| * → Cancelled | User request / Payment failed | 24h before check-in (user), anytime (payment failure) |
-
-### Payment States
-
-```
-[Pending] ──→ [Authorized] ──→ [Captured]
-    │              │               │
-    ▼              ▼               ▼
-[Failed]      [Failed]       [Refunded]
-```
-
-| Transition | Trigger | External Call |
-|------------|---------|---------------|
-| Pending → Authorized | Gateway approval | PaymentGateway.Authorize |
-| Authorized → Captured | Orchestration | PaymentGateway.Capture |
-| Captured → Refunded | Admin action | PaymentGateway.Refund |
-| * → Failed | Gateway rejection | - |
+See [ARCHITECTURE.md § Reservation Aggregate](./docs/ARCHITECTURE.md#reservation-aggregate) and [§ Payment Aggregate](./docs/ARCHITECTURE.md#payment-aggregate) for the state diagrams and transition rules.
 
 ---
 
@@ -127,14 +102,7 @@ ReservationCreated ──→ PaymentFailed ──→ ReservationCancelled
 
 ### Event Topics
 
-| Topic | Publisher | Subscribers |
-|-------|-----------|-------------|
-| `reservation.created` | Reservation Service | Payment Service |
-| `payment.authorized` | Payment Service | Orchestration |
-| `payment.captured` | Payment Service | Orchestration |
-| `payment.failed` | Payment Service | Orchestration (compensation) |
-| `reservation.confirmed` | Reservation Service | - |
-| `reservation.cancelled` | Reservation Service | - |
+See [API Contracts § Domain Event Topics](./docs/api-contracts.md#domain-event-topics) for the canonical table with publisher, subscribers, and payload schemas.
 
 ---
 
@@ -206,97 +174,17 @@ just serve           # Build and run in one step
 
 ## Environment Variables
 
-### Application
+See [Deployment Guide § Environment Variables](./docs/deployment-guide.md#environment-variables) for the complete reference (application identity, HTTP server, OIDC/Keycloak, databases, Kafka, resilience knobs).
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `APP_NAME` | Display name for UI | `Hotel Booking` |
-| `APP_SHORTNAME` | Docker tags, container names | `hotel-booking` |
-| `APP_VERSION` | Version for PWA cache busting | `1.0.0` |
-| `PORT` | HTTP server port | `8080` |
-
-### OIDC / Keycloak
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `OIDC_ISSUER` | Keycloak realm URL | `http://localhost:8180/realms/local` |
-| `OIDC_CLIENT_ID` | OAuth client for sessions | `hotel-booking` |
-| `OIDC_CLIENT_SECRET` | Client secret (use placeholder) | `CHANGE_ME_LOCAL_SECRET` |
-| `OIDC_REDIRECT_URL` | Callback after auth | `http://localhost:8080/auth/callback` |
-| `MCP_CLIENT_ID` | OAuth client for MCP | `hotel-booking-mcp` |
-
-### Reservation Database
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `RESERVATION_DB_HOST` | PostgreSQL host | `localhost` |
-| `RESERVATION_DB_PORT` | PostgreSQL port | `5432` |
-| `RESERVATION_DB_USER` | Database user | `reservation` |
-| `RESERVATION_DB_PASSWORD` | Database password | `reservation_secret` |
-| `RESERVATION_DB_NAME` | Database name | `reservation_db` |
-
-### Payment Database
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `PAYMENT_DB_HOST` | PostgreSQL host | `localhost` |
-| `PAYMENT_DB_PORT` | PostgreSQL port | `5433` |
-| `PAYMENT_DB_USER` | Database user | `payment` |
-| `PAYMENT_DB_PASSWORD` | Database password | `payment_secret` |
-| `PAYMENT_DB_NAME` | Database name | `payment_db` |
-
-### Kafka
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `KAFKA_BROKERS` | Broker addresses | `localhost:9092` |
-| `KAFKA_CONSUMER_GROUP_ID` | Consumer group | `test-group` |
-
-### Server Timeouts
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `SERVER_READ_TIMEOUT` | Request read timeout | `5s` |
-| `SERVER_WRITE_TIMEOUT` | Response write timeout | `5s` |
-| `SERVER_IDLE_TIMEOUT` | Idle connection timeout | `5s` |
-| `SERVER_READ_HEADER_TIMEOUT` | Header read timeout | `5s` |
+**Gotchas (not in the guide):**
+- **Kafka broker config** — use `localhost:9092` for local dev, `kafka:9092` inside Docker compose.
+- **OIDC issuer** — `http://localhost:8180/realms/local` must resolve from both the browser and the app container; `docker-compose.yml` uses `extra_hosts: ["localhost:host-gateway"]` for this.
 
 ---
 
 ## MCP Tools
 
-### Reservation Tools
-
-| Tool | Description | Parameters |
-|------|-------------|------------|
-| `get_reservation` | Get reservation by ID | `id` |
-| `list_reservations` | List reservations by guest email | `guest_email` |
-| `cancel_reservation` | Cancel a reservation | `id`, `reason` |
-| `check_availability` | Check room availability | `room_id`, `check_in`, `check_out` |
-
-### Payment Tools
-
-| Tool | Description | Parameters |
-|------|-------------|------------|
-| `get_payment` | Get payment by ID | `id` |
-| `capture_payment` | Capture authorized payment | `id` |
-| `refund_payment` | Refund captured payment | `id` |
-
-### MCP Authentication
-
-```bash
-# Get access token
-TOKEN=$(curl -s -X POST "http://localhost:8180/realms/local/protocol/openid-connect/token" \
-  -d "client_id=hotel-booking-mcp" \
-  -d "grant_type=client_credentials" \
-  -d "client_secret=<secret>" | jq -r '.access_token')
-
-# Call MCP endpoint
-curl -X POST http://localhost:8080/mcp \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
-```
+See [API Contracts § MCP Tools](./docs/api-contracts.md#mcp-tools) for the canonical tool catalog (parameters and descriptions) and [§ MCP Authentication Flow](./docs/api-contracts.md#mcp-authentication-flow) for the Bearer token flow.
 
 ---
 
@@ -472,7 +360,7 @@ func Test_Something(t *testing.T) {
 
 9. **Template paths** - Must match `assets/templates/*.tmpl` pattern. Embedded via `//go:embed assets`.
 
-10. **PaymentID convention** - Always derive from ReservationID: `pay-{reservationID}`. Enables correlation.
+10. **PaymentID convention** - Derive from ReservationID by stripping the `res-` prefix: `fmt.Sprintf("pay-%s", strings.TrimPrefix(string(reservationID), "res-"))`. Both IDs share the same UUID → grep-friendly traceability without a double prefix.
 
 11. **Database per context** - Reservation and Payment use separate PostgreSQL instances. Never cross-query.
 
