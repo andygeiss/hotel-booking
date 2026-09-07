@@ -68,11 +68,11 @@ func createTestReservationInRepo(repo *mockReservationRepo, id string, roomID st
 	checkOut := time.Now().AddDate(0, 0, checkOutDays)
 
 	res := reservation.Reservation{
-		ID:        reservation.ReservationID(id),
-		GuestID:   "guest-001",
-		RoomID:    reservation.RoomID(roomID),
-		DateRange: reservation.NewDateRange(checkIn, checkOut),
-		Status:    reservation.StatusPending,
+		ID:          reservation.ReservationID(id),
+		GuestID:     "guest-001",
+		RoomID:      reservation.RoomID(roomID),
+		DateRange:   reservation.NewDateRange(checkIn, checkOut),
+		Status:      reservation.StatusPending,
 		TotalAmount: shared.NewMoney(30000, "USD"),
 		Guests: []reservation.GuestInfo{
 			reservation.NewGuestInfo("John Doe", "john@example.com", "+1234567890"),

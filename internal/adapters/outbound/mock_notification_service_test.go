@@ -23,11 +23,11 @@ func createTestReservation() *reservation.Reservation {
 	checkOut := time.Now().AddDate(0, 0, 10)
 
 	return &reservation.Reservation{
-		ID:        "res-001",
-		GuestID:   "guest-001",
-		RoomID:    "room-101",
-		DateRange: reservation.NewDateRange(checkIn, checkOut),
-		Status:    reservation.StatusPending,
+		ID:          "res-001",
+		GuestID:     "guest-001",
+		RoomID:      "room-101",
+		DateRange:   reservation.NewDateRange(checkIn, checkOut),
+		Status:      reservation.StatusPending,
 		TotalAmount: shared.NewMoney(30000, "USD"),
 		Guests: []reservation.GuestInfo{
 			reservation.NewGuestInfo("John Doe", "john@example.com", "+1234567890"),
