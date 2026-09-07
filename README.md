@@ -614,6 +614,17 @@ the damage.
   and the waiver ends when the route is deleted after the deprecation window
   (tracked in [CLAUDE.md § Roadmap](./CLAUDE.md#roadmap)).
 
+- **Secrets arrive as files, never as environment variables**
+  ([patterns/go-config.md](https://github.com/andygeiss/baseline/blob/main/patterns/go-config.md)
+  *Secrets* — **tier 1, so this is an open task and not a real waiver**) — recorded
+  2026-09-07 by Andy. Both database passwords are files now: compose mounts them and
+  `make run` reads them. `OIDC_CLIENT_SECRET` is not. `web.NewServeMux` builds
+  cloud-native-utils' unexported `identityProvider`, whose `setup` reads the variable
+  itself, so no change in this repository can route it through a file. Contained: it is
+  one variable, it never reaches `Config`, so `Config.LogValue` cannot leak it, and the
+  upstream change that closes it is tracked in
+  [CLAUDE.md § Open baseline work](./CLAUDE.md#open-baseline-work).
+
 ### Rules met by a different route
 
 - **Health checks.** The baseline puts `/healthz` on a loopback-only ops listener, and

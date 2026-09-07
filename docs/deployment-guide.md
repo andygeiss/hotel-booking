@@ -124,6 +124,12 @@ fix and the first query is where it actually costs anything.
 `Config.LogValue` is an allowlist, so the boot log prints the safe fields and no password
 can be added to the struct and logged by accident.
 
+**One secret is still a variable.** `OIDC_CLIENT_SECRET` never reaches `Config`:
+cloud-native-utils' `web.NewServeMux` builds its own identity provider, which reads the
+variable itself, so nothing here can route it through a file. It is recorded as open
+baseline work in [CLAUDE.md](../CLAUDE.md#open-baseline-work) and closing it is an
+upstream change.
+
 ### The variables
 
 See `.env.example` for the annotated list. Summary:

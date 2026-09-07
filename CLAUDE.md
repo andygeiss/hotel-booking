@@ -385,6 +385,13 @@ yet. These are open tasks, not waivers — what is genuinely waived is in
       `CREDENTIALS_DIRECTORY` to that path. Each PostgreSQL service reads the same file
       through `POSTGRES_PASSWORD_FILE`. No database password is an environment variable
       any more, on either the compose path or the `make run` one.
+- [ ] **Take `OIDC_CLIENT_SECRET` out of the environment.** The last secret this project
+      passes as a variable, so `patterns/go-config.md` *Secrets* (tier 1) is met for the
+      database passwords and not for this one. `Config` cannot reach it: `web.NewServeMux`
+      builds cloud-native-utils' unexported `identityProvider`, and its `setup` calls
+      `os.Getenv("OIDC_CLIENT_SECRET")` with no injection point. Closing it means giving
+      that package a way to take the secret from its caller first, then `readCredential`
+      here and a third compose secret — an upstream change, not a local one.
 - [ ] **Dual-mode htmx responses.** `Vary: HX-Request`, `hx-push-url`, and the
       fragment-or-full-page test are not in place yet
       (`patterns/htmx-server-rendering.md`).
