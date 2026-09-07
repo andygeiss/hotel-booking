@@ -23,118 +23,68 @@ var serviceWorkerTestAssets embed.FS
 // HttpViewServiceWorker Tests
 // ============================================================================
 
-func Test_HttpViewServiceWorker_With_Request_Should_Return_200(t *testing.T) {
-	// Arrange
-	t.Setenv("APP_NAME", "test-app")
-	t.Setenv("APP_VERSION", "1.0.0")
+func serviceWorkerBody(t *testing.T) (*httptest.ResponseRecorder, string) {
+	t.Helper()
+
 	e := templating.NewEngine(serviceWorkerTestAssets)
 	e.Parse("testdata/assets/templates/*.tmpl")
 
 	handler := inbound.HttpViewServiceWorker(e)
 	req := httptest.NewRequest(http.MethodGet, "/sw.js", nil)
 	rec := httptest.NewRecorder()
-
-	// Act
 	handler(rec, req)
+
+	body, err := io.ReadAll(rec.Body)
+	if err != nil {
+		t.Fatalf("failed to read body: %v", err)
+	}
+	return rec, string(body)
+}
+
+func Test_HttpViewServiceWorker_With_Request_Should_Return_200(t *testing.T) {
+	// Arrange, Act
+	rec, _ := serviceWorkerBody(t)
 
 	// Assert
 	assert.That(t, "status code must be 200", rec.Code, http.StatusOK)
 }
 
 func Test_HttpViewServiceWorker_With_Request_Should_Return_JavaScript_Content_Type(t *testing.T) {
-	// Arrange
-	t.Setenv("APP_NAME", "test-app")
-	t.Setenv("APP_VERSION", "1.0.0")
-	e := templating.NewEngine(serviceWorkerTestAssets)
-	e.Parse("testdata/assets/templates/*.tmpl")
-
-	handler := inbound.HttpViewServiceWorker(e)
-	req := httptest.NewRequest(http.MethodGet, "/sw.js", nil)
-	rec := httptest.NewRecorder()
-
-	// Act
-	handler(rec, req)
+	// Arrange, Act
+	rec, _ := serviceWorkerBody(t)
 
 	// Assert
-	contentType := rec.Header().Get("Content-Type")
-	assert.That(t, "content type must be application/javascript", contentType, "application/javascript")
+	assert.That(t, "content type must be application/javascript", rec.Header().Get("Content-Type"), "application/javascript")
 }
 
 func Test_HttpViewServiceWorker_With_Request_Should_Have_No_Cache_Header(t *testing.T) {
-	// Arrange
-	t.Setenv("APP_NAME", "test-app")
-	t.Setenv("APP_VERSION", "1.0.0")
-	e := templating.NewEngine(serviceWorkerTestAssets)
-	e.Parse("testdata/assets/templates/*.tmpl")
+	// A cached tombstone would keep the old worker alive on exactly the
+	// browsers this route exists to reach.
 
-	handler := inbound.HttpViewServiceWorker(e)
-	req := httptest.NewRequest(http.MethodGet, "/sw.js", nil)
-	rec := httptest.NewRecorder()
-
-	// Act
-	handler(rec, req)
+	// Arrange, Act
+	rec, _ := serviceWorkerBody(t)
 
 	// Assert
-	cacheControl := rec.Header().Get("Cache-Control")
-	assert.That(t, "cache control must prevent caching", cacheControl, "no-cache, no-store, must-revalidate")
+	assert.That(t, "cache control must prevent caching", rec.Header().Get("Cache-Control"), "no-cache, no-store, must-revalidate")
 }
 
-func Test_HttpViewServiceWorker_With_Request_Should_Contain_Cache_Name(t *testing.T) {
-	// Arrange
-	t.Setenv("APP_NAME", "my-pwa")
-	t.Setenv("APP_VERSION", "2.0.0")
-	e := templating.NewEngine(serviceWorkerTestAssets)
-	e.Parse("testdata/assets/templates/*.tmpl")
-
-	handler := inbound.HttpViewServiceWorker(e)
-	req := httptest.NewRequest(http.MethodGet, "/sw.js", nil)
-	rec := httptest.NewRecorder()
-
-	// Act
-	handler(rec, req)
+func Test_HttpViewServiceWorker_With_Request_Should_Unregister_Itself(t *testing.T) {
+	// Arrange, Act
+	_, body := serviceWorkerBody(t)
 
 	// Assert
-	body, _ := io.ReadAll(rec.Body)
-	bodyStr := string(body)
-	assert.That(t, "body must contain cache name", containsString(bodyStr, "my-pwa-v2.0.0"), true)
+	assert.That(t, "body must unregister the worker", containsString(body, "self.registration.unregister()"), true)
+	assert.That(t, "body must drop every cache", containsString(body, "caches.delete(name)"), true)
 }
 
-func Test_HttpViewServiceWorker_With_Request_Should_Contain_Install_Handler(t *testing.T) {
-	// Arrange
-	t.Setenv("APP_NAME", "test-app")
-	t.Setenv("APP_VERSION", "1.0.0")
-	e := templating.NewEngine(serviceWorkerTestAssets)
-	e.Parse("testdata/assets/templates/*.tmpl")
+func Test_HttpViewServiceWorker_With_Request_Should_Not_Handle_Fetch(t *testing.T) {
+	// The whole point of the tombstone: no fetch handler, so requests reach
+	// the network while the old worker is being torn down. A fetch handler
+	// creeping back in is the app caching in the client again.
 
-	handler := inbound.HttpViewServiceWorker(e)
-	req := httptest.NewRequest(http.MethodGet, "/sw.js", nil)
-	rec := httptest.NewRecorder()
-
-	// Act
-	handler(rec, req)
+	// Arrange, Act
+	_, body := serviceWorkerBody(t)
 
 	// Assert
-	body, _ := io.ReadAll(rec.Body)
-	bodyStr := string(body)
-	assert.That(t, "body must contain install event listener", containsString(bodyStr, "addEventListener('install'"), true)
-}
-
-func Test_HttpViewServiceWorker_With_Request_Should_Contain_Fetch_Handler(t *testing.T) {
-	// Arrange
-	t.Setenv("APP_NAME", "test-app")
-	t.Setenv("APP_VERSION", "1.0.0")
-	e := templating.NewEngine(serviceWorkerTestAssets)
-	e.Parse("testdata/assets/templates/*.tmpl")
-
-	handler := inbound.HttpViewServiceWorker(e)
-	req := httptest.NewRequest(http.MethodGet, "/sw.js", nil)
-	rec := httptest.NewRecorder()
-
-	// Act
-	handler(rec, req)
-
-	// Assert
-	body, _ := io.ReadAll(rec.Body)
-	bodyStr := string(body)
-	assert.That(t, "body must contain fetch event listener", containsString(bodyStr, "addEventListener('fetch'"), true)
+	assert.That(t, "body must not handle fetch events", containsString(body, "addEventListener('fetch'"), false)
 }
