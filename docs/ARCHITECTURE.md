@@ -726,7 +726,7 @@ type RouterConfig struct {
     Logger             *slog.Logger          // Request logging middleware
     ReservationService *reservation.Service  // Reservation domain operations
     MCPServer          *mcp.Server           // MCP endpoint (optional, nil to disable)
-    Verifier           *oidc.IDTokenVerifier // Bearer auth (required if MCPServer set)
+    NewVerifier        VerifierFunc          // Builds the bearer-auth verifier (required if MCPServer set)
 }
 ```
 
@@ -740,11 +740,13 @@ mux := inbound.Route(inbound.RouterConfig{
     Logger:             logger,
     ReservationService: reservationService,
     MCPServer:          mcpServer,
-    Verifier:           verifier,
+    NewVerifier:        newVerifier,
 })
 ```
 
-This pattern consolidates all routing dependencies and keeps endpoint registration in one place. The MCP endpoint is only registered when `MCPServer` is non-nil, and Bearer token authentication is only applied when `Verifier` is also provided.
+This pattern consolidates all routing dependencies and keeps endpoint registration in one place. The MCP endpoint is only registered when `MCPServer` is non-nil, and Bearer token authentication is only applied when `NewVerifier` is also provided.
+
+`NewVerifier` is a **function**, not a verifier, and that is the point: building one fetches Keycloak's discovery document. `Route` never calls it — the first `POST /mcp` does.
 
 ### View Response Pattern
 

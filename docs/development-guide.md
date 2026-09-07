@@ -144,7 +144,7 @@ For table-driven tests, the inner name is usually passed with a slash: `-run 'Pa
 - Integration tests use the build tag `//go:build integration` (skipped by `make test`, run via `go test -tags=integration -v ./internal/...`).
 - Handler tests use `httptest.NewRecorder()` and the testdata templates under `internal/adapters/inbound/testdata/assets/templates/`.
 - Handlers take an `inbound.AppInfo`, so no test sets `APP_NAME` any more; use `testApp()` from `router_test.go`.
-- For MCP route tests, pass `Verifier: nil` in `RouterConfig` to skip bearer auth (covered by `main_test.go:Benchmark_Server_Integration_MCP_Tools_List_Should_Be_Fast`).
+- For MCP route tests, pass `NewVerifier: nil` in `RouterConfig` to skip bearer auth (covered by `main_test.go:Benchmark_Server_Integration_MCP_Tools_List_Should_Be_Fast`).
 
 ## Domain Iteration Loop
 

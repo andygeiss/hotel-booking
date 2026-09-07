@@ -75,7 +75,15 @@ Session identity is read from `r.Context()` via `web.ContextSessionID`, `web.Con
 
 ### MCP (Model Context Protocol)
 
-Mounted only when `RouterConfig.MCPServer != nil`. Bearer authentication is applied only when `RouterConfig.Verifier != nil` (required in production; nil-Verifier path is used for unit tests and benchmarks).
+Mounted only when `RouterConfig.MCPServer != nil`. Bearer authentication is applied only when `RouterConfig.NewVerifier != nil` (required in production; the nil path is for unit tests and benchmarks).
+
+`NewVerifier` is a function, and it is called on the **first** `/mcp` request, never while
+the app starts — fetching Keycloak's discovery document is a call to somebody else's
+process, and boot must not wait on one. While the identity provider is unreachable, `/mcp`
+answers **503 Service Unavailable** with a plain-text body rather than a JSON-RPC error:
+the token was never read, so the client should retry instead of looking for new
+credentials. Only success is cached, so the endpoint recovers on its own once the provider
+is back — no restart.
 
 | Method | Path | Purpose | Auth | Handler |
 |--------|------|---------|------|---------|

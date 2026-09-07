@@ -260,7 +260,7 @@ mux := inbound.Route(inbound.RouterConfig{
     Logger:             logger,
     ReservationService: reservationService,
     MCPServer:          mcpServer,  // nil disables /mcp endpoint
-    Verifier:           verifier,   // Required if MCPServer is set
+    NewVerifier:        newVerifier, // Required if MCPServer is set; called on the first /mcp request
 })
 ```
 
@@ -375,11 +375,8 @@ yet. These are open tasks, not waivers — what is genuinely waived is in
       worker and drops its caches.
 - [ ] **Delete `GET /sw.js`.** The route, `http_service_worker.go` and `sw.tmpl` go once
       the deprecation window is over and returning browsers have picked up the tombstone.
-- [ ] **Do not reach Keycloak at boot.** `oidc.NewProvider` calls the issuer's discovery
-      endpoint in `main`, so the app refuses to start when Keycloak is down and
-      `go run ./cmd/server` with an empty environment cannot start at all. The baseline
-      wants boot to depend on local facts only (`patterns/go-http-client.md`), which
-      means building the MCP verifier on first use.
+- [x] **Do not reach Keycloak at boot.** The MCP verifier is built on the first `/mcp`
+      request. The app starts with an empty environment and no identity provider running.
 - [ ] **Give compose the credential files.** The database passwords are read from
       `$CREDENTIALS_DIRECTORY` when it is set, but `docker-compose.yml` still passes them
       as environment variables. Until it mounts one file per secret, the tier-1 rule in
@@ -408,7 +405,7 @@ yet. These are open tasks, not waivers — what is genuinely waived is in
 
 7. **Test environment variables** - Always use `t.Setenv()` for `APP_NAME`, `APP_DESCRIPTION`. Tests fail without them.
 
-8. **MCP auth in tests** - Pass `nil` Verifier for unit tests. Only integration tests need real auth.
+8. **MCP auth in tests** - Pass `nil` NewVerifier for unit tests. Only integration tests need real auth.
 
 9. **Template paths** - Must match `assets/templates/*.tmpl` pattern. Embedded via `//go:embed assets`.
 
@@ -436,11 +433,16 @@ yet. These are open tasks, not waivers — what is genuinely waived is in
     binds. A handler that needs the app name takes an `inbound.AppInfo`, it does not
     read `APP_NAME`. `./server -h` is the contract.
 
-17. **Secrets are files, not variables** - The database passwords come from
+17. **Boot depends on local facts only** - Nothing calls another system while the
+    app starts. The OIDC verifier is built on the first `/mcp` request, not in `main`,
+    so Keycloak being down delays MCP auth instead of stopping the app. Only success is
+    cached, so the endpoint recovers by itself. Do not move that call back to boot.
+
+18. **Secrets are files, not variables** - The database passwords come from
     `$CREDENTIALS_DIRECTORY`, one file per secret. The `*_PASSWORD` variables are a
     development fallback. `Config.LogValue` is an allowlist, so adding a secret field to
     the struct does not add it to the logs.
 
-18. **The gates are yours to run** - There is no CI workflow. `make check` before a
+19. **The gates are yours to run** - There is no CI workflow. `make check` before a
     commit, `make ci` before a push, and read `make ci`'s `go version` line: it is the
     only record of which toolchain ran.
