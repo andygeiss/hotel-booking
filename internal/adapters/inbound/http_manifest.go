@@ -2,7 +2,6 @@ package inbound
 
 import (
 	"net/http"
-	"os"
 
 	"github.com/andygeiss/cloud-native-utils/templating"
 )
@@ -15,11 +14,9 @@ type HttpViewManifestResponse struct {
 }
 
 // HttpViewManifest defines an HTTP handler function for rendering the PWA manifest.json.
-func HttpViewManifest(e *templating.Engine) http.HandlerFunc {
-	// Retrieve application details from environment variables at startup.
-	// We can reuse these values instead of reading them from the environment on each request.
-	appName := os.Getenv("APP_NAME")
-	description := os.Getenv("APP_DESCRIPTION")
+func HttpViewManifest(e *templating.Engine, app AppInfo) http.HandlerFunc {
+	appName := app.Name
+	description := app.Description
 
 	// Create the Data Object (DTO) once at startup.
 	data := HttpViewManifestResponse{

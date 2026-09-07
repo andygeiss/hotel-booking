@@ -83,6 +83,17 @@ func (m *mockReservationRepository) ReadAll(ctx context.Context) ([]reservation.
 	return result, nil
 }
 
+// testApp is the identity every handler test renders with. It replaces the
+// APP_NAME and APP_DESCRIPTION variables these tests used to set, back when
+// the handlers read them from the environment themselves.
+func testApp() inbound.AppInfo {
+	return inbound.AppInfo{
+		Description: "Test Description",
+		Name:        "TestApp",
+		Version:     "v0.0.0-test",
+	}
+}
+
 func createTestReservationService(t *testing.T) *reservation.Service {
 	t.Helper()
 	reservationRepo := newMockReservationRepository()
@@ -97,15 +108,13 @@ func createTestReservationService(t *testing.T) *reservation.Service {
 
 func Test_Route_Should_Return_Non_Nil_Mux(t *testing.T) {
 	// Arrange
-	t.Setenv("APP_NAME", "TestApp")
-	t.Setenv("APP_DESCRIPTION", "Test Description")
-
 	ctx := context.Background()
 	logger := slog.Default()
 	reservationService := createTestReservationService(t)
 
 	// Act
 	mux := inbound.Route(inbound.RouterConfig{
+		App:                testApp(),
 		Ctx:                ctx,
 		EFS:                getRouterTestFS(t),
 		Logger:             logger,
@@ -118,13 +127,11 @@ func Test_Route_Should_Return_Non_Nil_Mux(t *testing.T) {
 
 func Test_Route_Liveness_Endpoint_Should_Return_200(t *testing.T) {
 	// Arrange
-	t.Setenv("APP_NAME", "TestApp")
-	t.Setenv("APP_DESCRIPTION", "Test Description")
-
 	ctx := context.Background()
 	logger := slog.Default()
 	reservationService := createTestReservationService(t)
 	mux := inbound.Route(inbound.RouterConfig{
+		App:                testApp(),
 		Ctx:                ctx,
 		EFS:                getRouterTestFS(t),
 		Logger:             logger,
@@ -143,13 +150,11 @@ func Test_Route_Liveness_Endpoint_Should_Return_200(t *testing.T) {
 
 func Test_Route_Readiness_Endpoint_Should_Return_200(t *testing.T) {
 	// Arrange
-	t.Setenv("APP_NAME", "TestApp")
-	t.Setenv("APP_DESCRIPTION", "Test Description")
-
 	ctx := context.Background()
 	logger := slog.Default()
 	reservationService := createTestReservationService(t)
 	mux := inbound.Route(inbound.RouterConfig{
+		App:                testApp(),
 		Ctx:                ctx,
 		EFS:                getRouterTestFS(t),
 		Logger:             logger,
@@ -168,13 +173,11 @@ func Test_Route_Readiness_Endpoint_Should_Return_200(t *testing.T) {
 
 func Test_Route_UI_Endpoint_Without_Session_Should_Redirect_To_Login(t *testing.T) {
 	// Arrange
-	t.Setenv("APP_NAME", "TestApp")
-	t.Setenv("APP_DESCRIPTION", "Test Description")
-
 	ctx := context.Background()
 	logger := slog.Default()
 	reservationService := createTestReservationService(t)
 	mux := inbound.Route(inbound.RouterConfig{
+		App:                testApp(),
 		Ctx:                ctx,
 		EFS:                getRouterTestFS(t),
 		Logger:             logger,
@@ -195,13 +198,11 @@ func Test_Route_UI_Endpoint_Without_Session_Should_Redirect_To_Login(t *testing.
 
 func Test_Route_Login_Endpoint_Should_Return_200(t *testing.T) {
 	// Arrange
-	t.Setenv("APP_NAME", "TestApp")
-	t.Setenv("APP_DESCRIPTION", "Test Description")
-
 	ctx := context.Background()
 	logger := slog.Default()
 	reservationService := createTestReservationService(t)
 	mux := inbound.Route(inbound.RouterConfig{
+		App:                testApp(),
 		Ctx:                ctx,
 		EFS:                getRouterTestFS(t),
 		Logger:             logger,
@@ -220,13 +221,11 @@ func Test_Route_Login_Endpoint_Should_Return_200(t *testing.T) {
 
 func Test_Route_Login_Endpoint_Should_Return_HTML_Content(t *testing.T) {
 	// Arrange
-	t.Setenv("APP_NAME", "TestApp")
-	t.Setenv("APP_DESCRIPTION", "Test Description")
-
 	ctx := context.Background()
 	logger := slog.Default()
 	reservationService := createTestReservationService(t)
 	mux := inbound.Route(inbound.RouterConfig{
+		App:                testApp(),
 		Ctx:                ctx,
 		EFS:                getRouterTestFS(t),
 		Logger:             logger,
@@ -247,13 +246,11 @@ func Test_Route_Login_Endpoint_Should_Return_HTML_Content(t *testing.T) {
 
 func Test_Route_Session_Endpoint_Without_Valid_Session_Should_Redirect_To_Login(t *testing.T) {
 	// Arrange
-	t.Setenv("APP_NAME", "TestApp")
-	t.Setenv("APP_DESCRIPTION", "Test Description")
-
 	ctx := context.Background()
 	logger := slog.Default()
 	reservationService := createTestReservationService(t)
 	mux := inbound.Route(inbound.RouterConfig{
+		App:                testApp(),
 		Ctx:                ctx,
 		EFS:                getRouterTestFS(t),
 		Logger:             logger,
@@ -274,13 +271,11 @@ func Test_Route_Session_Endpoint_Without_Valid_Session_Should_Redirect_To_Login(
 
 func Test_Route_Session_Endpoint_Without_Trailing_Slash_Should_Redirect_To_Login(t *testing.T) {
 	// Arrange
-	t.Setenv("APP_NAME", "TestApp")
-	t.Setenv("APP_DESCRIPTION", "Test Description")
-
 	ctx := context.Background()
 	logger := slog.Default()
 	reservationService := createTestReservationService(t)
 	mux := inbound.Route(inbound.RouterConfig{
+		App:                testApp(),
 		Ctx:                ctx,
 		EFS:                getRouterTestFS(t),
 		Logger:             logger,
@@ -301,13 +296,11 @@ func Test_Route_Session_Endpoint_Without_Trailing_Slash_Should_Redirect_To_Login
 
 func Test_Route_Unknown_Endpoint_Should_Return_404(t *testing.T) {
 	// Arrange
-	t.Setenv("APP_NAME", "TestApp")
-	t.Setenv("APP_DESCRIPTION", "Test Description")
-
 	ctx := context.Background()
 	logger := slog.Default()
 	reservationService := createTestReservationService(t)
 	mux := inbound.Route(inbound.RouterConfig{
+		App:                testApp(),
 		Ctx:                ctx,
 		EFS:                getRouterTestFS(t),
 		Logger:             logger,
@@ -330,13 +323,11 @@ func Test_Route_Unknown_Endpoint_Should_Return_404(t *testing.T) {
 
 func Test_Route_MCP_Endpoint_Without_MCPServer_Should_Return_404(t *testing.T) {
 	// Arrange
-	t.Setenv("APP_NAME", "TestApp")
-	t.Setenv("APP_DESCRIPTION", "Test Description")
-
 	ctx := context.Background()
 	logger := slog.Default()
 	reservationService := createTestReservationService(t)
 	mux := inbound.Route(inbound.RouterConfig{
+		App:                testApp(),
 		Ctx:                ctx,
 		EFS:                getRouterTestFS(t),
 		Logger:             logger,
@@ -356,15 +347,13 @@ func Test_Route_MCP_Endpoint_Without_MCPServer_Should_Return_404(t *testing.T) {
 
 func Test_Route_MCP_Endpoint_With_MCPServer_Should_Return_200(t *testing.T) {
 	// Arrange
-	t.Setenv("APP_NAME", "TestApp")
-	t.Setenv("APP_DESCRIPTION", "Test Description")
-
 	ctx := context.Background()
 	logger := slog.Default()
 	reservationService := createTestReservationService(t)
 	mcpServer := mcp.NewServer("test-server", "1.0.0")
 
 	mux := inbound.Route(inbound.RouterConfig{
+		App:                testApp(),
 		Ctx:                ctx,
 		EFS:                getRouterTestFS(t),
 		Logger:             logger,
@@ -391,10 +380,8 @@ func Test_Route_MCP_Endpoint_With_MCPServer_Should_Return_200(t *testing.T) {
 
 func Test_Route_Should_Send_Security_Headers_On_Every_Response(t *testing.T) {
 	// Arrange
-	t.Setenv("APP_NAME", "TestApp")
-	t.Setenv("APP_DESCRIPTION", "Test Description")
-
 	mux := inbound.Route(inbound.RouterConfig{
+		App:                testApp(),
 		Ctx:                context.Background(),
 		EFS:                getRouterTestFS(t),
 		Logger:             slog.Default(),
@@ -414,10 +401,8 @@ func Test_Route_Should_Send_Security_Headers_On_Every_Response(t *testing.T) {
 
 func Test_Route_Cross_Origin_Post_Should_Return_403(t *testing.T) {
 	// Arrange
-	t.Setenv("APP_NAME", "TestApp")
-	t.Setenv("APP_DESCRIPTION", "Test Description")
-
 	mux := inbound.Route(inbound.RouterConfig{
+		App:                testApp(),
 		Ctx:                context.Background(),
 		EFS:                getRouterTestFS(t),
 		Logger:             slog.Default(),

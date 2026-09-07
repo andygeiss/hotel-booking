@@ -2,7 +2,6 @@ package inbound
 
 import (
 	"net/http"
-	"os"
 
 	"github.com/andygeiss/cloud-native-utils/templating"
 	"github.com/andygeiss/cloud-native-utils/web"
@@ -30,8 +29,8 @@ type HttpViewReservationsResponse struct {
 }
 
 // HttpViewReservations defines an HTTP handler function for rendering the reservations list.
-func HttpViewReservations(e *templating.Engine, reservationService *reservation.Service) http.HandlerFunc {
-	appName := os.Getenv("APP_NAME")
+func HttpViewReservations(e *templating.Engine, app AppInfo, reservationService *reservation.Service) http.HandlerFunc {
+	appName := app.Name
 	title := appName + " - Reservations"
 
 	return func(w http.ResponseWriter, r *http.Request) {

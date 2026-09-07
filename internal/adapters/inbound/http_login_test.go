@@ -25,13 +25,10 @@ var loginTestAssets embed.FS
 
 func Test_HttpViewLogin_With_Request_Should_Return_200(t *testing.T) {
 	// Arrange
-	t.Setenv("APP_NAME", "TestApp")
-	t.Setenv("APP_DESCRIPTION", "Test Description")
-
 	e := templating.NewEngine(loginTestAssets)
 	e.Parse("testdata/assets/templates/*.tmpl")
 
-	handler := inbound.HttpViewLogin(e)
+	handler := inbound.HttpViewLogin(e, testApp())
 	req := httptest.NewRequest(http.MethodGet, "/ui/login", nil)
 	rec := httptest.NewRecorder()
 
@@ -44,13 +41,10 @@ func Test_HttpViewLogin_With_Request_Should_Return_200(t *testing.T) {
 
 func Test_HttpViewLogin_With_Request_Should_Render_Template(t *testing.T) {
 	// Arrange
-	t.Setenv("APP_NAME", "TestApp")
-	t.Setenv("APP_DESCRIPTION", "Test Description")
-
 	e := templating.NewEngine(loginTestAssets)
 	e.Parse("testdata/assets/templates/*.tmpl")
 
-	handler := inbound.HttpViewLogin(e)
+	handler := inbound.HttpViewLogin(e, testApp())
 	req := httptest.NewRequest(http.MethodGet, "/ui/login", nil)
 	rec := httptest.NewRecorder()
 
@@ -65,13 +59,10 @@ func Test_HttpViewLogin_With_Request_Should_Render_Template(t *testing.T) {
 
 func Test_HttpViewLogin_With_Request_Should_Return_HTML_Content_Type(t *testing.T) {
 	// Arrange
-	t.Setenv("APP_NAME", "TestApp")
-	t.Setenv("APP_DESCRIPTION", "Test Description")
-
 	e := templating.NewEngine(loginTestAssets)
 	e.Parse("testdata/assets/templates/*.tmpl")
 
-	handler := inbound.HttpViewLogin(e)
+	handler := inbound.HttpViewLogin(e, testApp())
 	req := httptest.NewRequest(http.MethodGet, "/ui/login", nil)
 	rec := httptest.NewRecorder()
 

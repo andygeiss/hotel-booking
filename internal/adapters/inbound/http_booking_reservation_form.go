@@ -2,7 +2,6 @@ package inbound
 
 import (
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/andygeiss/cloud-native-utils/templating"
@@ -51,8 +50,8 @@ func getRoomPrices() map[string]int64 {
 }
 
 // HttpViewReservationForm defines an HTTP handler function for rendering the new reservation form.
-func HttpViewReservationForm(e *templating.Engine) http.HandlerFunc {
-	appName := os.Getenv("APP_NAME")
+func HttpViewReservationForm(e *templating.Engine, app AppInfo) http.HandlerFunc {
+	appName := app.Name
 	title := appName + " - New Reservation"
 
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -131,8 +130,8 @@ func parseReservationForm(r *http.Request) (*reservationFormInput, string) {
 }
 
 // HttpCreateReservation handles the POST request to create a new reservation.
-func HttpCreateReservation(e *templating.Engine, reservationService *reservation.Service) http.HandlerFunc {
-	appName := os.Getenv("APP_NAME")
+func HttpCreateReservation(e *templating.Engine, app AppInfo, reservationService *reservation.Service) http.HandlerFunc {
+	appName := app.Name
 	title := appName + " - New Reservation"
 
 	return func(w http.ResponseWriter, r *http.Request) {

@@ -2,7 +2,6 @@ package inbound
 
 import (
 	"net/http"
-	"os"
 
 	"github.com/andygeiss/cloud-native-utils/templating"
 )
@@ -18,9 +17,8 @@ type HttpViewErrorResponse struct {
 
 // HttpViewError defines an HTTP handler function for rendering the error template.
 // It reads error information from query parameters: title, message, and details.
-func HttpViewError(e *templating.Engine) http.HandlerFunc {
-	// Retrieve application details from environment variables at startup.
-	appName := os.Getenv("APP_NAME")
+func HttpViewError(e *templating.Engine, app AppInfo) http.HandlerFunc {
+	appName := app.Name
 	pageTitle := appName + " - Error"
 
 	return func(w http.ResponseWriter, r *http.Request) {

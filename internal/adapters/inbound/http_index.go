@@ -2,7 +2,6 @@ package inbound
 
 import (
 	"net/http"
-	"os"
 
 	"github.com/andygeiss/cloud-native-utils/templating"
 	"github.com/andygeiss/cloud-native-utils/web"
@@ -21,11 +20,9 @@ type HttpViewIndexResponse struct {
 }
 
 // HttpViewIndex defines an HTTP handler function for rendering the index template.
-func HttpViewIndex(e *templating.Engine) http.HandlerFunc {
-	// Retrieve application details from environment variables at startup.
-	// We can reuse these values instead of reading them from the environment on each request.
-	appName := os.Getenv("APP_NAME")
-	title := appName + " - " + os.Getenv("APP_DESCRIPTION")
+func HttpViewIndex(e *templating.Engine, app AppInfo) http.HandlerFunc {
+	appName := app.Name
+	title := app.Title()
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Make a shortcut for the current context.

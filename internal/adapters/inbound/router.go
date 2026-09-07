@@ -16,6 +16,7 @@ import (
 
 // RouterConfig holds all dependencies for HTTP routing.
 type RouterConfig struct {
+	App                AppInfo // Name, description and version every page renders
 	Ctx                context.Context
 	EFS                fs.FS
 	Logger             *slog.Logger
@@ -50,35 +51,35 @@ func Route(config RouterConfig) *http.ServeMux {
 	// The HttpViewIndex is handling unauthenticated and authenticated requests.
 	// The unauthenticated requests are redirected to the login page /ui/login.
 	// The authenticated requests are rendered with the index template.
-	mux.HandleFunc("GET /ui/", logging.WithLogging(config.Logger, web.WithAuth(serverSessions, HttpViewIndex(e))))
+	mux.HandleFunc("GET /ui/", logging.WithLogging(config.Logger, web.WithAuth(serverSessions, HttpViewIndex(e, config.App))))
 
 	// Add the login endpoint for the UI.
 	// This endpoint is used to forward the user to the login page of the OIDC provider.
-	mux.HandleFunc("GET /ui/login", logging.WithLogging(config.Logger, HttpViewLogin(e)))
+	mux.HandleFunc("GET /ui/login", logging.WithLogging(config.Logger, HttpViewLogin(e, config.App)))
 
 	// Add the error endpoint for displaying user-friendly error pages.
 	// This endpoint accepts query parameters: title, message, and details.
-	mux.HandleFunc("GET /ui/error", logging.WithLogging(config.Logger, HttpViewError(e)))
+	mux.HandleFunc("GET /ui/error", logging.WithLogging(config.Logger, HttpViewError(e, config.App)))
 
 	// Add the manifest endpoint for the PWA.
 	// This endpoint serves the manifest.json file for Progressive Web App support.
-	mux.HandleFunc("GET /manifest.json", logging.WithLogging(config.Logger, HttpViewManifest(e)))
+	mux.HandleFunc("GET /manifest.json", logging.WithLogging(config.Logger, HttpViewManifest(e, config.App)))
 
 	// Add the service worker endpoint for the PWA.
 	// This endpoint serves the sw.js file for offline caching and installability.
 	mux.HandleFunc("GET /sw.js", logging.WithLogging(config.Logger, HttpViewServiceWorker(e)))
 
 	// Add the reservations list endpoint.
-	mux.HandleFunc("GET /ui/reservations", logging.WithLogging(config.Logger, web.WithAuth(serverSessions, HttpViewReservations(e, config.ReservationService))))
+	mux.HandleFunc("GET /ui/reservations", logging.WithLogging(config.Logger, web.WithAuth(serverSessions, HttpViewReservations(e, config.App, config.ReservationService))))
 
 	// Add the new reservation form endpoint.
-	mux.HandleFunc("GET /ui/reservations/new", logging.WithLogging(config.Logger, web.WithAuth(serverSessions, HttpViewReservationForm(e))))
+	mux.HandleFunc("GET /ui/reservations/new", logging.WithLogging(config.Logger, web.WithAuth(serverSessions, HttpViewReservationForm(e, config.App))))
 
 	// Add the create reservation endpoint.
-	mux.HandleFunc("POST /ui/reservations", logging.WithLogging(config.Logger, web.WithAuth(serverSessions, HttpCreateReservation(e, config.ReservationService))))
+	mux.HandleFunc("POST /ui/reservations", logging.WithLogging(config.Logger, web.WithAuth(serverSessions, HttpCreateReservation(e, config.App, config.ReservationService))))
 
 	// Add the reservation detail endpoint.
-	mux.HandleFunc("GET /ui/reservations/{id}", logging.WithLogging(config.Logger, web.WithAuth(serverSessions, HttpViewReservationDetail(e, config.ReservationService))))
+	mux.HandleFunc("GET /ui/reservations/{id}", logging.WithLogging(config.Logger, web.WithAuth(serverSessions, HttpViewReservationDetail(e, config.App, config.ReservationService))))
 
 	// Add the cancel reservation endpoint.
 	mux.HandleFunc("POST /ui/reservations/{id}/cancel", logging.WithLogging(config.Logger, web.WithAuth(serverSessions, HttpCancelReservation(config.ReservationService))))

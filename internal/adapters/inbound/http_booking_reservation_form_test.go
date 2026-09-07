@@ -41,13 +41,10 @@ func createFormTestService(repo *mockReservationRepository) *reservation.Service
 
 func Test_HttpViewReservationForm_Without_Session_Should_Redirect_To_Login(t *testing.T) {
 	// Arrange
-	t.Setenv("APP_NAME", "TestApp")
-	t.Setenv("APP_DESCRIPTION", "Test Description")
-
 	e := templating.NewEngine(formTestAssets)
 	e.Parse("testdata/assets/templates/*.tmpl")
 
-	handler := inbound.HttpViewReservationForm(e)
+	handler := inbound.HttpViewReservationForm(e, testApp())
 	req := httptest.NewRequest(http.MethodGet, "/ui/reservations/new", nil)
 	rec := httptest.NewRecorder()
 
@@ -62,13 +59,10 @@ func Test_HttpViewReservationForm_Without_Session_Should_Redirect_To_Login(t *te
 
 func Test_HttpViewReservationForm_With_Valid_Session_Should_Return_200(t *testing.T) {
 	// Arrange
-	t.Setenv("APP_NAME", "TestApp")
-	t.Setenv("APP_DESCRIPTION", "Test Description")
-
 	e := templating.NewEngine(formTestAssets)
 	e.Parse("testdata/assets/templates/*.tmpl")
 
-	handler := inbound.HttpViewReservationForm(e)
+	handler := inbound.HttpViewReservationForm(e, testApp())
 	req := httptest.NewRequest(http.MethodGet, "/ui/reservations/new", nil)
 	req = addAuthContext(req, "test-session-123", "test@example.com")
 	rec := httptest.NewRecorder()
@@ -82,13 +76,10 @@ func Test_HttpViewReservationForm_With_Valid_Session_Should_Return_200(t *testin
 
 func Test_HttpViewReservationForm_Should_Render_App_Name(t *testing.T) {
 	// Arrange
-	t.Setenv("APP_NAME", "TestApp")
-	t.Setenv("APP_DESCRIPTION", "Test Description")
-
 	e := templating.NewEngine(formTestAssets)
 	e.Parse("testdata/assets/templates/*.tmpl")
 
-	handler := inbound.HttpViewReservationForm(e)
+	handler := inbound.HttpViewReservationForm(e, testApp())
 	req := httptest.NewRequest(http.MethodGet, "/ui/reservations/new", nil)
 	req = addAuthContext(req, "test-session-123", "test@example.com")
 	rec := httptest.NewRecorder()
@@ -104,13 +95,10 @@ func Test_HttpViewReservationForm_Should_Render_App_Name(t *testing.T) {
 
 func Test_HttpViewReservationForm_Should_Render_Guest_Email(t *testing.T) {
 	// Arrange
-	t.Setenv("APP_NAME", "TestApp")
-	t.Setenv("APP_DESCRIPTION", "Test Description")
-
 	e := templating.NewEngine(formTestAssets)
 	e.Parse("testdata/assets/templates/*.tmpl")
 
-	handler := inbound.HttpViewReservationForm(e)
+	handler := inbound.HttpViewReservationForm(e, testApp())
 	req := httptest.NewRequest(http.MethodGet, "/ui/reservations/new", nil)
 	req = addAuthContext(req, "test-session-123", "test@example.com")
 	rec := httptest.NewRecorder()
@@ -126,13 +114,10 @@ func Test_HttpViewReservationForm_Should_Render_Guest_Email(t *testing.T) {
 
 func Test_HttpViewReservationForm_Should_Render_Rooms(t *testing.T) {
 	// Arrange
-	t.Setenv("APP_NAME", "TestApp")
-	t.Setenv("APP_DESCRIPTION", "Test Description")
-
 	e := templating.NewEngine(formTestAssets)
 	e.Parse("testdata/assets/templates/*.tmpl")
 
-	handler := inbound.HttpViewReservationForm(e)
+	handler := inbound.HttpViewReservationForm(e, testApp())
 	req := httptest.NewRequest(http.MethodGet, "/ui/reservations/new", nil)
 	req = addAuthContext(req, "test-session-123", "test@example.com")
 	rec := httptest.NewRecorder()
@@ -152,16 +137,13 @@ func Test_HttpViewReservationForm_Should_Render_Rooms(t *testing.T) {
 
 func Test_HttpCreateReservation_Without_Session_Should_Redirect_To_Login(t *testing.T) {
 	// Arrange
-	t.Setenv("APP_NAME", "TestApp")
-	t.Setenv("APP_DESCRIPTION", "Test Description")
-
 	e := templating.NewEngine(formTestAssets)
 	e.Parse("testdata/assets/templates/*.tmpl")
 
 	repo := newMockReservationRepository()
 	service := createFormTestService(repo)
 
-	handler := inbound.HttpCreateReservation(e, service)
+	handler := inbound.HttpCreateReservation(e, testApp(), service)
 	req := httptest.NewRequest(http.MethodPost, "/ui/reservations/new", nil)
 	rec := httptest.NewRecorder()
 
@@ -176,16 +158,13 @@ func Test_HttpCreateReservation_Without_Session_Should_Redirect_To_Login(t *test
 
 func Test_HttpCreateReservation_With_Missing_Fields_Should_Show_Error(t *testing.T) {
 	// Arrange
-	t.Setenv("APP_NAME", "TestApp")
-	t.Setenv("APP_DESCRIPTION", "Test Description")
-
 	e := templating.NewEngine(formTestAssets)
 	e.Parse("testdata/assets/templates/*.tmpl")
 
 	repo := newMockReservationRepository()
 	service := createFormTestService(repo)
 
-	handler := inbound.HttpCreateReservation(e, service)
+	handler := inbound.HttpCreateReservation(e, testApp(), service)
 
 	// Create request with empty form
 	form := url.Values{}
@@ -206,16 +185,13 @@ func Test_HttpCreateReservation_With_Missing_Fields_Should_Show_Error(t *testing
 
 func Test_HttpCreateReservation_With_Invalid_Room_Should_Show_Error(t *testing.T) {
 	// Arrange
-	t.Setenv("APP_NAME", "TestApp")
-	t.Setenv("APP_DESCRIPTION", "Test Description")
-
 	e := templating.NewEngine(formTestAssets)
 	e.Parse("testdata/assets/templates/*.tmpl")
 
 	repo := newMockReservationRepository()
 	service := createFormTestService(repo)
 
-	handler := inbound.HttpCreateReservation(e, service)
+	handler := inbound.HttpCreateReservation(e, testApp(), service)
 
 	// Create request with invalid room
 	checkIn := time.Now().AddDate(0, 0, 7).Format("2006-01-02")
@@ -244,16 +220,13 @@ func Test_HttpCreateReservation_With_Invalid_Room_Should_Show_Error(t *testing.T
 
 func Test_HttpCreateReservation_With_Valid_Data_Should_Redirect_To_Reservations(t *testing.T) {
 	// Arrange
-	t.Setenv("APP_NAME", "TestApp")
-	t.Setenv("APP_DESCRIPTION", "Test Description")
-
 	e := templating.NewEngine(formTestAssets)
 	e.Parse("testdata/assets/templates/*.tmpl")
 
 	repo := newMockReservationRepository()
 	service := createFormTestService(repo)
 
-	handler := inbound.HttpCreateReservation(e, service)
+	handler := inbound.HttpCreateReservation(e, testApp(), service)
 
 	// Create request with valid data
 	checkIn := time.Now().AddDate(0, 0, 7).Format("2006-01-02")
@@ -282,16 +255,13 @@ func Test_HttpCreateReservation_With_Valid_Data_Should_Redirect_To_Reservations(
 
 func Test_HttpCreateReservation_Should_Create_Reservation_In_Repository(t *testing.T) {
 	// Arrange
-	t.Setenv("APP_NAME", "TestApp")
-	t.Setenv("APP_DESCRIPTION", "Test Description")
-
 	e := templating.NewEngine(formTestAssets)
 	e.Parse("testdata/assets/templates/*.tmpl")
 
 	repo := newMockReservationRepository()
 	service := createFormTestService(repo)
 
-	handler := inbound.HttpCreateReservation(e, service)
+	handler := inbound.HttpCreateReservation(e, testApp(), service)
 
 	// Create request with valid data
 	checkIn := time.Now().AddDate(0, 0, 7).Format("2006-01-02")
@@ -318,16 +288,13 @@ func Test_HttpCreateReservation_Should_Create_Reservation_In_Repository(t *testi
 
 func Test_HttpCreateReservation_With_Invalid_CheckIn_Date_Format_Should_Show_Error(t *testing.T) {
 	// Arrange
-	t.Setenv("APP_NAME", "TestApp")
-	t.Setenv("APP_DESCRIPTION", "Test Description")
-
 	e := templating.NewEngine(formTestAssets)
 	e.Parse("testdata/assets/templates/*.tmpl")
 
 	repo := newMockReservationRepository()
 	service := createFormTestService(repo)
 
-	handler := inbound.HttpCreateReservation(e, service)
+	handler := inbound.HttpCreateReservation(e, testApp(), service)
 
 	// Create request with invalid date format
 	form := url.Values{

@@ -2,7 +2,6 @@ package inbound
 
 import (
 	"net/http"
-	"os"
 
 	"github.com/andygeiss/cloud-native-utils/templating"
 	"github.com/andygeiss/cloud-native-utils/web"
@@ -68,8 +67,8 @@ func buildReservationDetailView(res *reservation.Reservation) ReservationDetailV
 }
 
 // HttpViewReservationDetail defines an HTTP handler function for rendering a single reservation.
-func HttpViewReservationDetail(e *templating.Engine, reservationService *reservation.Service) http.HandlerFunc {
-	appName := os.Getenv("APP_NAME")
+func HttpViewReservationDetail(e *templating.Engine, app AppInfo, reservationService *reservation.Service) http.HandlerFunc {
+	appName := app.Name
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()

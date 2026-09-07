@@ -5,19 +5,20 @@ import (
 	"database/sql"
 	"embed"
 	"errors"
+	"flag"
 	"fmt"
+	"log/slog"
+	"net"
 	"net/http"
 	"os"
 	"runtime/debug"
 	"time"
 
-	"github.com/andygeiss/cloud-native-utils/env"
 	"github.com/andygeiss/cloud-native-utils/logging"
 	"github.com/andygeiss/cloud-native-utils/mcp"
 	"github.com/andygeiss/cloud-native-utils/messaging"
 	"github.com/andygeiss/cloud-native-utils/resource"
 	"github.com/andygeiss/cloud-native-utils/service"
-	"github.com/andygeiss/cloud-native-utils/web"
 	"github.com/andygeiss/hotel-booking/internal/adapters/inbound"
 	"github.com/andygeiss/hotel-booking/internal/adapters/outbound"
 	"github.com/andygeiss/hotel-booking/internal/domain/orchestration"
@@ -29,6 +30,26 @@ import (
 
 //go:embed assets
 var efs embed.FS
+
+// shutdownTimeout is how long a server gets to finish in-flight requests once
+// a stop has been asked for. It is a fresh budget, never the signal context:
+// that one is already cancelled by the time shutdown starts, so passing it
+// would make Shutdown return at once and kill the requests it is meant to
+// drain. Without any deadline, a single stuck request holds the process open
+// forever.
+const shutdownTimeout = 10 * time.Second
+
+// shutdownOnSignal stops srv once ctx is done, giving it shutdownTimeout to
+// drain. RegisterOnContextDone waits five seconds first, so the readiness
+// probe fails and the load balancer stops sending traffic before the listener
+// closes.
+func shutdownOnSignal(ctx context.Context, srv *http.Server) {
+	service.RegisterOnContextDone(ctx, func() {
+		stop, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
+		defer cancel()
+		_ = srv.Shutdown(stop)
+	})
+}
 
 // buildVersion reports the module version this binary was built from.
 // debug.ReadBuildInfo is the only source: a version baked in with -ldflags
@@ -43,14 +64,12 @@ func buildVersion() string {
 
 // buildMCPServer creates the MCP server with all tools registered.
 func buildMCPServer(
+	cfg Config,
 	reservationService *reservation.Service,
 	availabilityChecker reservation.AvailabilityChecker,
 	paymentService *payment.Service,
 ) *mcp.Server {
-	server := mcp.NewServer(
-		env.Get("APP_SHORTNAME", "mcp-server"),
-		env.Get("APP_VERSION", "1.0.0"),
-	)
+	server := mcp.NewServer(cfg.AppShortname, cfg.AppVersion)
 
 	// Register tools from each bounded context.
 	reservation.RegisterTools(server, reservationService, availabilityChecker)
@@ -60,6 +79,19 @@ func buildMCPServer(
 }
 
 func main() {
+	// Configuration first: a bad port or a missing credential must surface as
+	// one line and exit 2, before anything opens a database or binds a socket.
+	cfg, err := parseConfig(os.Args[1:], os.Stderr)
+	switch {
+	case errors.Is(err, flag.ErrHelp):
+		return // -h: the usage text is the answer
+	case errors.Is(err, errUsage):
+		os.Exit(2) // the FlagSet already printed what was wrong
+	case err != nil:
+		fmt.Fprintf(os.Stderr, "server: %v\n", err)
+		os.Exit(2)
+	}
+
 	// Create a new context with a cancel function.
 	ctx, cancel := service.Context()
 	defer cancel()
@@ -67,17 +99,20 @@ func main() {
 	// Create a new logger.
 	// We use the logging.NewJsonLogger function from the cloud-native-utils/logging package.
 	logger := logging.NewJsonLogger()
+	logger.Info("configuration loaded", slog.Any("config", cfg))
+	for _, db := range []struct {
+		name string
+		cfg  DatabaseConfig
+	}{{"reservation", cfg.ReservationDB}, {"payment", cfg.PaymentDB}} {
+		if db.cfg.Password == "" {
+			logger.Warn("database password is empty",
+				"database", db.name,
+				"fix", "put one file per secret in $CREDENTIALS_DIRECTORY, or set the matching _PASSWORD variable for local development")
+		}
+	}
 
 	// Initialize Reservation Database connection.
-	reservationDSN := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",
-		env.Get("RESERVATION_DB_HOST", "localhost"),
-		env.Get("RESERVATION_DB_PORT", "5432"),
-		env.Get("RESERVATION_DB_USER", "reservation"),
-		env.Get("RESERVATION_DB_PASSWORD", "reservation_secret"),
-		env.Get("RESERVATION_DB_NAME", "reservation_db"),
-		env.Get("RESERVATION_DB_SSLMODE", "disable"),
-	)
-	reservationDB, err := sql.Open("pgx", reservationDSN)
+	reservationDB, err := sql.Open("pgx", cfg.ReservationDB.DSN())
 	if err != nil {
 		logger.Error("failed to connect to reservation database", "error", err)
 		os.Exit(1)
@@ -85,15 +120,7 @@ func main() {
 	defer reservationDB.Close()
 
 	// Initialize Payment Database connection.
-	paymentDSN := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",
-		env.Get("PAYMENT_DB_HOST", "localhost"),
-		env.Get("PAYMENT_DB_PORT", "5433"),
-		env.Get("PAYMENT_DB_USER", "payment"),
-		env.Get("PAYMENT_DB_PASSWORD", "payment_secret"),
-		env.Get("PAYMENT_DB_NAME", "payment_db"),
-		env.Get("PAYMENT_DB_SSLMODE", "disable"),
-	)
-	paymentDB, err := sql.Open("pgx", paymentDSN)
+	paymentDB, err := sql.Open("pgx", cfg.PaymentDB.DSN())
 	if err != nil {
 		logger.Error("failed to connect to payment database", "error", err)
 		os.Exit(1)
@@ -129,9 +156,8 @@ func main() {
 
 	// Initialize OIDC provider for MCP token verification.
 	// This connects to Keycloak to validate Bearer tokens for the MCP endpoint.
-	// Reuses the existing OIDC_ISSUER environment variable for consistency.
-	oidcIssuer := env.Get("OIDC_ISSUER", "http://localhost:8180/realms/local")
-	provider, err := oidc.NewProvider(ctx, oidcIssuer)
+	// The issuer is shared with the browser login flow, so both agree.
+	provider, err := oidc.NewProvider(ctx, cfg.OIDCIssuer)
 	if err != nil {
 		logger.Error("failed to initialize OIDC provider", "error", err)
 		os.Exit(1)
@@ -139,14 +165,18 @@ func main() {
 
 	// Configure token verifier for MCP client.
 	// Uses a separate client ID for machine-to-machine MCP authentication.
-	mcpClientID := env.Get("MCP_CLIENT_ID", "hotel-booking-mcp")
-	verifier := provider.Verifier(&oidc.Config{ClientID: mcpClientID})
+	verifier := provider.Verifier(&oidc.Config{ClientID: cfg.MCPClientID})
 
 	// Build the MCP server with all tools registered.
-	mcpServer := buildMCPServer(reservationService, availabilityChecker, paymentService)
+	mcpServer := buildMCPServer(cfg, reservationService, availabilityChecker, paymentService)
 
 	// Create router with all dependencies via RouterConfig.
 	mux := inbound.Route(inbound.RouterConfig{
+		App: inbound.AppInfo{
+			Description: cfg.AppDescription,
+			Name:        cfg.AppName,
+			Version:     cfg.AppVersion,
+		},
 		Ctx:                ctx,
 		EFS:                efs,
 		Logger:             logger,
@@ -160,7 +190,7 @@ func main() {
 	// being unreachable is their whole access control.
 	opsSrv := &http.Server{
 		Addr: "127.0.0.1:6060",
-		Handler: inbound.OpsHandler(buildVersion(), func(ctx context.Context) error {
+		Handler: inbound.OpsHandler(cfg.AppVersion, func(ctx context.Context) error {
 			if err := reservationDB.PingContext(ctx); err != nil {
 				return fmt.Errorf("pinging reservation database: %w", err)
 			}
@@ -177,11 +207,9 @@ func main() {
 		WriteTimeout: 30 * time.Second,
 	}
 
-	// How this goroutine stops: the shutdown below closes the listener when the
+	// How this goroutine stops: the shutdown closes the listener when the
 	// context is done, and ListenAndServe then returns http.ErrServerClosed.
-	service.RegisterOnContextDone(ctx, func() {
-		_ = opsSrv.Shutdown(context.Background())
-	})
+	shutdownOnSignal(ctx, opsSrv)
 	go func() {
 		if err := opsSrv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			// The app keeps serving without /healthz and pprof, so say plainly
@@ -194,20 +222,25 @@ func main() {
 		}
 	}()
 
-	srv := web.NewServer(mux)
+	// The application listener. Built here rather than by a helper so that
+	// cfg.Host and cfg.Port actually decide the address, and so the four
+	// timeouts are visible where somebody debugging a hung request will look.
+	// An empty host binds every interface, which is what the container needs;
+	// a bare-metal deployment behind a proxy sets HOST=127.0.0.1.
+	srv := &http.Server{
+		Addr:              net.JoinHostPort(cfg.Host, cfg.Port),
+		Handler:           mux,
+		ErrorLog:          slog.NewLogLogger(logger.Handler(), slog.LevelError),
+		IdleTimeout:       2 * time.Minute,
+		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       10 * time.Second,
+		WriteTimeout:      30 * time.Second,
+	}
 	defer func() { _ = srv.Close() }()
 
-	// Register the server shutdown function on the context done function.
-	// We use the RegisterOnContextDone function from the cloud-native-utils/service package.
-	// The server.Shutdown function waits for 5 seconds before shutting down the server.
-	service.RegisterOnContextDone(ctx, func() {
-		_ = srv.Shutdown(context.Background())
-	})
+	shutdownOnSignal(ctx, srv)
 
-	// The server implementation from the cloud-native-utils/web package uses
-	// It uses the PORT environment variable to determine the port to listen on.
-	// If the PORT environment variable is not set, it defaults to port 8080.
-	logger.Info("server initialized", "port", env.Get("PORT", "8080"))
+	logger.Info("server initialized", "addr", srv.Addr, "version", cfg.AppVersion)
 
 	// Start the HTTP server in the main goroutine.
 	if err := srv.ListenAndServe(); err != nil {

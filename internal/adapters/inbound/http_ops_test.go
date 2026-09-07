@@ -67,10 +67,8 @@ func Test_OpsHandler_Pprof_Index_Should_Return_200(t *testing.T) {
 // later edit from moving them onto the public listener.
 func Test_Route_Ops_Endpoints_Should_Not_Be_Served_By_The_App_Mux(t *testing.T) {
 	// Arrange
-	t.Setenv("APP_NAME", "TestApp")
-	t.Setenv("APP_DESCRIPTION", "Test Description")
-
 	mux := inbound.Route(inbound.RouterConfig{
+		App:                testApp(),
 		Ctx:                context.Background(),
 		EFS:                getRouterTestFS(t),
 		Logger:             slog.Default(),

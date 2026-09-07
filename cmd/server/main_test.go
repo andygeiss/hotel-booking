@@ -21,8 +21,29 @@ import (
 )
 
 // Benchmarks for Profile-Guided Optimization (PGO).
-// Run with: just profile
-// This generates cpuprofile.pprof for optimized builds.
+// Run with: make profile
+// This writes cmd/server/default.pgo, which go build picks up on its own.
+
+// benchConfig is the configuration the routed benchmarks build against. It
+// never touches the environment, so a benchmark run cannot be changed by the
+// shell it starts in.
+func benchConfig() Config {
+	return Config{
+		AppDescription: "Benchmark",
+		AppName:        "Hotel Booking",
+		AppShortname:   "hotel-booking",
+		AppVersion:     "v0.0.0-bench",
+	}
+}
+
+// benchApp is the identity the routed benchmarks render with.
+func benchApp() inbound.AppInfo {
+	return inbound.AppInfo{
+		Description: "Benchmark",
+		Name:        "Hotel Booking",
+		Version:     "v0.0.0-bench",
+	}
+}
 
 // mockReservationRepository is a simple in-memory mock for benchmarking.
 type mockReservationRepository struct {
@@ -78,6 +99,7 @@ func Benchmark_Server_Integration_Liveness_Should_Respond_Fast(b *testing.B) {
 	logger := logging.NewJsonLogger()
 	reservationService := createBenchReservationService()
 	mux := inbound.Route(inbound.RouterConfig{
+		App:                benchApp(),
 		Ctx:                ctx,
 		EFS:                efs,
 		Logger:             logger,
@@ -103,6 +125,7 @@ func Benchmark_Server_Integration_Static_CSS_Should_Serve_Fast(b *testing.B) {
 	logger := logging.NewJsonLogger()
 	reservationService := createBenchReservationService()
 	mux := inbound.Route(inbound.RouterConfig{
+		App:                benchApp(),
 		Ctx:                ctx,
 		EFS:                efs,
 		Logger:             logger,
@@ -128,6 +151,7 @@ func Benchmark_Server_Integration_Login_Page_Should_Render_Fast(b *testing.B) {
 	logger := logging.NewJsonLogger()
 	reservationService := createBenchReservationService()
 	mux := inbound.Route(inbound.RouterConfig{
+		App:                benchApp(),
 		Ctx:                ctx,
 		EFS:                efs,
 		Logger:             logger,
@@ -156,9 +180,10 @@ func Benchmark_Server_Integration_MCP_Tools_List_Should_Be_Fast(b *testing.B) {
 	availabilityChecker := outbound.NewRepositoryAvailabilityChecker(newMockReservationRepository())
 
 	// Build MCP server with tools registered.
-	mcpServer := buildMCPServer(reservationService, availabilityChecker, paymentService)
+	mcpServer := buildMCPServer(benchConfig(), reservationService, availabilityChecker, paymentService)
 
 	mux := inbound.Route(inbound.RouterConfig{
+		App:                benchApp(),
 		Ctx:                ctx,
 		EFS:                efs,
 		Logger:             logger,
