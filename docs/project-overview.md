@@ -41,10 +41,10 @@ The codebase is designed to be forked as a template — the directory layout, de
 | DB driver | `github.com/jackc/pgx/v5` |
 | OIDC client | `github.com/coreos/go-oidc/v3` |
 | Kafka client | `github.com/segmentio/kafka-go` (indirect via cloud-native-utils) |
-| Task runner | `just` |
+| Task runner | `make` — the only command surface, copied from the baseline's `stack/makefile.md` |
 | Lint | `staticcheck` via `make check` (the only third-party lint tool) |
 | Container | Multi-stage Dockerfile → `scratch` runtime (~5-10 MB) |
-| CI | GitHub Actions (`.github/workflows/ci.yml`) + Codacy coverage |
+| CI | None, by design. The eight gates run on the developer's machine: `make check` before every commit, `make ci` before every push |
 | Frontend | Go `html/template` SSR + HTMX + PWA manifest (no service worker) |
 
 ## Repository Structure
