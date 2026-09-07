@@ -3,7 +3,6 @@ package inbound
 import (
 	"net/http"
 
-	"github.com/andygeiss/cloud-native-utils/templating"
 	"github.com/andygeiss/cloud-native-utils/web"
 	"github.com/andygeiss/hotel-booking/internal/domain/reservation"
 	"github.com/andygeiss/hotel-booking/internal/domain/shared"
@@ -34,9 +33,7 @@ type ReservationDetailView struct {
 
 // HttpViewReservationDetailResponse specifies the view data for the reservation detail.
 type HttpViewReservationDetailResponse struct {
-	AppName     string
-	Title       string
-	SessionID   string
+	Layout
 	Reservation ReservationDetailView
 }
 
@@ -67,7 +64,7 @@ func buildReservationDetailView(res *reservation.Reservation) ReservationDetailV
 }
 
 // HttpViewReservationDetail defines an HTTP handler function for rendering a single reservation.
-func HttpViewReservationDetail(e *templating.Engine, app AppInfo, reservationService *reservation.Service) http.HandlerFunc {
+func HttpViewReservationDetail(v *View, app AppInfo, reservationService *reservation.Service) http.HandlerFunc {
 	appName := app.Name
 
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -104,12 +101,27 @@ func HttpViewReservationDetail(e *templating.Engine, app AppInfo, reservationSer
 			Reservation: buildReservationDetailView(res),
 		}
 
-		HttpView(e, "reservation_detail", data)(w, r)
+		// No fragment: cancelling from here navigates away rather than swapping,
+		// so there is no block for htmx to ask for.
+		v.Render(w, r, http.StatusOK, "reservation_detail", "", data)
 	}
 }
 
 // HttpCancelReservation handles the POST request to cancel a reservation.
-func HttpCancelReservation(reservationService *reservation.Service) http.HandlerFunc {
+//
+// Three ways out, and which one is taken is decided by isFragment, the same
+// test the renderer uses:
+//
+//   - a fragment swap from the list gets the re-rendered list and 200;
+//   - a boosted form, or a browser with no htmx at all, gets 303 See Other,
+//     because a direct 200 would push this POST's URL into history and a later
+//     refresh or Back would re-issue it as a GET against a POST-only route;
+//   - a fragment swap with no target to swap into — the detail page — gets
+//     HX-Redirect, because the whole page is stale once the booking is gone.
+func HttpCancelReservation(v *View, app AppInfo, reservationService *reservation.Service) http.HandlerFunc {
+	appName := app.Name
+	title := appName + " - Reservations"
+
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
@@ -147,13 +159,21 @@ func HttpCancelReservation(reservationService *reservation.Service) http.Handler
 			return
 		}
 
-		// Redirect back to reservations list
-		// Use HX-Redirect header for HTMX requests to trigger a full page navigation
-		if r.Header.Get("HX-Request") == "true" {
+		if !isFragment(r) {
+			// Plain and boosted forms both land here: POST-redirect-GET.
+			http.Redirect(w, r, "/ui/reservations", http.StatusSeeOther)
+			return
+		}
+
+		// The list page names a target to swap; the detail page does not, and
+		// its whole document is stale now, so send it somewhere else instead.
+		if r.Header.Get("HX-Target") != "reservation-list" {
 			w.Header().Set("HX-Redirect", "/ui/reservations")
 			w.WriteHeader(http.StatusOK)
 			return
 		}
-		http.Redirect(w, r, "/ui/reservations", http.StatusSeeOther)
+
+		data := reservationsResponse(ctx, reservationService, appName, title, sessionID, email)
+		v.Render(w, r, http.StatusOK, "reservations", "reservation-list", data)
 	}
 }

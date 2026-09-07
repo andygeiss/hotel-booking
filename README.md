@@ -599,10 +599,15 @@ the damage.
   ([stack/go.md](https://github.com/andygeiss/baseline/blob/main/stack/go.md))
   — waived 2026-09-07 by Andy. Three dependencies sit outside the list, each because it
   *is* the mechanism a chapter of this reference implementation demonstrates:
-  `cloud-native-utils` (server, sessions, MCP, templating, Kafka dispatcher),
-  `go-oidc/v3` (token verification), and `kafka-go` (event streaming, pulled in
-  indirectly). Contained: every one is reached through a port in `internal/domain`, so
-  the domain layer compiles without any of them.
+  `cloud-native-utils` (server, sessions, MCP, Kafka dispatcher), `go-oidc/v3` (token
+  verification), and `kafka-go` (event streaming, pulled in indirectly). Contained: every
+  one is reached through a port in `internal/domain`, so the domain layer compiles without
+  any of them.
+
+  Its templating engine is **not** among them any more. That engine wraps
+  `text/template`, which does no contextual escaping, and these pages render a guest's own
+  name, email and phone. The UI is rendered by `inbound.View` on the standard library's
+  `html/template` instead, and a test pins that guest data comes back escaped.
 
 - **Secrets arrive as files, never as environment variables**
   ([patterns/go-config.md](https://github.com/andygeiss/baseline/blob/main/patterns/go-config.md)

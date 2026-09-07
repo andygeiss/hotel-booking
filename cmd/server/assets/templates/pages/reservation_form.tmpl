@@ -1,0 +1,114 @@
+{{ define "title" }}{{ .Title }}{{ end }}
+
+{{ define "main" }}
+<div class="card">
+    <div class="card__header">
+        <h1>New Reservation</h1>
+    </div>
+    <div class="card__body">
+        {{ template "reservation-form" . }}
+    </div>
+</div>
+{{ end }}
+
+{{/*
+  The fragment. A rejected POST re-renders this block with 422 and the
+  submitted values still in the fields; htmx swaps it in place because the
+  layout's htmx-config lists 422 as swappable.
+*/}}
+{{ define "reservation-form" }}
+<div id="reservation-form">
+    {{ if .Error }}
+    <div class="alert alert-danger mb-4" role="alert">{{ .Error }}</div>
+    {{ end }}
+
+    <form
+        method="post"
+        action="/ui/reservations"
+        class="form"
+        hx-post="/ui/reservations"
+        hx-target="#reservation-form"
+        hx-swap="outerHTML"
+    >
+        <div class="form-group">
+            <label for="room_id">Room</label>
+            <select id="room_id" name="room_id" class="form-input" required>
+                <option value="">Select a room...</option>
+                {{ range .Rooms }}
+                <option value="{{ .ID }}"{{ if eq .ID $.RoomID }} selected{{ end }}>{{ .Name }} - {{ .Price }}/night</option>
+                {{ end }}
+            </select>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="check_in">Check-In Date</label>
+                <input
+                    type="date"
+                    id="check_in"
+                    name="check_in"
+                    class="form-input"
+                    min="{{ .MinDate }}"
+                    value="{{ .CheckIn }}"
+                    required
+                />
+            </div>
+            <div class="form-group">
+                <label for="check_out">Check-Out Date</label>
+                <input
+                    type="date"
+                    id="check_out"
+                    name="check_out"
+                    class="form-input"
+                    min="{{ .MinDate }}"
+                    value="{{ .CheckOut }}"
+                    required
+                />
+            </div>
+        </div>
+
+        <h3 class="mt-4 mb-2">Guest Information</h3>
+
+        <div class="form-group">
+            <label for="guest_name">Guest Name</label>
+            <input
+                type="text"
+                id="guest_name"
+                name="guest_name"
+                class="form-input"
+                value="{{ .GuestName }}"
+                required
+            />
+        </div>
+
+        <div class="form-group">
+            <label for="guest_email">Guest Email</label>
+            <input
+                type="email"
+                id="guest_email"
+                name="guest_email"
+                class="form-input"
+                value="{{ .GuestEmail }}"
+                required
+            />
+        </div>
+
+        <div class="form-group">
+            <label for="guest_phone">Guest Phone</label>
+            <input
+                type="tel"
+                id="guest_phone"
+                name="guest_phone"
+                class="form-input"
+                placeholder="+1 (555) 123-4567"
+                value="{{ .GuestPhone }}"
+            />
+        </div>
+
+        <div class="form-actions">
+            <a href="/ui/reservations" class="btn">Cancel</a>
+            <button type="submit" class="btn btn-primary">Create Reservation</button>
+        </div>
+    </form>
+</div>
+{{ end }}

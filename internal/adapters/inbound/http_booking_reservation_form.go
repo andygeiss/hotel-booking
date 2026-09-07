@@ -4,7 +4,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/andygeiss/cloud-native-utils/templating"
 	"github.com/andygeiss/cloud-native-utils/web"
 	"github.com/andygeiss/hotel-booking/internal/domain/reservation"
 	"github.com/andygeiss/hotel-booking/internal/domain/shared"
@@ -19,12 +18,14 @@ type RoomOption struct {
 
 // HttpViewReservationFormResponse specifies the view data for the reservation form.
 type HttpViewReservationFormResponse struct {
-	AppName    string
-	Title      string
-	SessionID  string
+	Layout
 	MinDate    string
+	RoomID     string
+	CheckIn    string
+	CheckOut   string
 	GuestName  string
 	GuestEmail string
+	GuestPhone string
 	Error      string
 	Rooms      []RoomOption
 }
@@ -50,7 +51,7 @@ func getRoomPrices() map[string]int64 {
 }
 
 // HttpViewReservationForm defines an HTTP handler function for rendering the new reservation form.
-func HttpViewReservationForm(e *templating.Engine, app AppInfo) http.HandlerFunc {
+func HttpViewReservationForm(v *View, app AppInfo) http.HandlerFunc {
 	appName := app.Name
 	title := appName + " - New Reservation"
 
@@ -67,16 +68,17 @@ func HttpViewReservationForm(e *templating.Engine, app AppInfo) http.HandlerFunc
 		name, _ := ctx.Value(web.ContextName).(string)
 
 		data := HttpViewReservationFormResponse{
-			Rooms:      getDefaultRooms(),
 			AppName:    appName,
 			Title:      title,
 			SessionID:  sessionID,
+			ShowNew:    true,
+			Rooms:      getDefaultRooms(),
 			MinDate:    time.Now().Format("2006-01-02"),
 			GuestName:  name,
 			GuestEmail: email,
 		}
 
-		HttpView(e, "reservation_form", data)(w, r)
+		v.Render(w, r, http.StatusOK, "reservation_form", "reservation-form", data)
 	}
 }
 
@@ -130,7 +132,7 @@ func parseReservationForm(r *http.Request) (*reservationFormInput, string) {
 }
 
 // HttpCreateReservation handles the POST request to create a new reservation.
-func HttpCreateReservation(e *templating.Engine, app AppInfo, reservationService *reservation.Service) http.HandlerFunc {
+func HttpCreateReservation(v *View, app AppInfo, reservationService *reservation.Service) http.HandlerFunc {
 	appName := app.Name
 	title := appName + " - New Reservation"
 
@@ -146,7 +148,7 @@ func HttpCreateReservation(e *templating.Engine, app AppInfo, reservationService
 
 		input, errMsg := parseReservationForm(r)
 		if errMsg != "" {
-			renderReservationFormWithError(e, w, r, appName, title, sessionID, errMsg, r.FormValue("guest_name"), r.FormValue("guest_email"))
+			renderReservationFormWithError(v, w, r, appName, title, sessionID, errMsg)
 			return
 		}
 
@@ -156,7 +158,7 @@ func HttpCreateReservation(e *templating.Engine, app AppInfo, reservationService
 
 		_, err := reservationService.CreateReservation(ctx, shared.NewReservationID(), reservation.GuestID(email), reservation.RoomID(input.roomID), reservation.NewDateRange(input.checkIn, input.checkOut), totalAmount, guests)
 		if err != nil {
-			renderReservationFormWithError(e, w, r, appName, title, sessionID, err.Error(), input.guestName, input.guestEmail)
+			renderReservationFormWithError(v, w, r, appName, title, sessionID, err.Error())
 			return
 		}
 
@@ -164,16 +166,34 @@ func HttpCreateReservation(e *templating.Engine, app AppInfo, reservationService
 	}
 }
 
-func renderReservationFormWithError(e *templating.Engine, w http.ResponseWriter, r *http.Request, appName, title, sessionID, errMsg, guestName, guestEmail string) {
+// renderReservationFormWithError answers a rejected submission with 422 and the
+// form fragment, every field still holding what was typed.
+//
+// 422 rather than 200 because the request was understood and refused, and htmx
+// only swaps a 4xx because the layout's htmx-config lists this one code.
+//
+// HX-Push-Url: false is for the boosted case. A boosted swap otherwise pushes
+// this POST's URL into history, and the next refresh or Back re-issues it as a
+// GET against a route that only accepts POST — a 405 in the user's face. A 422
+// is not a redirect, so nothing else prevents that push.
+func renderReservationFormWithError(v *View, w http.ResponseWriter, r *http.Request, appName, title, sessionID, errMsg string) {
 	data := HttpViewReservationFormResponse{
-		Rooms:      getDefaultRooms(),
 		AppName:    appName,
 		Title:      title,
 		SessionID:  sessionID,
+		ShowNew:    true,
+		Rooms:      getDefaultRooms(),
 		MinDate:    time.Now().Format("2006-01-02"),
-		GuestName:  guestName,
-		GuestEmail: guestEmail,
+		RoomID:     r.FormValue("room_id"),
+		CheckIn:    r.FormValue("check_in"),
+		CheckOut:   r.FormValue("check_out"),
+		GuestName:  r.FormValue("guest_name"),
+		GuestEmail: r.FormValue("guest_email"),
+		GuestPhone: r.FormValue("guest_phone"),
 		Error:      errMsg,
 	}
-	HttpView(e, "reservation_form", data)(w, r)
+	if r.Header.Get("HX-Boosted") == "true" {
+		w.Header().Set("HX-Push-Url", "false")
+	}
+	v.Render(w, r, http.StatusUnprocessableEntity, "reservation_form", "reservation-form", data)
 }

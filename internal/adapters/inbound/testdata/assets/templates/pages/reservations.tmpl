@@ -1,11 +1,7 @@
-{{ define "reservations" }}<!DOCTYPE html>
-<html>
-<head><title>{{ .Title }}</title></head>
-<body>
-<h1>Reservations</h1>
-<p>AppName: {{ .AppName }}</p>
-<p>Session: {{ .SessionID }}</p>
-<ul>
+{{ define "title" }}{{ .Title }}{{ end }}
+{{ define "main" }}<h1>Reservations</h1>{{ template "reservation-list" . }}{{ end }}
+{{ define "reservation-list" }}
+<ul id="reservation-list">
 {{ range .Reservations }}
 <li>
   <span class="id">{{ .ID }}</span>
@@ -17,6 +13,4 @@
 </li>
 {{ end }}
 </ul>
-</body>
-</html>
 {{ end }}

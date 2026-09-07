@@ -1,14 +1,12 @@
 package inbound_test
 
 import (
-	"embed"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/andygeiss/cloud-native-utils/assert"
-	"github.com/andygeiss/cloud-native-utils/templating"
 	"github.com/andygeiss/hotel-booking/internal/adapters/inbound"
 )
 
@@ -16,19 +14,15 @@ import (
 // Test Assets
 // ============================================================================
 
-//go:embed testdata/assets/templates/*.tmpl testdata/assets/static/css/*.css
-var errorTestAssets embed.FS
-
 // ============================================================================
 // HttpViewError Tests
 // ============================================================================
 
 func Test_HttpViewError_With_Request_Should_Return_200(t *testing.T) {
 	// Arrange
-	e := templating.NewEngine(errorTestAssets)
-	e.Parse("testdata/assets/templates/*.tmpl")
+	v := newTestView(t)
 
-	handler := inbound.HttpViewError(e, testApp())
+	handler := inbound.HttpViewError(v, testApp())
 	req := httptest.NewRequest(http.MethodGet, "/ui/error", nil)
 	rec := httptest.NewRecorder()
 
@@ -41,10 +35,9 @@ func Test_HttpViewError_With_Request_Should_Return_200(t *testing.T) {
 
 func Test_HttpViewError_With_Request_Should_Render_Default_Error_Title(t *testing.T) {
 	// Arrange
-	e := templating.NewEngine(errorTestAssets)
-	e.Parse("testdata/assets/templates/*.tmpl")
+	v := newTestView(t)
 
-	handler := inbound.HttpViewError(e, testApp())
+	handler := inbound.HttpViewError(v, testApp())
 	req := httptest.NewRequest(http.MethodGet, "/ui/error", nil)
 	rec := httptest.NewRecorder()
 
@@ -59,10 +52,9 @@ func Test_HttpViewError_With_Request_Should_Render_Default_Error_Title(t *testin
 
 func Test_HttpViewError_With_Request_Should_Render_Default_Error_Message(t *testing.T) {
 	// Arrange
-	e := templating.NewEngine(errorTestAssets)
-	e.Parse("testdata/assets/templates/*.tmpl")
+	v := newTestView(t)
 
-	handler := inbound.HttpViewError(e, testApp())
+	handler := inbound.HttpViewError(v, testApp())
 	req := httptest.NewRequest(http.MethodGet, "/ui/error", nil)
 	rec := httptest.NewRecorder()
 
@@ -77,10 +69,9 @@ func Test_HttpViewError_With_Request_Should_Render_Default_Error_Message(t *test
 
 func Test_HttpViewError_With_Custom_Error_Title_Should_Render_Custom_Title(t *testing.T) {
 	// Arrange
-	e := templating.NewEngine(errorTestAssets)
-	e.Parse("testdata/assets/templates/*.tmpl")
+	v := newTestView(t)
 
-	handler := inbound.HttpViewError(e, testApp())
+	handler := inbound.HttpViewError(v, testApp())
 	req := httptest.NewRequest(http.MethodGet, "/ui/error?title=Custom+Error+Title", nil)
 	rec := httptest.NewRecorder()
 
@@ -95,10 +86,9 @@ func Test_HttpViewError_With_Custom_Error_Title_Should_Render_Custom_Title(t *te
 
 func Test_HttpViewError_With_Custom_Error_Message_Should_Render_Custom_Message(t *testing.T) {
 	// Arrange
-	e := templating.NewEngine(errorTestAssets)
-	e.Parse("testdata/assets/templates/*.tmpl")
+	v := newTestView(t)
 
-	handler := inbound.HttpViewError(e, testApp())
+	handler := inbound.HttpViewError(v, testApp())
 	req := httptest.NewRequest(http.MethodGet, "/ui/error?message=Custom+error+message+here", nil)
 	rec := httptest.NewRecorder()
 
@@ -113,10 +103,9 @@ func Test_HttpViewError_With_Custom_Error_Message_Should_Render_Custom_Message(t
 
 func Test_HttpViewError_With_Error_Details_Should_Render_Details(t *testing.T) {
 	// Arrange
-	e := templating.NewEngine(errorTestAssets)
-	e.Parse("testdata/assets/templates/*.tmpl")
+	v := newTestView(t)
 
-	handler := inbound.HttpViewError(e, testApp())
+	handler := inbound.HttpViewError(v, testApp())
 	req := httptest.NewRequest(http.MethodGet, "/ui/error?details=Stack+trace+info", nil)
 	rec := httptest.NewRecorder()
 
@@ -131,10 +120,9 @@ func Test_HttpViewError_With_Error_Details_Should_Render_Details(t *testing.T) {
 
 func Test_HttpViewError_With_All_Parameters_Should_Render_All(t *testing.T) {
 	// Arrange
-	e := templating.NewEngine(errorTestAssets)
-	e.Parse("testdata/assets/templates/*.tmpl")
+	v := newTestView(t)
 
-	handler := inbound.HttpViewError(e, testApp())
+	handler := inbound.HttpViewError(v, testApp())
 	req := httptest.NewRequest(http.MethodGet, "/ui/error?title=Not+Found&message=Page+not+found&details=Error+404", nil)
 	rec := httptest.NewRecorder()
 
@@ -151,10 +139,9 @@ func Test_HttpViewError_With_All_Parameters_Should_Render_All(t *testing.T) {
 
 func Test_HttpViewError_With_Request_Should_Contain_App_Name(t *testing.T) {
 	// Arrange
-	e := templating.NewEngine(errorTestAssets)
-	e.Parse("testdata/assets/templates/*.tmpl")
+	v := newTestView(t)
 
-	handler := inbound.HttpViewError(e, testApp())
+	handler := inbound.HttpViewError(v, testApp())
 	req := httptest.NewRequest(http.MethodGet, "/ui/error", nil)
 	rec := httptest.NewRecorder()
 
@@ -169,10 +156,9 @@ func Test_HttpViewError_With_Request_Should_Contain_App_Name(t *testing.T) {
 
 func Test_HttpViewError_With_Request_Should_Return_HTML_Content_Type(t *testing.T) {
 	// Arrange
-	e := templating.NewEngine(errorTestAssets)
-	e.Parse("testdata/assets/templates/*.tmpl")
+	v := newTestView(t)
 
-	handler := inbound.HttpViewError(e, testApp())
+	handler := inbound.HttpViewError(v, testApp())
 	req := httptest.NewRequest(http.MethodGet, "/ui/error", nil)
 	rec := httptest.NewRecorder()
 

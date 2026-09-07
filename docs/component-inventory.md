@@ -27,11 +27,11 @@ Architecture narrative lives in [ARCHITECTURE.md](./ARCHITECTURE.md); this inven
 | `WithBearerAuth(VerifierFunc, *slog.Logger, http.HandlerFunc) http.HandlerFunc` | `middleware.go` | Guards `/mcp`. Builds the OIDC verifier on the first request rather than at boot, caches only success, and answers 503 while the identity provider is unreachable. |
 | `AppInfo` | `app_info.go` | The name, description and version every page renders. Passed in from `main`'s `Config`, so no handler reads the environment. |
 
-### HTTP View Handlers (SSR via `cloud-native-utils/templating`)
+### HTTP View Handlers (SSR via `html/template`)
 
 See [API Contracts § HTTP Endpoints](./api-contracts.md#http-endpoints) for method/path/auth/handler details. All files live under `internal/adapters/inbound/http_*.go`.
 
-All handlers are created by a **factory function** that closes over its dependencies (`templating.Engine`, `reservation.Service`). `APP_NAME`/`APP_DESCRIPTION` are read at closure construction time, not per-request.
+All handlers are created by a **factory function** that closes over its dependencies (`inbound.View`, `reservation.Service`). Identity arrives as an `AppInfo` parameter, not from the environment.
 
 ### Event Subscription
 
@@ -51,11 +51,19 @@ All handlers are created by a **factory function** that closes over its dependen
 
 ### Embedded Templates (`cmd/server/assets/templates/`)
 
-- `index.tmpl`, `login.tmpl`, `error.tmpl`
-- `reservations.tmpl`, `reservation_form.tmpl`, `reservation_detail.tmpl`
-- `manifest.tmpl`
+- `layout.tmpl` — the shell. Invokes `title` and `main`, and renders the nav from
+  `Layout.SessionID`, so one shell serves signed-in and signed-out pages alike.
+- `pages/index.tmpl`, `pages/login.tmpl`, `pages/error.tmpl`
+- `pages/reservations.tmpl` — also defines the `reservation-list` fragment
+- `pages/reservation_form.tmpl` — also defines the `reservation-form` fragment
+- `pages/reservation_detail.tmpl`
 
-Test fixtures live under `internal/adapters/inbound/testdata/assets/templates/` (mirrored names).
+Each page is parsed into its own set with the layout: they all define `title` and `main`,
+so one shared set would keep only the last page parsed. The PWA manifest is no longer a
+template — it is marshalled by `encoding/json`, because `html/template` escapes for an HTML
+context and would corrupt a JSON string.
+
+Test fixtures mirror the structure under `internal/adapters/inbound/testdata/assets/templates/`.
 
 ---
 
@@ -218,7 +226,7 @@ Used throughout the codebase:
 - `resource.Access[K, V]`, `resource.NewPostgresAccess[K, V](db)` — key/value aggregate repository
 - `event.Event`, `event.EventPublisher` — domain event contract
 - `mcp.Server`, `mcp.NewTool`, `mcp.NewObjectSchema`, `mcp.NewStringProperty`, `mcp.ContentBlock`, `mcp.NewTextContent`
-- `templating.Engine`, `templating.NewEngine(fs).Parse(glob)` — SSR
+- `html/template` (standard library) — SSR, via `inbound.View`
 - `web.NewServeMux`, `web.NewServer`, `web.WithAuth`, `web.WithBearerAuth`, `web.NewMCPHandler`, `web.ContextSessionID/Email/Name/Issuer/Subject/Verified`
 - `service.Context`, `service.RegisterOnContextDone`, `service.Wrap`
 - `security.GenerateID()` — random ID generator used for reservation IDs

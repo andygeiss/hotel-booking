@@ -1,7 +1,6 @@
 package inbound_test
 
 import (
-	"embed"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -12,7 +11,6 @@ import (
 
 	"github.com/andygeiss/cloud-native-utils/assert"
 	"github.com/andygeiss/cloud-native-utils/messaging"
-	"github.com/andygeiss/cloud-native-utils/templating"
 	"github.com/andygeiss/hotel-booking/internal/adapters/inbound"
 	"github.com/andygeiss/hotel-booking/internal/adapters/outbound"
 	"github.com/andygeiss/hotel-booking/internal/domain/reservation"
@@ -21,9 +19,6 @@ import (
 // ============================================================================
 // Test Assets
 // ============================================================================
-
-//go:embed testdata/assets/templates/*.tmpl testdata/assets/static/css/*.css
-var formTestAssets embed.FS
 
 // ============================================================================
 // Helper Functions
@@ -41,10 +36,9 @@ func createFormTestService(repo *mockReservationRepository) *reservation.Service
 
 func Test_HttpViewReservationForm_Without_Session_Should_Redirect_To_Login(t *testing.T) {
 	// Arrange
-	e := templating.NewEngine(formTestAssets)
-	e.Parse("testdata/assets/templates/*.tmpl")
+	v := newTestView(t)
 
-	handler := inbound.HttpViewReservationForm(e, testApp())
+	handler := inbound.HttpViewReservationForm(v, testApp())
 	req := httptest.NewRequest(http.MethodGet, "/ui/reservations/new", nil)
 	rec := httptest.NewRecorder()
 
@@ -59,10 +53,9 @@ func Test_HttpViewReservationForm_Without_Session_Should_Redirect_To_Login(t *te
 
 func Test_HttpViewReservationForm_With_Valid_Session_Should_Return_200(t *testing.T) {
 	// Arrange
-	e := templating.NewEngine(formTestAssets)
-	e.Parse("testdata/assets/templates/*.tmpl")
+	v := newTestView(t)
 
-	handler := inbound.HttpViewReservationForm(e, testApp())
+	handler := inbound.HttpViewReservationForm(v, testApp())
 	req := httptest.NewRequest(http.MethodGet, "/ui/reservations/new", nil)
 	req = addAuthContext(req, "test-session-123", "test@example.com")
 	rec := httptest.NewRecorder()
@@ -76,10 +69,9 @@ func Test_HttpViewReservationForm_With_Valid_Session_Should_Return_200(t *testin
 
 func Test_HttpViewReservationForm_Should_Render_App_Name(t *testing.T) {
 	// Arrange
-	e := templating.NewEngine(formTestAssets)
-	e.Parse("testdata/assets/templates/*.tmpl")
+	v := newTestView(t)
 
-	handler := inbound.HttpViewReservationForm(e, testApp())
+	handler := inbound.HttpViewReservationForm(v, testApp())
 	req := httptest.NewRequest(http.MethodGet, "/ui/reservations/new", nil)
 	req = addAuthContext(req, "test-session-123", "test@example.com")
 	rec := httptest.NewRecorder()
@@ -95,10 +87,9 @@ func Test_HttpViewReservationForm_Should_Render_App_Name(t *testing.T) {
 
 func Test_HttpViewReservationForm_Should_Render_Guest_Email(t *testing.T) {
 	// Arrange
-	e := templating.NewEngine(formTestAssets)
-	e.Parse("testdata/assets/templates/*.tmpl")
+	v := newTestView(t)
 
-	handler := inbound.HttpViewReservationForm(e, testApp())
+	handler := inbound.HttpViewReservationForm(v, testApp())
 	req := httptest.NewRequest(http.MethodGet, "/ui/reservations/new", nil)
 	req = addAuthContext(req, "test-session-123", "test@example.com")
 	rec := httptest.NewRecorder()
@@ -114,10 +105,9 @@ func Test_HttpViewReservationForm_Should_Render_Guest_Email(t *testing.T) {
 
 func Test_HttpViewReservationForm_Should_Render_Rooms(t *testing.T) {
 	// Arrange
-	e := templating.NewEngine(formTestAssets)
-	e.Parse("testdata/assets/templates/*.tmpl")
+	v := newTestView(t)
 
-	handler := inbound.HttpViewReservationForm(e, testApp())
+	handler := inbound.HttpViewReservationForm(v, testApp())
 	req := httptest.NewRequest(http.MethodGet, "/ui/reservations/new", nil)
 	req = addAuthContext(req, "test-session-123", "test@example.com")
 	rec := httptest.NewRecorder()
@@ -137,13 +127,12 @@ func Test_HttpViewReservationForm_Should_Render_Rooms(t *testing.T) {
 
 func Test_HttpCreateReservation_Without_Session_Should_Redirect_To_Login(t *testing.T) {
 	// Arrange
-	e := templating.NewEngine(formTestAssets)
-	e.Parse("testdata/assets/templates/*.tmpl")
+	v := newTestView(t)
 
 	repo := newMockReservationRepository()
 	service := createFormTestService(repo)
 
-	handler := inbound.HttpCreateReservation(e, testApp(), service)
+	handler := inbound.HttpCreateReservation(v, testApp(), service)
 	req := httptest.NewRequest(http.MethodPost, "/ui/reservations/new", nil)
 	rec := httptest.NewRecorder()
 
@@ -156,15 +145,14 @@ func Test_HttpCreateReservation_Without_Session_Should_Redirect_To_Login(t *test
 	assert.That(t, "location must contain login", containsString(location, "/ui/login"), true)
 }
 
-func Test_HttpCreateReservation_With_Missing_Fields_Should_Show_Error(t *testing.T) {
+func Test_HttpCreateReservation_With_Missing_Fields_Should_Return_422_And_The_Form(t *testing.T) {
 	// Arrange
-	e := templating.NewEngine(formTestAssets)
-	e.Parse("testdata/assets/templates/*.tmpl")
+	v := newTestView(t)
 
 	repo := newMockReservationRepository()
 	service := createFormTestService(repo)
 
-	handler := inbound.HttpCreateReservation(e, testApp(), service)
+	handler := inbound.HttpCreateReservation(v, testApp(), service)
 
 	// Create request with empty form
 	form := url.Values{}
@@ -177,21 +165,20 @@ func Test_HttpCreateReservation_With_Missing_Fields_Should_Show_Error(t *testing
 	handler(rec, req)
 
 	// Assert
-	assert.That(t, "status code must be 200 (form re-rendered with error)", rec.Code, http.StatusOK)
+	assert.That(t, "status code must be 422 (input understood and refused)", rec.Code, http.StatusUnprocessableEntity)
 	body, _ := io.ReadAll(rec.Body)
 	bodyStr := string(body)
 	assert.That(t, "body must contain error message", containsString(bodyStr, "required"), true)
 }
 
-func Test_HttpCreateReservation_With_Invalid_Room_Should_Show_Error(t *testing.T) {
+func Test_HttpCreateReservation_With_Invalid_Room_Should_Return_422_And_The_Form(t *testing.T) {
 	// Arrange
-	e := templating.NewEngine(formTestAssets)
-	e.Parse("testdata/assets/templates/*.tmpl")
+	v := newTestView(t)
 
 	repo := newMockReservationRepository()
 	service := createFormTestService(repo)
 
-	handler := inbound.HttpCreateReservation(e, testApp(), service)
+	handler := inbound.HttpCreateReservation(v, testApp(), service)
 
 	// Create request with invalid room
 	checkIn := time.Now().AddDate(0, 0, 7).Format("2006-01-02")
@@ -212,7 +199,7 @@ func Test_HttpCreateReservation_With_Invalid_Room_Should_Show_Error(t *testing.T
 	handler(rec, req)
 
 	// Assert
-	assert.That(t, "status code must be 200 (form re-rendered with error)", rec.Code, http.StatusOK)
+	assert.That(t, "status code must be 422 (input understood and refused)", rec.Code, http.StatusUnprocessableEntity)
 	body, _ := io.ReadAll(rec.Body)
 	bodyStr := string(body)
 	assert.That(t, "body must contain error message", containsString(bodyStr, "Invalid room"), true)
@@ -220,13 +207,12 @@ func Test_HttpCreateReservation_With_Invalid_Room_Should_Show_Error(t *testing.T
 
 func Test_HttpCreateReservation_With_Valid_Data_Should_Redirect_To_Reservations(t *testing.T) {
 	// Arrange
-	e := templating.NewEngine(formTestAssets)
-	e.Parse("testdata/assets/templates/*.tmpl")
+	v := newTestView(t)
 
 	repo := newMockReservationRepository()
 	service := createFormTestService(repo)
 
-	handler := inbound.HttpCreateReservation(e, testApp(), service)
+	handler := inbound.HttpCreateReservation(v, testApp(), service)
 
 	// Create request with valid data
 	checkIn := time.Now().AddDate(0, 0, 7).Format("2006-01-02")
@@ -255,13 +241,12 @@ func Test_HttpCreateReservation_With_Valid_Data_Should_Redirect_To_Reservations(
 
 func Test_HttpCreateReservation_Should_Create_Reservation_In_Repository(t *testing.T) {
 	// Arrange
-	e := templating.NewEngine(formTestAssets)
-	e.Parse("testdata/assets/templates/*.tmpl")
+	v := newTestView(t)
 
 	repo := newMockReservationRepository()
 	service := createFormTestService(repo)
 
-	handler := inbound.HttpCreateReservation(e, testApp(), service)
+	handler := inbound.HttpCreateReservation(v, testApp(), service)
 
 	// Create request with valid data
 	checkIn := time.Now().AddDate(0, 0, 7).Format("2006-01-02")
@@ -286,15 +271,14 @@ func Test_HttpCreateReservation_Should_Create_Reservation_In_Repository(t *testi
 	assert.That(t, "repository must have 1 reservation", len(repo.reservations), 1)
 }
 
-func Test_HttpCreateReservation_With_Invalid_CheckIn_Date_Format_Should_Show_Error(t *testing.T) {
+func Test_HttpCreateReservation_With_Invalid_CheckIn_Date_Format_Should_Return_422_And_The_Form(t *testing.T) {
 	// Arrange
-	e := templating.NewEngine(formTestAssets)
-	e.Parse("testdata/assets/templates/*.tmpl")
+	v := newTestView(t)
 
 	repo := newMockReservationRepository()
 	service := createFormTestService(repo)
 
-	handler := inbound.HttpCreateReservation(e, testApp(), service)
+	handler := inbound.HttpCreateReservation(v, testApp(), service)
 
 	// Create request with invalid date format
 	form := url.Values{
@@ -313,7 +297,7 @@ func Test_HttpCreateReservation_With_Invalid_CheckIn_Date_Format_Should_Show_Err
 	handler(rec, req)
 
 	// Assert
-	assert.That(t, "status code must be 200 (form re-rendered with error)", rec.Code, http.StatusOK)
+	assert.That(t, "status code must be 422 (input understood and refused)", rec.Code, http.StatusUnprocessableEntity)
 	body, _ := io.ReadAll(rec.Body)
 	bodyStr := string(body)
 	assert.That(t, "body must contain error message", containsString(bodyStr, "Invalid check-in date"), true)

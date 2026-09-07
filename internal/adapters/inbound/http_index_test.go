@@ -2,14 +2,12 @@ package inbound_test
 
 import (
 	"context"
-	"embed"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/andygeiss/cloud-native-utils/assert"
-	"github.com/andygeiss/cloud-native-utils/templating"
 	"github.com/andygeiss/cloud-native-utils/web"
 	"github.com/andygeiss/hotel-booking/internal/adapters/inbound"
 )
@@ -18,19 +16,15 @@ import (
 // Test Assets
 // ============================================================================
 
-//go:embed testdata/assets/templates/*.tmpl testdata/assets/static/css/*.css
-var indexTestAssets embed.FS
-
 // ============================================================================
 // HttpViewIndex Tests
 // ============================================================================
 
 func Test_HttpViewIndex_Without_Session_Should_Redirect_To_Login(t *testing.T) {
 	// Arrange
-	e := templating.NewEngine(indexTestAssets)
-	e.Parse("testdata/assets/templates/*.tmpl")
+	v := newTestView(t)
 
-	handler := inbound.HttpViewIndex(e, testApp())
+	handler := inbound.HttpViewIndex(v, testApp())
 	req := httptest.NewRequest(http.MethodGet, "/ui/", nil)
 	rec := httptest.NewRecorder()
 
@@ -45,10 +39,9 @@ func Test_HttpViewIndex_Without_Session_Should_Redirect_To_Login(t *testing.T) {
 
 func Test_HttpViewIndex_With_Empty_SessionID_Should_Redirect_To_Login(t *testing.T) {
 	// Arrange
-	e := templating.NewEngine(indexTestAssets)
-	e.Parse("testdata/assets/templates/*.tmpl")
+	v := newTestView(t)
 
-	handler := inbound.HttpViewIndex(e, testApp())
+	handler := inbound.HttpViewIndex(v, testApp())
 	req := httptest.NewRequest(http.MethodGet, "/ui/", nil)
 	// Add empty session ID to context
 	ctx := context.WithValue(req.Context(), web.ContextSessionID, "")
@@ -66,10 +59,9 @@ func Test_HttpViewIndex_With_Empty_SessionID_Should_Redirect_To_Login(t *testing
 func Test_HttpViewIndex_With_SessionID_But_Empty_Email_Should_Redirect_To_Login(t *testing.T) {
 	// Arrange - simulates the case after logout where session is deleted but cookie remains
 
-	e := templating.NewEngine(indexTestAssets)
-	e.Parse("testdata/assets/templates/*.tmpl")
+	v := newTestView(t)
 
-	handler := inbound.HttpViewIndex(e, testApp())
+	handler := inbound.HttpViewIndex(v, testApp())
 	req := httptest.NewRequest(http.MethodGet, "/ui/", nil)
 	// Session ID exists (from stale cookie) but email is empty (session deleted server-side)
 	ctx := context.WithValue(req.Context(), web.ContextSessionID, "stale-session-id")
@@ -92,10 +84,9 @@ func Test_HttpViewIndex_With_SessionID_But_Empty_Email_Should_Redirect_To_Login(
 
 func Test_HttpViewIndex_With_Valid_Session_Should_Return_200(t *testing.T) {
 	// Arrange
-	e := templating.NewEngine(indexTestAssets)
-	e.Parse("testdata/assets/templates/*.tmpl")
+	v := newTestView(t)
 
-	handler := inbound.HttpViewIndex(e, testApp())
+	handler := inbound.HttpViewIndex(v, testApp())
 	req := httptest.NewRequest(http.MethodGet, "/ui/", nil)
 
 	// Add session context values
@@ -118,10 +109,9 @@ func Test_HttpViewIndex_With_Valid_Session_Should_Return_200(t *testing.T) {
 
 func Test_HttpViewIndex_With_Valid_Session_Should_Render_User_Data(t *testing.T) {
 	// Arrange
-	e := templating.NewEngine(indexTestAssets)
-	e.Parse("testdata/assets/templates/*.tmpl")
+	v := newTestView(t)
 
-	handler := inbound.HttpViewIndex(e, testApp())
+	handler := inbound.HttpViewIndex(v, testApp())
 	req := httptest.NewRequest(http.MethodGet, "/ui/", nil)
 
 	// Add session context values

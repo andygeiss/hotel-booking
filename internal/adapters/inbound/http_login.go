@@ -1,29 +1,22 @@
 package inbound
 
-import (
-	"net/http"
-
-	"github.com/andygeiss/cloud-native-utils/templating"
-)
+import "net/http"
 
 // HttpViewLoginResponse specifies the view data.
 type HttpViewLoginResponse struct {
-	AppName string
-	Title   string
+	Layout
 }
 
-// HttpViewLogin defines an HTTP handler function for rendering the login template.
-func HttpViewLogin(e *templating.Engine, app AppInfo) http.HandlerFunc {
-	appName := app.Name
-	title := app.Title()
-
-	// Create the Data Object (DTO) once at startup.
+// HttpViewLogin defines an HTTP handler function for rendering the login page.
+func HttpViewLogin(v *View, app AppInfo) http.HandlerFunc {
+	// Create the Data Object (DTO) once at startup. SessionID stays empty, which
+	// is what makes the layout render the signed-out navigation.
 	data := HttpViewLoginResponse{
-		AppName: appName,
-		Title:   title,
+		AppName: app.Name,
+		Title:   app.Title(),
 	}
 
 	return func(w http.ResponseWriter, r *http.Request) {
-		HttpView(e, "login", data)(w, r)
+		v.Render(w, r, http.StatusOK, "login", "", data)
 	}
 }

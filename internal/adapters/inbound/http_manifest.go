@@ -1,33 +1,62 @@
 package inbound
 
 import (
+	"encoding/json"
 	"net/http"
-
-	"github.com/andygeiss/cloud-native-utils/templating"
 )
 
 // HttpViewManifestResponse specifies the view data for the PWA manifest.
+//
+// The manifest is JSON, so it is marshalled rather than templated: html/template
+// escapes for an HTML context and would turn an ampersand in the application
+// name into an entity inside a JSON string.
 type HttpViewManifestResponse struct {
-	Description string
-	Name        string
-	ShortName   string
+	BackgroundColor string         `json:"background_color"`
+	Description     string         `json:"description"`
+	Display         string         `json:"display"`
+	Icons           []ManifestIcon `json:"icons"`
+	Name            string         `json:"name"`
+	Orientation     string         `json:"orientation"`
+	Scope           string         `json:"scope"`
+	ShortName       string         `json:"short_name"`
+	StartURL        string         `json:"start_url"`
+	ThemeColor      string         `json:"theme_color"`
 }
 
-// HttpViewManifest defines an HTTP handler function for rendering the PWA manifest.json.
-func HttpViewManifest(e *templating.Engine, app AppInfo) http.HandlerFunc {
-	appName := app.Name
-	description := app.Description
+// ManifestIcon is one entry of the manifest's icons array.
+type ManifestIcon struct {
+	Purpose string `json:"purpose"`
+	Sizes   string `json:"sizes"`
+	Src     string `json:"src"`
+	Type    string `json:"type"`
+}
 
-	// Create the Data Object (DTO) once at startup.
-	data := HttpViewManifestResponse{
-		Description: description,
-		Name:        appName,
-		ShortName:   appName,
+// HttpViewManifest defines an HTTP handler function for serving the PWA manifest.json.
+func HttpViewManifest(app AppInfo) http.HandlerFunc {
+	// Marshal once at startup: the manifest depends on configuration only, and
+	// nothing in it can change between requests.
+	body, err := json.Marshal(HttpViewManifestResponse{
+		BackgroundColor: "#000000",
+		Description:     app.Description,
+		Display:         "standalone",
+		Icons: []ManifestIcon{
+			{Purpose: "any", Sizes: "192x192", Src: "/static/img/icon-192.png", Type: "image/png"},
+			{Purpose: "any", Sizes: "512x512", Src: "/static/img/icon-512.png", Type: "image/png"},
+		},
+		Name:        app.Name,
+		Orientation: "portrait",
+		Scope:       "/",
+		ShortName:   app.Name,
+		StartURL:    "/ui/",
+		ThemeColor:  "#ffffff",
+	})
+	if err != nil {
+		// Unreachable: every field is a string or a slice of strings.
+		panic("inbound: marshalling the PWA manifest: " + err.Error())
 	}
 
 	return func(w http.ResponseWriter, r *http.Request) {
-		// Set the content type to application/manifest+json for PWA manifest.
 		w.Header().Set("Content-Type", "application/manifest+json")
-		HttpView(e, "manifest", data)(w, r)
+		_, _ = w.Write(body)
 	}
 }

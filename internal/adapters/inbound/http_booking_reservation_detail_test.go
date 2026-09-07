@@ -1,7 +1,6 @@
 package inbound_test
 
 import (
-	"embed"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -10,7 +9,6 @@ import (
 
 	"github.com/andygeiss/cloud-native-utils/assert"
 	"github.com/andygeiss/cloud-native-utils/messaging"
-	"github.com/andygeiss/cloud-native-utils/templating"
 	"github.com/andygeiss/hotel-booking/internal/adapters/inbound"
 	"github.com/andygeiss/hotel-booking/internal/adapters/outbound"
 	"github.com/andygeiss/hotel-booking/internal/domain/reservation"
@@ -20,9 +18,6 @@ import (
 // ============================================================================
 // Test Assets
 // ============================================================================
-
-//go:embed testdata/assets/templates/*.tmpl testdata/assets/static/css/*.css
-var detailTestAssets embed.FS
 
 // ============================================================================
 // Helper Functions
@@ -40,13 +35,12 @@ func createDetailTestService(repo *mockReservationRepository) *reservation.Servi
 
 func Test_HttpViewReservationDetail_Without_Session_Should_Redirect_To_Login(t *testing.T) {
 	// Arrange
-	e := templating.NewEngine(detailTestAssets)
-	e.Parse("testdata/assets/templates/*.tmpl")
+	v := newTestView(t)
 
 	repo := newMockReservationRepository()
 	service := createDetailTestService(repo)
 
-	handler := inbound.HttpViewReservationDetail(e, testApp(), service)
+	handler := inbound.HttpViewReservationDetail(v, testApp(), service)
 	req := httptest.NewRequest(http.MethodGet, "/ui/reservations/res-001", nil)
 	req.SetPathValue("id", "res-001")
 	rec := httptest.NewRecorder()
@@ -62,13 +56,12 @@ func Test_HttpViewReservationDetail_Without_Session_Should_Redirect_To_Login(t *
 
 func Test_HttpViewReservationDetail_Without_Reservation_ID_Should_Return_400(t *testing.T) {
 	// Arrange
-	e := templating.NewEngine(detailTestAssets)
-	e.Parse("testdata/assets/templates/*.tmpl")
+	v := newTestView(t)
 
 	repo := newMockReservationRepository()
 	service := createDetailTestService(repo)
 
-	handler := inbound.HttpViewReservationDetail(e, testApp(), service)
+	handler := inbound.HttpViewReservationDetail(v, testApp(), service)
 	req := httptest.NewRequest(http.MethodGet, "/ui/reservations/", nil)
 	req = addAuthContext(req, "test-session-123", "test@example.com")
 	rec := httptest.NewRecorder()
@@ -82,13 +75,12 @@ func Test_HttpViewReservationDetail_Without_Reservation_ID_Should_Return_400(t *
 
 func Test_HttpViewReservationDetail_With_NonExistent_Reservation_Should_Return_404(t *testing.T) {
 	// Arrange
-	e := templating.NewEngine(detailTestAssets)
-	e.Parse("testdata/assets/templates/*.tmpl")
+	v := newTestView(t)
 
 	repo := newMockReservationRepository()
 	service := createDetailTestService(repo)
 
-	handler := inbound.HttpViewReservationDetail(e, testApp(), service)
+	handler := inbound.HttpViewReservationDetail(v, testApp(), service)
 	req := httptest.NewRequest(http.MethodGet, "/ui/reservations/nonexistent", nil)
 	req.SetPathValue("id", "nonexistent")
 	req = addAuthContext(req, "test-session-123", "test@example.com")
@@ -103,8 +95,7 @@ func Test_HttpViewReservationDetail_With_NonExistent_Reservation_Should_Return_4
 
 func Test_HttpViewReservationDetail_With_Other_User_Reservation_Should_Return_403(t *testing.T) {
 	// Arrange
-	e := templating.NewEngine(detailTestAssets)
-	e.Parse("testdata/assets/templates/*.tmpl")
+	v := newTestView(t)
 
 	repo := newMockReservationRepository()
 	service := createDetailTestService(repo)
@@ -115,7 +106,7 @@ func Test_HttpViewReservationDetail_With_Other_User_Reservation_Should_Return_40
 	res := createTestReservation("res-001", "other@example.com", "room-101", checkIn, checkOut)
 	repo.reservations[shared.ReservationID("res-001")] = *res
 
-	handler := inbound.HttpViewReservationDetail(e, testApp(), service)
+	handler := inbound.HttpViewReservationDetail(v, testApp(), service)
 	req := httptest.NewRequest(http.MethodGet, "/ui/reservations/res-001", nil)
 	req.SetPathValue("id", "res-001")
 	req = addAuthContext(req, "test-session-123", "test@example.com")
@@ -130,8 +121,7 @@ func Test_HttpViewReservationDetail_With_Other_User_Reservation_Should_Return_40
 
 func Test_HttpViewReservationDetail_With_Valid_Session_Should_Return_200(t *testing.T) {
 	// Arrange
-	e := templating.NewEngine(detailTestAssets)
-	e.Parse("testdata/assets/templates/*.tmpl")
+	v := newTestView(t)
 
 	repo := newMockReservationRepository()
 	service := createDetailTestService(repo)
@@ -142,7 +132,7 @@ func Test_HttpViewReservationDetail_With_Valid_Session_Should_Return_200(t *test
 	res := createTestReservation("res-001", "test@example.com", "room-101", checkIn, checkOut)
 	repo.reservations[shared.ReservationID("res-001")] = *res
 
-	handler := inbound.HttpViewReservationDetail(e, testApp(), service)
+	handler := inbound.HttpViewReservationDetail(v, testApp(), service)
 	req := httptest.NewRequest(http.MethodGet, "/ui/reservations/res-001", nil)
 	req.SetPathValue("id", "res-001")
 	req = addAuthContext(req, "test-session-123", "test@example.com")
@@ -157,8 +147,7 @@ func Test_HttpViewReservationDetail_With_Valid_Session_Should_Return_200(t *test
 
 func Test_HttpViewReservationDetail_Should_Render_Reservation_Data(t *testing.T) {
 	// Arrange
-	e := templating.NewEngine(detailTestAssets)
-	e.Parse("testdata/assets/templates/*.tmpl")
+	v := newTestView(t)
 
 	repo := newMockReservationRepository()
 	service := createDetailTestService(repo)
@@ -169,7 +158,7 @@ func Test_HttpViewReservationDetail_Should_Render_Reservation_Data(t *testing.T)
 	res := createTestReservation("res-001", "test@example.com", "room-101", checkIn, checkOut)
 	repo.reservations[shared.ReservationID("res-001")] = *res
 
-	handler := inbound.HttpViewReservationDetail(e, testApp(), service)
+	handler := inbound.HttpViewReservationDetail(v, testApp(), service)
 	req := httptest.NewRequest(http.MethodGet, "/ui/reservations/res-001", nil)
 	req.SetPathValue("id", "res-001")
 	req = addAuthContext(req, "test-session-123", "test@example.com")
@@ -194,7 +183,7 @@ func Test_HttpCancelReservation_Without_Session_Should_Return_401(t *testing.T) 
 	repo := newMockReservationRepository()
 	service := createDetailTestService(repo)
 
-	handler := inbound.HttpCancelReservation(service)
+	handler := inbound.HttpCancelReservation(newTestView(t), testApp(), service)
 	req := httptest.NewRequest(http.MethodPost, "/ui/reservations/res-001/cancel", nil)
 	req.SetPathValue("id", "res-001")
 	rec := httptest.NewRecorder()
@@ -211,7 +200,7 @@ func Test_HttpCancelReservation_Without_Reservation_ID_Should_Return_400(t *test
 	repo := newMockReservationRepository()
 	service := createDetailTestService(repo)
 
-	handler := inbound.HttpCancelReservation(service)
+	handler := inbound.HttpCancelReservation(newTestView(t), testApp(), service)
 	req := httptest.NewRequest(http.MethodPost, "/ui/reservations//cancel", nil)
 	req = addAuthContext(req, "test-session-123", "test@example.com")
 	rec := httptest.NewRecorder()
@@ -228,7 +217,7 @@ func Test_HttpCancelReservation_With_NonExistent_Reservation_Should_Return_404(t
 	repo := newMockReservationRepository()
 	service := createDetailTestService(repo)
 
-	handler := inbound.HttpCancelReservation(service)
+	handler := inbound.HttpCancelReservation(newTestView(t), testApp(), service)
 	req := httptest.NewRequest(http.MethodPost, "/ui/reservations/nonexistent/cancel", nil)
 	req.SetPathValue("id", "nonexistent")
 	req = addAuthContext(req, "test-session-123", "test@example.com")
@@ -252,7 +241,7 @@ func Test_HttpCancelReservation_With_Other_User_Reservation_Should_Return_403(t 
 	res := createTestReservation("res-001", "other@example.com", "room-101", checkIn, checkOut)
 	repo.reservations[shared.ReservationID("res-001")] = *res
 
-	handler := inbound.HttpCancelReservation(service)
+	handler := inbound.HttpCancelReservation(newTestView(t), testApp(), service)
 	req := httptest.NewRequest(http.MethodPost, "/ui/reservations/res-001/cancel", nil)
 	req.SetPathValue("id", "res-001")
 	req = addAuthContext(req, "test-session-123", "test@example.com")
@@ -276,7 +265,7 @@ func Test_HttpCancelReservation_With_Valid_Reservation_Should_Redirect(t *testin
 	res := createTestReservation("res-001", "test@example.com", "room-101", checkIn, checkOut)
 	repo.reservations[shared.ReservationID("res-001")] = *res
 
-	handler := inbound.HttpCancelReservation(service)
+	handler := inbound.HttpCancelReservation(newTestView(t), testApp(), service)
 	req := httptest.NewRequest(http.MethodPost, "/ui/reservations/res-001/cancel", nil)
 	req.SetPathValue("id", "res-001")
 	req = addAuthContext(req, "test-session-123", "test@example.com")
@@ -302,7 +291,7 @@ func Test_HttpCancelReservation_Should_Update_Reservation_Status(t *testing.T) {
 	res := createTestReservation("res-001", "test@example.com", "room-101", checkIn, checkOut)
 	repo.reservations[shared.ReservationID("res-001")] = *res
 
-	handler := inbound.HttpCancelReservation(service)
+	handler := inbound.HttpCancelReservation(newTestView(t), testApp(), service)
 	req := httptest.NewRequest(http.MethodPost, "/ui/reservations/res-001/cancel", nil)
 	req.SetPathValue("id", "res-001")
 	req = addAuthContext(req, "test-session-123", "test@example.com")

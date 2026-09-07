@@ -1,0 +1,18 @@
+{{ define "title" }}{{ .Title }}{{ end }}
+{{ define "main" }}<h1>New Reservation</h1>{{ template "reservation-form" . }}{{ end }}
+{{ define "reservation-form" }}
+<div id="reservation-form">
+{{ if .Error }}<div class="alert">{{ .Error }}</div>{{ end }}
+<form method="post" action="/ui/reservations">
+  <select name="room_id">
+  {{ range .Rooms }}<option value="{{ .ID }}">{{ .Name }} - {{ .Price }}</option>{{ end }}
+  </select>
+  <input type="date" name="check_in" min="{{ .MinDate }}" value="{{ .CheckIn }}" />
+  <input type="date" name="check_out" min="{{ .MinDate }}" value="{{ .CheckOut }}" />
+  <input type="text" name="guest_name" value="{{ .GuestName }}" />
+  <input type="email" name="guest_email" value="{{ .GuestEmail }}" />
+  <input type="tel" name="guest_phone" value="{{ .GuestPhone }}" />
+  <button type="submit">Create Reservation</button>
+</form>
+</div>
+{{ end }}

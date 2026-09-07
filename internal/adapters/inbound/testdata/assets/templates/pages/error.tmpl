@@ -1,0 +1,6 @@
+{{ define "title" }}{{ .Title }}{{ end }}
+{{ define "main" }}
+<h1>{{ .ErrorTitle }}</h1>
+<div class="alert">{{ .ErrorMessage }}</div>
+{{ if .ErrorDetails }}<p class="details">{{ .ErrorDetails }}</p>{{ end }}
+{{ end }}

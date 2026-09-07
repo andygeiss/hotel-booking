@@ -1,30 +1,30 @@
-{{ define "index" }}<!doctype html>
+<!doctype html>
 <html lang="en">
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!--
+      htmx-config. The 422 rule is what makes form validation work: htmx 2 does
+      not swap 4xx responses by default. It MUST stay above the [45].. rule —
+      htmx takes the first pattern that matches, and [45].. matches 422 too.
+
+      historyCacheSize 0 with refreshOnHistoryMiss means back and forward are
+      plain browser loads, so they never reach the server carrying htmx headers.
+    -->
+    <meta name="htmx-config" content='{"historyCacheSize":0,"refreshOnHistoryMiss":true,"responseHandling":[
+      {"code":"204","swap":false},
+      {"code":"[23]..","swap":true},
+      {"code":"422","swap":true},
+      {"code":"[45]..","swap":false,"error":true}]}' />
     <!-- PWA support -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <link rel="manifest" href="/manifest.json" />
     <!-- Favicons -->
     <link rel="icon" href="/static/img/favicon.ico" />
-    <link
-        rel="apple-touch-icon"
-        sizes="192x192"
-        href="/static/img/icon-192.png"
-    />
-    <link
-        rel="apple-touch-icon"
-        sizes="512x512"
-        href="/static/img/icon-512.png"
-    />
-    <link
-        rel="icon"
-        type="image/png"
-        sizes="192x192"
-        href="/static/img/icon-192.png"
-    />
+    <link rel="apple-touch-icon" sizes="192x192" href="/static/img/icon-192.png" />
+    <link rel="apple-touch-icon" sizes="512x512" href="/static/img/icon-512.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/static/img/icon-192.png" />
     <meta name="theme-color" content="#ffffff" />
     <!-- Layer 1: Reset / foundation -->
     <link rel="stylesheet" href="/static/css/base.css" />
@@ -33,9 +33,9 @@
     <!-- Layer 3: Components / layout -->
     <link rel="stylesheet" href="/static/css/styles.css" />
     <script src="/static/js/htmx.min.js" defer></script>
-    <title>{{ .Title }}</title>
+    <title>{{ template "title" . }}</title>
 </head>
-<body>
+<body hx-boost="true">
     <!-- Header Navigation -->
     <header class="nav">
         <div class="nav__brand">{{ .AppName }}</div>
@@ -50,41 +50,34 @@
             <span class="nav__hamburger"></span>
         </label>
 
-        <!-- Navigation links -->
+        <!-- Navigation links. SessionID is empty when nobody is signed in, so
+             one shell serves both the signed-in pages and the login page. -->
         <nav class="nav__links">
+            {{ if .SessionID }}
             <a href="/ui/" class="nav__link">Home</a>
             <a href="/ui/reservations" class="nav__link">Reservations</a>
             <a href="/auth/logout/{{ .SessionID }}" class="nav__link">Logout</a>
+            {{ else }}
+            <a href="/auth/login" class="nav__link">Sign In</a>
+            {{ end }}
         </nav>
     </header>
 
     <div class="container">
-        <main class="flex-center content-view">
-            <div class="card text-center">
-                <div class="card__header">
-                    <h1>Welcome, {{ .Name }}!</h1>
-                    <div class="flex-center">
-                        <img
-                            src="/static/img/icon-192.png"
-                            alt="Logo"
-                            width="200"
-                            height="200"
-                        />
-                    </div>
-                </div>
-                <div class="card__body">
-                    <p class="mb-4 text-muted">Book your perfect stay with us</p>
-                    <a href="/ui/reservations" class="btn btn-primary btn-lg">Start Booking</a>
-                </div>
-            </div>
-        </main>
+        <main>{{ template "main" . }}</main>
     </div>
 
     <!-- Mobile action bar -->
     <nav class="action-bar" aria-label="Quick actions">
+        {{ if .SessionID }}
         <a href="/ui/" class="action-bar__item">Home</a>
         <a href="/ui/reservations" class="action-bar__item">Reservations</a>
+        {{ if .ShowNew }}
+        <a href="/ui/reservations/new" class="action-bar__item">New</a>
+        {{ end }}
+        {{ else }}
+        <a href="/auth/login" class="action-bar__item">Sign In</a>
+        {{ end }}
     </nav>
 </body>
 </html>
-{{ end }}

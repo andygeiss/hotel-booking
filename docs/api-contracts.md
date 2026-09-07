@@ -39,6 +39,37 @@ check on the MIME type instead and leave the worker installed, answering from it
 forever — which is why nothing may be added to this path and why
 `Test_Route_Service_Worker_Should_Return_404` pins both the status and the content type.
 
+### Dual-mode responses
+
+Every `/ui/*` page answers two ways from one handler, and `inbound.isFragment` is the only
+thing that decides which:
+
+| Request | What comes back |
+|---|---|
+| No htmx headers | The whole document — layout shell plus the page's `main` |
+| `HX-Request: true` | The named fragment alone |
+| `HX-Request: true` **and** `HX-Boosted: true` | The whole document — a boosted link swaps the entire body |
+
+Every one of those responses carries `Vary: HX-Request, HX-Boosted`, **added** rather than
+set, so a `Vary` an earlier layer wrote survives. Both headers pick the body, so both have
+to be cache keys: varying on `HX-Request` alone lets a cache hand a bare fragment to a
+boosted navigation.
+
+Mutations:
+
+| Case | Response |
+|---|---|
+| `POST` with no htmx, or boosted | `303 See Other` back to the page |
+| `POST` as a fragment swap, target present | `200` with the updated fragment |
+| `POST` as a fragment swap, nothing to swap into | `200` with `HX-Redirect` |
+| Rejected input | `422` with the form fragment, fields still filled |
+| Rejected input, boosted | `422` plus `HX-Push-Url: false` |
+
+The 422 needs the `htmx-config` meta tag in `layout.tmpl` — htmx 2 does not swap 4xx by
+default — and its `{"code":"422","swap":true}` rule must stay **above** the
+`{"code":"[45]..","swap":false}` one, because htmx takes the first pattern that matches and
+`[45]..` matches `422` too.
+
 ### Ops listener (`127.0.0.1:6060`)
 
 A second `http.Server`, started in `cmd/server/main.go` and served by

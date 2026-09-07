@@ -1,0 +1,15 @@
+{{ define "title" }}{{ .Title }}{{ end }}
+{{ define "main" }}
+<h1>Reservation Details</h1>
+<span class="id">{{ .Reservation.ID }}</span>
+<span class="room">{{ .Reservation.RoomID }}</span>
+<span class="checkin">{{ .Reservation.CheckIn }}</span>
+<span class="checkout">{{ .Reservation.CheckOut }}</span>
+<span class="status {{ .Reservation.StatusClass }}">{{ .Reservation.Status }}</span>
+<span class="amount">{{ .Reservation.TotalAmount }}</span>
+<span class="nights">{{ .Reservation.Nights }}</span>
+{{ if .Reservation.CancellationReason }}<p class="reason">{{ .Reservation.CancellationReason }}</p>{{ end }}
+{{ range .Reservation.Guests }}
+<span class="guest">{{ .Name }} {{ .Email }} {{ .PhoneNumber }}</span>
+{{ end }}
+{{ end }}

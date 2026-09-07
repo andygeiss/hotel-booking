@@ -64,7 +64,7 @@ This system manages hotel room reservations and associated payments. It demonstr
 
 ```go
 require (
-    github.com/andygeiss/cloud-native-utils v0.5.6  // Logging, messaging, web, templating, MCP
+    github.com/andygeiss/cloud-native-utils v0.5.6  // Logging, messaging, web, MCP
     github.com/jackc/pgx/v5 v5.8.0                  // PostgreSQL driver
 )
 ```
@@ -448,7 +448,7 @@ Handler factory pattern with dependency injection:
 ```go
 // internal/adapters/inbound/http_booking_reservations.go
 
-func HttpViewReservations(e *templating.Engine, reservationService *reservation.Service) http.HandlerFunc {
+func HttpViewReservations(v *View, app AppInfo, reservationService *reservation.Service) http.HandlerFunc {
     return func(w http.ResponseWriter, r *http.Request) {
         ctx := r.Context()
 
@@ -457,10 +457,10 @@ func HttpViewReservations(e *templating.Engine, reservationService *reservation.
         email, _ := ctx.Value(web.ContextEmail).(string)
 
         // Use domain service
-        reservations, err := reservationService.ListReservationsByGuest(ctx, reservation.GuestID(email))
+        data := reservationsResponse(ctx, reservationService, app.Name, title, sessionID, email)
 
-        // Render response
-        HttpView(e, "reservations", data)(w, r)
+        // Render: the document, or the named fragment when htmx asked for it
+        v.Render(w, r, http.StatusOK, "reservations", "reservation-list", data)
     }
 }
 ```
@@ -1098,9 +1098,11 @@ dispatcher.Subscribe(ctx, "reservation.new_thing", service.Wrap(h.handleNewThing
 1. Create handler in `adapters/inbound/http_{feature}.go`:
 
 ```go
-func HttpViewNewFeature(e *templating.Engine, service *reservation.Service) http.HandlerFunc {
+func HttpViewNewFeature(v *View, app AppInfo, service *reservation.Service) http.HandlerFunc {
     return func(w http.ResponseWriter, r *http.Request) {
-        // Implementation
+        // Implementation, then either of:
+        //   v.Render(w, r, http.StatusOK, "new_feature", "", data)              // no fragment
+        //   v.Render(w, r, http.StatusOK, "new_feature", "feature-list", data)  // dual-mode
     }
 }
 ```
@@ -1108,7 +1110,7 @@ func HttpViewNewFeature(e *templating.Engine, service *reservation.Service) http
 2. Register route in `router.go`:
 
 ```go
-mux.HandleFunc("GET /ui/new-feature", logging.WithLogging(logger, web.WithAuth(serverSessions, HttpViewNewFeature(e, reservationService))))
+mux.HandleFunc("GET /ui/new-feature", logging.WithLogging(logger, web.WithAuth(serverSessions, HttpViewNewFeature(v, app, reservationService))))
 ```
 
 ### Adding a New Bounded Context

@@ -1,14 +1,12 @@
 package inbound_test
 
 import (
-	"embed"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/andygeiss/cloud-native-utils/assert"
-	"github.com/andygeiss/cloud-native-utils/templating"
 	"github.com/andygeiss/hotel-booking/internal/adapters/inbound"
 )
 
@@ -16,19 +14,15 @@ import (
 // Test Assets
 // ============================================================================
 
-//go:embed testdata/assets/templates/*.tmpl testdata/assets/static/css/*.css
-var loginTestAssets embed.FS
-
 // ============================================================================
 // HttpViewLogin Tests
 // ============================================================================
 
 func Test_HttpViewLogin_With_Request_Should_Return_200(t *testing.T) {
 	// Arrange
-	e := templating.NewEngine(loginTestAssets)
-	e.Parse("testdata/assets/templates/*.tmpl")
+	v := newTestView(t)
 
-	handler := inbound.HttpViewLogin(e, testApp())
+	handler := inbound.HttpViewLogin(v, testApp())
 	req := httptest.NewRequest(http.MethodGet, "/ui/login", nil)
 	rec := httptest.NewRecorder()
 
@@ -41,10 +35,9 @@ func Test_HttpViewLogin_With_Request_Should_Return_200(t *testing.T) {
 
 func Test_HttpViewLogin_With_Request_Should_Render_Template(t *testing.T) {
 	// Arrange
-	e := templating.NewEngine(loginTestAssets)
-	e.Parse("testdata/assets/templates/*.tmpl")
+	v := newTestView(t)
 
-	handler := inbound.HttpViewLogin(e, testApp())
+	handler := inbound.HttpViewLogin(v, testApp())
 	req := httptest.NewRequest(http.MethodGet, "/ui/login", nil)
 	rec := httptest.NewRecorder()
 
@@ -59,10 +52,9 @@ func Test_HttpViewLogin_With_Request_Should_Render_Template(t *testing.T) {
 
 func Test_HttpViewLogin_With_Request_Should_Return_HTML_Content_Type(t *testing.T) {
 	// Arrange
-	e := templating.NewEngine(loginTestAssets)
-	e.Parse("testdata/assets/templates/*.tmpl")
+	v := newTestView(t)
 
-	handler := inbound.HttpViewLogin(e, testApp())
+	handler := inbound.HttpViewLogin(v, testApp())
 	req := httptest.NewRequest(http.MethodGet, "/ui/login", nil)
 	rec := httptest.NewRecorder()
 

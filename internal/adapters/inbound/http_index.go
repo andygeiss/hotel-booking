@@ -3,24 +3,21 @@ package inbound
 import (
 	"net/http"
 
-	"github.com/andygeiss/cloud-native-utils/templating"
 	"github.com/andygeiss/cloud-native-utils/web"
 )
 
 // HttpViewIndexResponse specifies the view data.
 type HttpViewIndexResponse struct {
-	AppName   string
-	Email     string
-	Issuer    string
-	Name      string
-	SessionID string
-	Subject   string
-	Title     string
-	Verified  bool
+	Layout
+	Email    string
+	Issuer   string
+	Name     string
+	Subject  string
+	Verified bool
 }
 
-// HttpViewIndex defines an HTTP handler function for rendering the index template.
-func HttpViewIndex(e *templating.Engine, app AppInfo) http.HandlerFunc {
+// HttpViewIndex defines an HTTP handler function for rendering the index page.
+func HttpViewIndex(v *View, app AppInfo) http.HandlerFunc {
 	appName := app.Name
 	title := app.Title()
 
@@ -42,16 +39,16 @@ func HttpViewIndex(e *templating.Engine, app AppInfo) http.HandlerFunc {
 		// Add session-specific data.
 		data := HttpViewIndexResponse{
 			AppName:   appName,
+			Title:     title,
+			SessionID: sessionID,
 			Email:     email,
 			Issuer:    ctx.Value(web.ContextIssuer).(string),
 			Name:      ctx.Value(web.ContextName).(string),
-			SessionID: sessionID,
 			Subject:   ctx.Value(web.ContextSubject).(string),
-			Title:     title,
 			Verified:  ctx.Value(web.ContextVerified).(bool),
 		}
 
-		// Render the template using the provided engine and data.
-		HttpView(e, "index", data)(w, r)
+		// The index has no fragment: it is a landing page, nothing on it swaps.
+		v.Render(w, r, http.StatusOK, "index", "", data)
 	}
 }

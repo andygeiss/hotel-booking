@@ -1,23 +1,18 @@
 package inbound
 
-import (
-	"net/http"
-
-	"github.com/andygeiss/cloud-native-utils/templating"
-)
+import "net/http"
 
 // HttpViewErrorResponse specifies the view data for error pages.
 type HttpViewErrorResponse struct {
-	AppName      string
-	Title        string
+	Layout
 	ErrorTitle   string
 	ErrorMessage string
 	ErrorDetails string
 }
 
-// HttpViewError defines an HTTP handler function for rendering the error template.
+// HttpViewError defines an HTTP handler function for rendering the error page.
 // It reads error information from query parameters: title, message, and details.
-func HttpViewError(e *templating.Engine, app AppInfo) http.HandlerFunc {
+func HttpViewError(v *View, app AppInfo) http.HandlerFunc {
 	appName := app.Name
 	pageTitle := appName + " - Error"
 
@@ -43,6 +38,6 @@ func HttpViewError(e *templating.Engine, app AppInfo) http.HandlerFunc {
 			ErrorDetails: errorDetails,
 		}
 
-		HttpView(e, "error", data)(w, r)
+		v.Render(w, r, http.StatusOK, "error", "", data)
 	}
 }

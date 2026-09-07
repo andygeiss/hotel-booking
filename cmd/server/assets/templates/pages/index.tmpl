@@ -1,0 +1,18 @@
+{{ define "title" }}{{ .Title }}{{ end }}
+
+{{ define "main" }}
+<div class="flex-center content-view">
+    <div class="card text-center">
+        <div class="card__header">
+            <h1>Welcome, {{ .Name }}!</h1>
+            <div class="flex-center">
+                <img src="/static/img/icon-192.png" alt="Logo" width="200" height="200" />
+            </div>
+        </div>
+        <div class="card__body">
+            <p class="mb-4 text-muted">Book your perfect stay with us</p>
+            <a href="/ui/reservations" class="btn btn-primary btn-lg">Start Booking</a>
+        </div>
+    </div>
+</div>
+{{ end }}

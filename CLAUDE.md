@@ -245,10 +245,12 @@ See [API Contracts § MCP Tools](./docs/api-contracts.md#mcp-tools) for the cano
 Handlers are created via factory functions that close over dependencies:
 
 ```go
-func HttpViewReservations(e *templating.Engine, svc *reservation.Service) http.HandlerFunc {
+func HttpViewReservations(v *inbound.View, app AppInfo, svc *reservation.Service) http.HandlerFunc {
     return func(w http.ResponseWriter, r *http.Request) {
-        reservations, _ := svc.ListReservations(r.Context())
-        e.Render(w, "reservations.tmpl", reservations)
+        data := reservationsResponse(r.Context(), svc, /* ... */)
+        // The fourth argument names the fragment: a plain request gets the
+        // document, an htmx one gets that block alone.
+        v.Render(w, r, http.StatusOK, "reservations", "reservation-list", data)
     }
 }
 ```
@@ -344,6 +346,8 @@ func Test_Something(t *testing.T) {
 | Make, no CI server | One gate list, run on the developer's machine; `make ci` proves it on the commit |
 | Security chain in `Route` | A handler cannot be registered outside CSP, CSRF and the body cap |
 | Loopback ops listener | `/healthz` and pprof are unreachable from the proxy, which is their only access control |
+| `html/template` for views | Guest names, emails and phones reach the templates. `cloud-native-utils/templating` is `text/template`, which escapes nothing |
+| One template set per page | Every page defines `title` and `main`; one shared set would keep only the last page parsed |
 | One `Config` in `main` | Flags beat env beats defaults; `internal/` never reads the environment, so handler tests need no `t.Setenv` |
 
 ---
@@ -394,9 +398,11 @@ yet. These are open tasks, not waivers — what is genuinely waived is in
       `os.Getenv("OIDC_CLIENT_SECRET")` with no injection point. Closing it means giving
       that package a way to take the secret from its caller first, then `readCredential`
       here and a third compose secret — an upstream change, not a local one.
-- [ ] **Dual-mode htmx responses.** `Vary: HX-Request`, `hx-push-url`, and the
-      fragment-or-full-page test are not in place yet
-      (`patterns/htmx-server-rendering.md`).
+- [x] **Dual-mode htmx responses.** `inbound.View.Render` answers the document or one
+      named block, chosen by `isFragment` — the same test the handlers use to pick between
+      a fragment and a 303. Every response carries `Vary: HX-Request, HX-Boosted`, added
+      not set. A rejected form is 422 with the form fragment, plus `HX-Push-Url: false`
+      when the request was boosted. `render_test.go` pins all of it.
 - [x] **`DESIGN.md`.** At the repo root, in the `design.md` alpha format: the glassmorphism
       tokens verbatim, measured contrast for every pair, and the component inventory. It
       records four contrast floors the palette misses, nine off-token colours in
@@ -422,7 +428,11 @@ yet. These are open tasks, not waivers — what is genuinely waived is in
 
 8. **MCP auth in tests** - Pass `nil` NewVerifier for unit tests. Only integration tests need real auth.
 
-9. **Template paths** - Must match `assets/templates/*.tmpl` pattern. Embedded via `//go:embed assets`.
+9. **Template layout** - `assets/templates/layout.tmpl` is the shell; every page is
+   `assets/templates/pages/<name>.tmpl` and defines `title` and `main`. Embedded via
+   `//go:embed assets`. Each page is parsed into its **own** template set with the layout,
+   because they all define the same two block names and one shared set would keep only the
+   last page parsed.
 
 10. **PaymentID convention** - Derive from ReservationID by stripping the `res-` prefix: `fmt.Sprintf("pay-%s", strings.TrimPrefix(string(reservationID), "res-"))`. Both IDs share the same UUID → grep-friendly traceability without a double prefix.
 
@@ -460,6 +470,26 @@ yet. These are open tasks, not waivers — what is genuinely waived is in
     back into `.env` or into a compose `environment:` block. `Config.LogValue` is an
     allowlist, so adding a secret field to the struct does not add it to the logs.
 
-19. **The gates are yours to run** - There is no CI workflow. `make check` before a
+19. **`html/template`, never `text/template`** - `inbound.View` parses with
+    `html/template`, and `cloud-native-utils/templating` is no longer used for the UI: it
+    wraps `text/template`, which does no contextual escaping, and these pages render a
+    guest's own name, email and phone. `Test_Render_Should_Escape_Guest_Data` pins it. The
+    PWA manifest is the one view that is not a template — JSON gets `encoding/json`,
+    because HTML escaping would corrupt a JSON string.
+
+20. **`isFragment` is the only discriminator** - It answers "does this request want a
+    fragment?" — `HX-Request: true` *and not* `HX-Boosted: true`, because a boosted link
+    swaps the whole body and needs the document. `View.Render` calls it, and so does every
+    handler choosing between a fragment and a 303. Never write the header test a second
+    time: two copies is two chances for a handler to disagree with its own rendering.
+
+21. **Mutations are 303 unless they are fragment swaps** - A plain or boosted form POST
+    answers `303 See Other`; only a fragment request gets a direct 200 with the updated
+    block. A direct 200 on a boosted POST pushes that URL into history, and the next
+    refresh re-issues it as a GET against a POST-only route. A rejected form is **422**
+    with the form fragment, plus `HX-Push-Url: false` when boosted — a 422 is not a
+    redirect, so nothing else stops the push.
+
+22. **The gates are yours to run** - There is no CI workflow. `make check` before a
     commit, `make ci` before a push, and read `make ci`'s `go version` line: it is the
     only record of which toolchain ran.

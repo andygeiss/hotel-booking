@@ -1,0 +1,88 @@
+{{ define "title" }}{{ .Title }}{{ end }}
+
+{{ define "main" }}
+<div class="card">
+    <div class="card__header">
+        <h1>Reservation Details</h1>
+        <span class="badge badge-{{ .Reservation.StatusClass }}">{{ .Reservation.Status }}</span>
+    </div>
+    <div class="card__body">
+        <div class="detail-grid">
+            <div class="detail-item">
+                <label>Reservation ID</label>
+                <p>{{ .Reservation.ID }}</p>
+            </div>
+            <div class="detail-item">
+                <label>Room</label>
+                <p>{{ .Reservation.RoomID }}</p>
+            </div>
+            <div class="detail-item">
+                <label>Check-In</label>
+                <p>{{ .Reservation.CheckIn }}</p>
+            </div>
+            <div class="detail-item">
+                <label>Check-Out</label>
+                <p>{{ .Reservation.CheckOut }}</p>
+            </div>
+            <div class="detail-item">
+                <label>Nights</label>
+                <p>{{ .Reservation.Nights }}</p>
+            </div>
+            <div class="detail-item">
+                <label>Total Amount</label>
+                <p>{{ .Reservation.TotalAmount }}</p>
+            </div>
+            <div class="detail-item">
+                <label>Created At</label>
+                <p>{{ .Reservation.CreatedAt }}</p>
+            </div>
+            {{ if .Reservation.CancellationReason }}
+            <div class="detail-item">
+                <label>Cancellation Reason</label>
+                <p>{{ .Reservation.CancellationReason }}</p>
+            </div>
+            {{ end }}
+        </div>
+
+        {{ if .Reservation.Guests }}
+        <h3 class="mt-4">Guests</h3>
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Phone</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{ range .Reservation.Guests }}
+                <tr>
+                    <td>{{ .Name }}</td>
+                    <td>{{ .Email }}</td>
+                    <td>{{ .PhoneNumber }}</td>
+                </tr>
+                {{ end }}
+            </tbody>
+        </table>
+        {{ end }}
+    </div>
+    <div class="card__footer">
+        <a href="/ui/reservations" class="btn">Back to Reservations</a>
+        {{ if .Reservation.CanCancel }}
+        {{/*
+          A real form again. Cancelling from the detail page has nowhere to swap
+          — the whole page is stale afterwards — so the handler answers with
+          HX-Redirect for htmx and a 303 for everyone else.
+        */}}
+        <form
+            method="post"
+            action="/ui/reservations/{{ .Reservation.ID }}/cancel"
+            hx-post="/ui/reservations/{{ .Reservation.ID }}/cancel"
+            hx-confirm="Are you sure you want to cancel this reservation?"
+        >
+            <button type="submit" class="btn btn-danger">Cancel Reservation</button>
+        </form>
+        {{ end }}
+    </div>
+</div>
+{{ end }}

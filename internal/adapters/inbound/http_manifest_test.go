@@ -1,26 +1,19 @@
 package inbound_test
 
 import (
-	"embed"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/andygeiss/cloud-native-utils/assert"
-	"github.com/andygeiss/cloud-native-utils/templating"
 	"github.com/andygeiss/hotel-booking/internal/adapters/inbound"
 )
 
-//go:embed testdata/assets/templates/*.tmpl testdata/assets/static/css/*.css
-var manifestTestAssets embed.FS
-
 func Test_HttpViewManifest_With_Request_Should_Return_200(t *testing.T) {
 	// Arrange
-	e := templating.NewEngine(manifestTestAssets)
-	e.Parse("testdata/assets/templates/*.tmpl")
 
-	handler := inbound.HttpViewManifest(e, testApp())
+	handler := inbound.HttpViewManifest(testApp())
 	req := httptest.NewRequest(http.MethodGet, "/manifest.json", nil)
 	rec := httptest.NewRecorder()
 
@@ -33,10 +26,8 @@ func Test_HttpViewManifest_With_Request_Should_Return_200(t *testing.T) {
 
 func Test_HttpViewManifest_With_Request_Should_Render_Template(t *testing.T) {
 	// Arrange
-	e := templating.NewEngine(manifestTestAssets)
-	e.Parse("testdata/assets/templates/*.tmpl")
 
-	handler := inbound.HttpViewManifest(e, testApp())
+	handler := inbound.HttpViewManifest(testApp())
 	req := httptest.NewRequest(http.MethodGet, "/manifest.json", nil)
 	rec := httptest.NewRecorder()
 
@@ -52,10 +43,8 @@ func Test_HttpViewManifest_With_Request_Should_Render_Template(t *testing.T) {
 
 func Test_HttpViewManifest_With_Request_Should_Return_Manifest_Content_Type(t *testing.T) {
 	// Arrange
-	e := templating.NewEngine(manifestTestAssets)
-	e.Parse("testdata/assets/templates/*.tmpl")
 
-	handler := inbound.HttpViewManifest(e, testApp())
+	handler := inbound.HttpViewManifest(testApp())
 	req := httptest.NewRequest(http.MethodGet, "/manifest.json", nil)
 	rec := httptest.NewRecorder()
 

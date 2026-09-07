@@ -42,6 +42,17 @@ func getRouterTestFS(t *testing.T) fs.FS {
 	return sub
 }
 
+// newTestView parses the fixture templates the way main parses the real ones:
+// the layout plus one page file per template set.
+func newTestView(t *testing.T) *inbound.View {
+	t.Helper()
+	v, err := inbound.NewView(getRouterTestFS(t), slog.New(slog.DiscardHandler))
+	if err != nil {
+		t.Fatalf("failed to build the view: %v", err)
+	}
+	return v
+}
+
 // mockReservationRepository is a simple in-memory mock for testing.
 type mockReservationRepository struct {
 	reservations map[reservation.ReservationID]reservation.Reservation

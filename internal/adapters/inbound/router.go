@@ -8,7 +8,6 @@ import (
 
 	"github.com/andygeiss/cloud-native-utils/logging"
 	"github.com/andygeiss/cloud-native-utils/mcp"
-	"github.com/andygeiss/cloud-native-utils/templating"
 	"github.com/andygeiss/cloud-native-utils/web"
 	"github.com/andygeiss/hotel-booking/internal/domain/reservation"
 )
@@ -34,14 +33,13 @@ func Route(config RouterConfig) *http.ServeMux {
 	// Embed the assets into the mux.
 	mux, serverSessions := web.NewServeMux(config.Ctx, config.EFS)
 
-	// Create a new templating engine.
-	// We use the fs.FS to load the templates from the file system.
-	// We use the templating.Engine from cloud-native-utils and reuse it for all views.
-	e := templating.NewEngine(config.EFS)
-
-	// Parse the templates under the assets/templates directory.
-	// Every template must have a .tmpl extension.
-	e.Parse("assets/templates/*.tmpl")
+	// Parse every page at boot: the layout shell plus one file per page, one
+	// template set each. A template that does not parse is a programming error,
+	// so it stops the process here rather than the first request that needs it.
+	v, err := NewView(config.EFS, config.Logger)
+	if err != nil {
+		panic("inbound: " + err.Error())
+	}
 
 	// The static assets are served from the embed.FS under the /static path directly.
 	// This is defined in the web.NewServeMux function from cloud-native-utils.
@@ -50,34 +48,34 @@ func Route(config RouterConfig) *http.ServeMux {
 	// The HttpViewIndex is handling unauthenticated and authenticated requests.
 	// The unauthenticated requests are redirected to the login page /ui/login.
 	// The authenticated requests are rendered with the index template.
-	mux.HandleFunc("GET /ui/", logging.WithLogging(config.Logger, web.WithAuth(serverSessions, HttpViewIndex(e, config.App))))
+	mux.HandleFunc("GET /ui/", logging.WithLogging(config.Logger, web.WithAuth(serverSessions, HttpViewIndex(v, config.App))))
 
 	// Add the login endpoint for the UI.
 	// This endpoint is used to forward the user to the login page of the OIDC provider.
-	mux.HandleFunc("GET /ui/login", logging.WithLogging(config.Logger, HttpViewLogin(e, config.App)))
+	mux.HandleFunc("GET /ui/login", logging.WithLogging(config.Logger, HttpViewLogin(v, config.App)))
 
 	// Add the error endpoint for displaying user-friendly error pages.
 	// This endpoint accepts query parameters: title, message, and details.
-	mux.HandleFunc("GET /ui/error", logging.WithLogging(config.Logger, HttpViewError(e, config.App)))
+	mux.HandleFunc("GET /ui/error", logging.WithLogging(config.Logger, HttpViewError(v, config.App)))
 
 	// Add the manifest endpoint for the PWA.
 	// This endpoint serves the manifest.json file for Progressive Web App support.
-	mux.HandleFunc("GET /manifest.json", logging.WithLogging(config.Logger, HttpViewManifest(e, config.App)))
+	mux.HandleFunc("GET /manifest.json", logging.WithLogging(config.Logger, HttpViewManifest(config.App)))
 
 	// Add the reservations list endpoint.
-	mux.HandleFunc("GET /ui/reservations", logging.WithLogging(config.Logger, web.WithAuth(serverSessions, HttpViewReservations(e, config.App, config.ReservationService))))
+	mux.HandleFunc("GET /ui/reservations", logging.WithLogging(config.Logger, web.WithAuth(serverSessions, HttpViewReservations(v, config.App, config.ReservationService))))
 
 	// Add the new reservation form endpoint.
-	mux.HandleFunc("GET /ui/reservations/new", logging.WithLogging(config.Logger, web.WithAuth(serverSessions, HttpViewReservationForm(e, config.App))))
+	mux.HandleFunc("GET /ui/reservations/new", logging.WithLogging(config.Logger, web.WithAuth(serverSessions, HttpViewReservationForm(v, config.App))))
 
 	// Add the create reservation endpoint.
-	mux.HandleFunc("POST /ui/reservations", logging.WithLogging(config.Logger, web.WithAuth(serverSessions, HttpCreateReservation(e, config.App, config.ReservationService))))
+	mux.HandleFunc("POST /ui/reservations", logging.WithLogging(config.Logger, web.WithAuth(serverSessions, HttpCreateReservation(v, config.App, config.ReservationService))))
 
 	// Add the reservation detail endpoint.
-	mux.HandleFunc("GET /ui/reservations/{id}", logging.WithLogging(config.Logger, web.WithAuth(serverSessions, HttpViewReservationDetail(e, config.App, config.ReservationService))))
+	mux.HandleFunc("GET /ui/reservations/{id}", logging.WithLogging(config.Logger, web.WithAuth(serverSessions, HttpViewReservationDetail(v, config.App, config.ReservationService))))
 
 	// Add the cancel reservation endpoint.
-	mux.HandleFunc("POST /ui/reservations/{id}/cancel", logging.WithLogging(config.Logger, web.WithAuth(serverSessions, HttpCancelReservation(config.ReservationService))))
+	mux.HandleFunc("POST /ui/reservations/{id}/cancel", logging.WithLogging(config.Logger, web.WithAuth(serverSessions, HttpCancelReservation(v, config.App, config.ReservationService))))
 
 	// Add MCP endpoint if configured.
 	if config.MCPServer != nil {

@@ -68,7 +68,7 @@ staticcheck is the only third-party lint tool.
     │   ├── inbound/                  # │  Driving adapters — things that call INTO the domain
     │   │   ├── router.go             # │  RouterConfig struct + Route() builds all /ui/* +
     │   │   │                         # │  /manifest.json + optional /mcp endpoint
-    │   │   ├── http_view.go          # │  Thin wrapper that delegates to templating engine
+    │   │   ├── render.go             # │  View: html/template sets, isFragment, Vary
     │   │   ├── http_index.go         # │  GET /ui/ (authenticated dashboard)
     │   │   ├── http_login.go         # │  GET /ui/login (OIDC handoff)
     │   │   ├── http_error.go         # │  GET /ui/error (error page with query params)

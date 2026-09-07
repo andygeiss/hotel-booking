@@ -1,9 +1,9 @@
 package inbound
 
 import (
+	"context"
 	"net/http"
 
-	"github.com/andygeiss/cloud-native-utils/templating"
 	"github.com/andygeiss/cloud-native-utils/web"
 	"github.com/andygeiss/hotel-booking/internal/domain/reservation"
 )
@@ -22,14 +22,12 @@ type ReservationListItem struct {
 
 // HttpViewReservationsResponse specifies the view data for the reservations list.
 type HttpViewReservationsResponse struct {
-	AppName      string
-	Title        string
-	SessionID    string
+	Layout
 	Reservations []ReservationListItem
 }
 
 // HttpViewReservations defines an HTTP handler function for rendering the reservations list.
-func HttpViewReservations(e *templating.Engine, app AppInfo, reservationService *reservation.Service) http.HandlerFunc {
+func HttpViewReservations(v *View, app AppInfo, reservationService *reservation.Service) http.HandlerFunc {
 	appName := app.Name
 	title := appName + " - Reservations"
 
@@ -44,37 +42,46 @@ func HttpViewReservations(e *templating.Engine, app AppInfo, reservationService 
 			return
 		}
 
-		// Get reservations for the current user (using email as guest ID)
-		guestID := reservation.GuestID(email)
-		reservations, err := reservationService.ListReservationsByGuest(ctx, guestID)
-		if err != nil {
-			// If repository doesn't exist yet, treat as empty list
-			reservations = []*reservation.Reservation{}
-		}
+		data := reservationsResponse(ctx, reservationService, appName, title, sessionID, email)
 
-		// Convert domain reservations to view items
-		items := make([]ReservationListItem, 0, len(reservations))
-		for _, res := range reservations {
-			items = append(items, ReservationListItem{
-				ID:          string(res.ID),
-				RoomID:      string(res.RoomID),
-				CheckIn:     res.DateRange.CheckIn.Format("2006-01-02"),
-				CheckOut:    res.DateRange.CheckOut.Format("2006-01-02"),
-				Status:      string(res.Status),
-				StatusClass: reservationStatusClass(res.Status),
-				TotalAmount: res.TotalAmount.FormatAmount(),
-				CanCancel:   res.CanBeCancelled(),
-			})
-		}
+		// Naming the fragment here is what makes the page dual-mode: a plain
+		// request gets the document, an htmx one gets the list block alone.
+		v.Render(w, r, http.StatusOK, "reservations", "reservation-list", data)
+	}
+}
 
-		data := HttpViewReservationsResponse{
-			AppName:      appName,
-			Title:        title,
-			SessionID:    sessionID,
-			Reservations: items,
-		}
+// reservationsResponse builds one guest's list. HttpCancelReservation renders
+// the same data to answer a fragment swap, and building it in one place is what
+// stops the two views of the list from drifting apart.
+func reservationsResponse(ctx context.Context, reservationService *reservation.Service, appName, title, sessionID, email string) HttpViewReservationsResponse {
+	// Get reservations for the current user (using email as guest ID)
+	reservations, err := reservationService.ListReservationsByGuest(ctx, reservation.GuestID(email))
+	if err != nil {
+		// If repository doesn't exist yet, treat as empty list
+		reservations = []*reservation.Reservation{}
+	}
 
-		HttpView(e, "reservations", data)(w, r)
+	// Convert domain reservations to view items
+	items := make([]ReservationListItem, 0, len(reservations))
+	for _, res := range reservations {
+		items = append(items, ReservationListItem{
+			ID:          string(res.ID),
+			RoomID:      string(res.RoomID),
+			CheckIn:     res.DateRange.CheckIn.Format("2006-01-02"),
+			CheckOut:    res.DateRange.CheckOut.Format("2006-01-02"),
+			Status:      string(res.Status),
+			StatusClass: reservationStatusClass(res.Status),
+			TotalAmount: res.TotalAmount.FormatAmount(),
+			CanCancel:   res.CanBeCancelled(),
+		})
+	}
+
+	return HttpViewReservationsResponse{
+		AppName:      appName,
+		Title:        title,
+		SessionID:    sessionID,
+		ShowNew:      true,
+		Reservations: items,
 	}
 }
 

@@ -1,0 +1,18 @@
+{{ define "title" }}{{ .Title }}{{ end }}
+
+{{ define "main" }}
+<div class="flex-center content-view">
+    <div class="card text-center">
+        <div class="card__header">
+            <h1>{{ .ErrorTitle }}</h1>
+        </div>
+        <div class="card__body">
+            <div class="alert alert-danger mb-4">{{ .ErrorMessage }}</div>
+            {{ if .ErrorDetails }}
+            <p class="text-muted mb-4">{{ .ErrorDetails }}</p>
+            {{ end }}
+            <a href="/ui/login" class="btn btn-primary">Back to Login</a>
+        </div>
+    </div>
+</div>
+{{ end }}
