@@ -41,13 +41,23 @@ in front of every `go` and `make` command. Never add a `toolchain` line to `go.m
    ```bash
    cp .env.example .env
    cp .keycloak.json.example .keycloak.json
+   for f in secrets/*.example; do cp "$f" "${f%.example}"; done
    ```
-   Both files contain the placeholder `CHANGE_ME_LOCAL_SECRET`. Rotate it once, so the
-   app and the Keycloak realm agree on the same random secret:
+   The last line creates the two database password files, `secrets/reservation-db-password`
+   and `secrets/payment-db-password`. They are what both `make run` and the compose stack
+   read; nothing passes a database password as an environment variable. All three kinds of
+   file are gitignored.
+
+   `.env` and `.keycloak.json` contain the placeholder `CHANGE_ME_LOCAL_SECRET`. Rotate it
+   once, so the app and the Keycloak realm agree on the same random secret:
    ```bash
    sed -i '' "s/CHANGE_ME_LOCAL_SECRET/$(LC_ALL=C tr -dc 'A-Za-z0-9' < /dev/urandom | head -c 32)/g" .env .keycloak.json
    ```
    Running it again does nothing once the placeholder is gone.
+
+   The database passwords in `secrets/` are worth rotating too, but only *before* step 4:
+   PostgreSQL bakes the password in when it initialises its volume, so changing a file
+   later needs `docker-compose --env-file .env down -v` to take effect.
 
 4. **Start the stack**
    ```bash
@@ -104,6 +114,10 @@ make run
 target that reads that file: `check` and `test` must never depend on a developer's
 machine, or `make ci` would go red on a commit that is fine. Without `.env`, the
 defaults inside `main.go` kick in.
+
+`.env` sets `CREDENTIALS_DIRECTORY="./secrets"`, so a host run reads the two database
+passwords from the same files the containers mount. Without them the server still starts
+and logs `database password is empty` — the boot warning names the fix.
 
 ## Configuration
 

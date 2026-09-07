@@ -153,6 +153,9 @@ internal/
 migrations/
   payment/             Payment DB schema
   reservation/         Reservation DB schema
+secrets/
+  *.example            Templates; `cp` each to the name without .example
+  <name>               One file per secret, gitignored, mounted at /run/secrets
 Makefile               The only command surface (baseline stack/makefile.md)
 SPEC.md                The project brief: job, why, guardrails, done means
 ```
@@ -377,10 +380,11 @@ yet. These are open tasks, not waivers — what is genuinely waived is in
       the deprecation window is over and returning browsers have picked up the tombstone.
 - [x] **Do not reach Keycloak at boot.** The MCP verifier is built on the first `/mcp`
       request. The app starts with an empty environment and no identity provider running.
-- [ ] **Give compose the credential files.** The database passwords are read from
-      `$CREDENTIALS_DIRECTORY` when it is set, but `docker-compose.yml` still passes them
-      as environment variables. Until it mounts one file per secret, the tier-1 rule in
-      `patterns/go-config.md` is not met.
+- [x] **Give compose the credential files.** `docker-compose.yml` declares two compose
+      secrets sourced from `secrets/`, mounts them at `/run/secrets`, and sets
+      `CREDENTIALS_DIRECTORY` to that path. Each PostgreSQL service reads the same file
+      through `POSTGRES_PASSWORD_FILE`. No database password is an environment variable
+      any more, on either the compose path or the `make run` one.
 - [ ] **Dual-mode htmx responses.** `Vary: HX-Request`, `hx-push-url`, and the
       fragment-or-full-page test are not in place yet
       (`patterns/htmx-server-rendering.md`).
@@ -439,9 +443,11 @@ yet. These are open tasks, not waivers — what is genuinely waived is in
     cached, so the endpoint recovers by itself. Do not move that call back to boot.
 
 18. **Secrets are files, not variables** - The database passwords come from
-    `$CREDENTIALS_DIRECTORY`, one file per secret. The `*_PASSWORD` variables are a
-    development fallback. `Config.LogValue` is an allowlist, so adding a secret field to
-    the struct does not add it to the logs.
+    `$CREDENTIALS_DIRECTORY`, one file per secret. Compose mounts them at `/run/secrets`;
+    `.env` points `make run` at `./secrets`. The `*_PASSWORD` variables still work when
+    there is no credential directory, but nothing here sets them — do not put a password
+    back into `.env` or into a compose `environment:` block. `Config.LogValue` is an
+    allowlist, so adding a secret field to the struct does not add it to the logs.
 
 19. **The gates are yours to run** - There is no CI workflow. `make check` before a
     commit, `make ci` before a push, and read `make ci`'s `go version` line: it is the

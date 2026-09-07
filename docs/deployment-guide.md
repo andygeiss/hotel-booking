@@ -29,18 +29,25 @@ Five services:
 
 | Service | Image | Port(s) | Notes |
 |---------|-------|---------|-------|
-| `app` | `${USER}/${APP_SHORTNAME}:latest` | `8080 → 8080` | Reads `.env`; `depends_on` keycloak, kafka, postgres-reservation, postgres-payment; `extra_hosts: ["localhost:host-gateway"]` so the container can reach host `localhost:8180` |
+| `app` | `${USER}/${APP_SHORTNAME}:latest` | `8080 → 8080` | Reads `.env`; both database passwords arrive as files under `/run/secrets`, never as variables; `depends_on` keycloak, kafka, postgres-reservation, postgres-payment; `extra_hosts: ["localhost:host-gateway"]` so the container can reach host `localhost:8180` |
 | `keycloak` | `quay.io/keycloak/keycloak:latest` | `8180 → 8080` | `start-dev --import-realm`, mounts `.keycloak.json` at `/opt/keycloak/data/import/local-realm.json` |
 | `kafka` | `apache/kafka:latest` | `9092 → 9092` | Auto-creates topics |
-| `postgres-reservation` | `postgres:16-alpine` | `5432 → 5432` | Mounts `migrations/reservation/init.sql` as init script; healthcheck via `pg_isready` |
-| `postgres-payment` | `postgres:16-alpine` | `5433 → 5432` | Mounts `migrations/payment/init.sql`; healthcheck via `pg_isready` |
+| `postgres-reservation` | `postgres:16-alpine` | `5432 → 5432` | Mounts `migrations/reservation/init.sql` as init script; `POSTGRES_PASSWORD_FILE` reads the same secret the app does; healthcheck via `pg_isready` |
+| `postgres-payment` | `postgres:16-alpine` | `5433 → 5432` | Mounts `migrations/payment/init.sql`; same `POSTGRES_PASSWORD_FILE` arrangement; healthcheck via `pg_isready` |
 
 Persistent volumes: `postgres_reservation_data`, `postgres_payment_data`. Both DBs bootstrap with the same `kv_store` schema.
 
-Bring the stack up and down with `docker-compose` directly. Rotate the
-`CHANGE_ME_LOCAL_SECRET` placeholder in `.env` and `.keycloak.json` once before the first
-start (see [Development Guide](./development-guide.md)); Keycloak needs about a minute to
-import its realm on a cold start.
+Two compose secrets, `reservation-db-password` and `payment-db-password`, are sourced from
+`./secrets/<name>` and mounted read-only at `/run/secrets/<name>`. The app finds them
+because the service sets `CREDENTIALS_DIRECTORY: /run/secrets`, which beats the `./secrets`
+that `.env` carries for host runs. Each PostgreSQL service mounts the one file it needs and
+points `POSTGRES_PASSWORD_FILE` at it, so the two sides of a password cannot drift apart. A
+missing file stops compose rather than starting a database with an invented password.
+
+Bring the stack up and down with `docker-compose` directly. Create the secret files and
+rotate the `CHANGE_ME_LOCAL_SECRET` placeholder in `.env` and `.keycloak.json` once before
+the first start (see [Development Guide](./development-guide.md)); Keycloak needs about a
+minute to import its realm on a cold start.
 
 ```bash
 docker-compose --env-file .env up -d      # start
@@ -101,10 +108,18 @@ by `CREDENTIALS_DIRECTORY`: `reservation-db-password` and `payment-db-password`.
 not inherited by every child process and does not appear in a process listing, which is
 true of neither a flag value nor an environment variable.
 
-When `CREDENTIALS_DIRECTORY` is unset, the passwords fall back to `RESERVATION_DB_PASSWORD`
-and `PAYMENT_DB_PASSWORD`. That fallback is a development convenience and a recorded
-deviation — see [README § Baseline deviations](../README.md#baseline-deviations). Compose
-does not supply credential files yet.
+Both paths supply files. `docker-compose.yml` mounts them at `/run/secrets`; `.env` points
+`make run` at `./secrets`, where `cp secrets/<name>.example secrets/<name>` puts them. The
+`RESERVATION_DB_PASSWORD` and `PAYMENT_DB_PASSWORD` variables are still read when
+`CREDENTIALS_DIRECTORY` is unset, but nothing in this repository sets them; they are a
+last-resort fallback for a machine that has no credential directory.
+
+A missing file and an absent directory fail differently, on purpose. When
+`CREDENTIALS_DIRECTORY` is set and the named file is not there, `parseConfig` returns an
+error and the process exits 2 — a deployment that names a directory and forgets a file must
+not start. When no directory is named at all, an empty password is not an error: the binary
+must start with an empty environment, so `main` logs `database password is empty` with the
+fix and the first query is where it actually costs anything.
 
 `Config.LogValue` is an allowlist, so the boot log prints the safe fields and no password
 can be added to the struct and logged by accident.

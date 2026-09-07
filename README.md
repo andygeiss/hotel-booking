@@ -319,7 +319,11 @@ but nothing installed.
    ```bash
    cp .env.example .env
    cp .keycloak.json.example .keycloak.json
+   for f in secrets/*.example; do cp "$f" "${f%.example}"; done
    ```
+   The last line writes the two database passwords into `secrets/`, one file per secret.
+   Nothing passes a database password as an environment variable. All three kinds of file
+   are gitignored.
 
 4. **Start the development stack:**
    ```bash
@@ -481,21 +485,23 @@ settings:
 | `RESERVATION_DB_HOST` | Reservation database host | `localhost` |
 | `RESERVATION_DB_PORT` | Reservation database port | `5432` |
 | `RESERVATION_DB_USER` | Reservation database user | `reservation` |
-| `RESERVATION_DB_PASSWORD` | Reservation database password (dev fallback — see below) | none |
+| `RESERVATION_DB_PASSWORD` | Last-resort fallback if there is no credential directory — see below | none |
 | `RESERVATION_DB_NAME` | Reservation database name | `reservation_db` |
 | `RESERVATION_DB_SSLMODE` | SSL mode | `disable` |
 | `PAYMENT_DB_HOST` | Payment database host | `localhost` |
 | `PAYMENT_DB_PORT` | Payment database port | `5433` |
 | `PAYMENT_DB_USER` | Payment database user | `payment` |
-| `PAYMENT_DB_PASSWORD` | Payment database password (dev fallback — see below) | none |
+| `PAYMENT_DB_PASSWORD` | Last-resort fallback if there is no credential directory — see below | none |
 | `PAYMENT_DB_NAME` | Payment database name | `payment_db` |
 | `PAYMENT_DB_SSLMODE` | SSL mode | `disable` |
 
 **Secrets are files.** The two database passwords are read from `CREDENTIALS_DIRECTORY`,
 one file per secret (`reservation-db-password`, `payment-db-password`). A file is not
 inherited by every child process and does not appear in a process listing, which is true
-of neither a flag value nor an environment variable. The `*_PASSWORD` variables above are
-a development fallback, and a recorded deviation — compose does not supply files yet.
+of neither a flag value nor an environment variable. Both ways of running the app supply
+files: `docker-compose.yml` mounts compose secrets at `/run/secrets`, and `.env` points
+`make run` at `./secrets`. The `*_PASSWORD` variables above are what is left for a machine
+that sets no credential directory; nothing here sets them.
 
 `Config.LogValue` is an allowlist, so the boot log prints the safe fields and a secret
 added to the struct later is not logged by accident.
@@ -607,16 +613,6 @@ the damage.
   Contained: no template references it, a test pins that no fetch handler comes back,
   and the waiver ends when the route is deleted after the deprecation window
   (tracked in [CLAUDE.md § Roadmap](./CLAUDE.md#roadmap)).
-
-- **Secrets arrive as files, never as environment variables**
-  ([patterns/go-config.md](https://github.com/andygeiss/baseline/blob/main/patterns/go-config.md)
-  *Secrets* — **tier 1, so this is an open task and not a real waiver**) — recorded
-  2026-09-07 by Andy. The binary already prefers one file per secret in
-  `$CREDENTIALS_DIRECTORY`, and `Config.LogValue` keeps every password out of the logs.
-  What is missing is the other half: `docker-compose.yml` still passes the two database
-  passwords as environment variables, so the fallback is still the path in use.
-  Contained: the fallback is two fields, read in one function, and finishing it is a
-  deployment change rather than a code change.
 
 ### Rules met by a different route
 
