@@ -27,11 +27,14 @@ Mounted by `web.NewServeMux` from `cloud-native-utils` (see `cmd/server/main_tes
 | Method | Path | Purpose | Auth | Handler |
 |--------|------|---------|------|---------|
 | GET | `/manifest.json` | PWA manifest (rendered from `manifest.tmpl`) | none | `HttpViewManifest` |
-| GET | `/sw.js` | Service worker (no-cache headers) | none | `HttpViewServiceWorker` |
+| GET | `/sw.js` | Tombstone service worker (no-cache headers) | none | `HttpViewServiceWorker` |
 
-No page registers the service worker any more: a Content-Security-Policy without
-`'unsafe-inline'` blocks the inline script that used to do it. The route stays only long
-enough to hand an unregistering worker to browsers that still hold the old one.
+No page registers a service worker any more: a Content-Security-Policy without
+`'unsafe-inline'` blocks the inline script that used to do it. The route now serves a
+**tombstone** — a worker that takes over from the old one, deletes every cache it filled,
+unregisters itself, and reloads the pages it controlled. It handles no fetch events, so
+nothing is answered from the client while it is alive. The route is deleted once the
+deprecation window is over.
 
 ### Ops listener (`127.0.0.1:6060`)
 

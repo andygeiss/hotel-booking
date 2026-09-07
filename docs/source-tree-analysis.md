@@ -29,9 +29,12 @@ There is deliberately no `.github/workflows/`, no dependency bot, and no
 staticcheck is the only third-party lint tool.
 │
 ├── cmd/server/                       # ┌─ Binary entry point
+│   ├── config.go                     # │  Config struct + parseConfig: flags over env over
+│   │                                 # │  defaults, validated before anything opens
+│   ├── default.pgo                   # │  Committed CPU profile; go build finds it by name
 │   ├── main.go                       # │  DI wiring, context, Postgres pools, Kafka dispatcher,
 │   │                                 # │  OIDC provider, MCP server, HTTP server lifecycle
-│   ├── main_test.go                  # │  Integration benchmarks → .cpuprofile.pprof for PGO build
+│   ├── main_test.go                  # │  Integration benchmarks → cmd/server/default.pgo
 │   └── assets/                       # │  Embedded via //go:embed assets
 │       ├── static/                   # │  CSS, JS, images (served at /static)
 │       └── templates/                # │  Go html/template .tmpl files
@@ -42,7 +45,7 @@ staticcheck is the only third-party lint tool.
 │           ├── reservation_detail.tmpl
 │           ├── reservation_form.tmpl
 │           ├── reservations.tmpl
-│           └── sw.tmpl               # │  /sw.js — service worker; nothing registers it
+│           └── sw.tmpl               # │  /sw.js — tombstone worker; unregisters the old one
 │                                     # └─
 │
 ├── docs/                             # Architecture and generated documentation

@@ -454,7 +454,18 @@ func Test_Route_Liveness_Endpoint_Should_Return_200(t *testing.T)
 
 ## Configuration
 
-Configuration is managed via environment variables. Copy `.env.example` to `.env` and customize:
+**`./server -h` is the contract.** Every knob is one field of a `Config` struct parsed and
+validated in `main` before a database opens or a listener binds. **Flags beat environment
+variables beat built-in defaults**, and each flag's help text names its variable. A bad
+setting is one line and exit 2:
+
+```
+$ ./server -port=http
+server: port "http": want a number from 0 to 65535
+```
+
+Copy `.env.example` to `.env` for local development — `make run` loads it. The common
+settings:
 
 | Variable | Description | Default |
 |----------|-------------|---------|
@@ -465,21 +476,32 @@ Configuration is managed via environment variables. Copy `.env.example` to `.env
 | `OIDC_CLIENT_ID` | OIDC client ID | `hotel-booking` |
 | `OIDC_CLIENT_SECRET` | OIDC client secret | Auto-generated |
 | `OIDC_ISSUER` | Keycloak realm URL | `http://localhost:8180/realms/local` |
+| `HOST` | Bind address; empty means every interface | empty |
 | `PORT` | HTTP server port | `8080` |
 | `RESERVATION_DB_HOST` | Reservation database host | `localhost` |
 | `RESERVATION_DB_PORT` | Reservation database port | `5432` |
 | `RESERVATION_DB_USER` | Reservation database user | `reservation` |
-| `RESERVATION_DB_PASSWORD` | Reservation database password | `reservation_secret` |
+| `RESERVATION_DB_PASSWORD` | Reservation database password (dev fallback — see below) | none |
 | `RESERVATION_DB_NAME` | Reservation database name | `reservation_db` |
 | `RESERVATION_DB_SSLMODE` | SSL mode | `disable` |
 | `PAYMENT_DB_HOST` | Payment database host | `localhost` |
 | `PAYMENT_DB_PORT` | Payment database port | `5433` |
 | `PAYMENT_DB_USER` | Payment database user | `payment` |
-| `PAYMENT_DB_PASSWORD` | Payment database password | `payment_secret` |
+| `PAYMENT_DB_PASSWORD` | Payment database password (dev fallback — see below) | none |
 | `PAYMENT_DB_NAME` | Payment database name | `payment_db` |
 | `PAYMENT_DB_SSLMODE` | SSL mode | `disable` |
 
-See `.env.example` for the complete list with documentation.
+**Secrets are files.** The two database passwords are read from `CREDENTIALS_DIRECTORY`,
+one file per secret (`reservation-db-password`, `payment-db-password`). A file is not
+inherited by every child process and does not appear in a process listing, which is true
+of neither a flag value nor an environment variable. The `*_PASSWORD` variables above are
+a development fallback, and a recorded deviation — compose does not supply files yet.
+
+`Config.LogValue` is an allowlist, so the boot log prints the safe fields and a secret
+added to the struct later is not logged by accident.
+
+See `.env.example` for the complete list with documentation, and
+[docs/deployment-guide.md](docs/deployment-guide.md#configuration) for the rest.
 
 ---
 
@@ -579,11 +601,22 @@ the damage.
 - **No service worker**
   ([patterns/pwa.md](https://github.com/andygeiss/baseline/blob/main/patterns/pwa.md))
   — waived 2026-09-07 by Andy, temporarily. Nothing registers a service worker any
-  more: the inline registration scripts were removed when the Content-Security-Policy
-  landed, because a policy without `'unsafe-inline'` blocks them. `GET /sw.js` still
-  answers so that browsers holding the old worker can be handed an unregistering one.
-  Contained: no template references it, and the waiver ends when that route is deleted
+  more, and `GET /sw.js` now serves a tombstone: it takes over from the old worker,
+  deletes every cache the old one filled, unregisters itself, and reloads the pages it
+  controlled. It handles no fetch events, so nothing is served from the client.
+  Contained: no template references it, a test pins that no fetch handler comes back,
+  and the waiver ends when the route is deleted after the deprecation window
   (tracked in [CLAUDE.md § Roadmap](./CLAUDE.md#roadmap)).
+
+- **Secrets arrive as files, never as environment variables**
+  ([patterns/go-config.md](https://github.com/andygeiss/baseline/blob/main/patterns/go-config.md)
+  *Secrets* — **tier 1, so this is an open task and not a real waiver**) — recorded
+  2026-09-07 by Andy. The binary already prefers one file per secret in
+  `$CREDENTIALS_DIRECTORY`, and `Config.LogValue` keeps every password out of the logs.
+  What is missing is the other half: `docker-compose.yml` still passes the two database
+  passwords as environment variables, so the fallback is still the path in use.
+  Contained: the fallback is two fields, read in one function, and finishing it is a
+  deployment change rather than a code change.
 
 ### Rules met by a different route
 

@@ -74,7 +74,7 @@ There is no CI server, so the two commands that matter are yours to run:
 | `make ci` | The same gates against `git archive HEAD`, in a clean copy |
 | `make clean` | `rm -rf bin/` |
 | `make fmt` | `goimports -w .` then `go fix ./...` — read the diff before committing it |
-| `make profile` | Benchmarks with `-cpuprofile=.cpuprofile.pprof`, plus `.cpuprofile.svg` |
+| `make profile` | Rewrites `cmd/server/default.pgo` from the benchmarks, plus `.cpuprofile.svg` |
 | `make run` | `go run ./cmd/server`, loading `.env` if it is there |
 | `make test` | `go test -race -shuffle=on ./...` |
 
@@ -105,6 +105,29 @@ target that reads that file: `check` and `test` must never depend on a developer
 machine, or `make ci` would go red on a commit that is fine. Without `.env`, the
 defaults inside `main.go` kick in.
 
+## Configuration
+
+`./server -h` is the whole contract. Every knob sits in one `Config` struct in
+`cmd/server/config.go`, parsed and validated in `main` before a database opens or a
+listener binds; nothing under `internal/` reads the environment. Flags beat environment
+variables beat built-in defaults, and each flag's help text names its variable.
+
+```bash
+make run                          # loads .env, then starts
+go run ./cmd/server -port 9090    # a flag beats PORT from .env
+go run ./cmd/server -h            # the flags, plus the variables that are not flags
+```
+
+A bad setting is one line and exit 2, before anything starts:
+
+```
+$ go run ./cmd/server -port=http
+server: port "http": want a number from 0 to 65535
+```
+
+Handler tests no longer need `t.Setenv("APP_NAME", ...)`: the identity arrives as an
+`inbound.AppInfo` parameter, and `testApp()` in `router_test.go` supplies it.
+
 ## Single-Test Invocation
 
 ```bash
@@ -120,7 +143,7 @@ For table-driven tests, the inner name is usually passed with a slash: `-run 'Pa
 - Unit tests live next to the code (`*_test.go`).
 - Integration tests use the build tag `//go:build integration` (skipped by `make test`, run via `go test -tags=integration -v ./internal/...`).
 - Handler tests use `httptest.NewRecorder()` and the testdata templates under `internal/adapters/inbound/testdata/assets/templates/`.
-- Use `t.Setenv("APP_NAME", ...)` and `t.Setenv("APP_DESCRIPTION", ...)` — a number of handlers read these at closure construction time.
+- Handlers take an `inbound.AppInfo`, so no test sets `APP_NAME` any more; use `testApp()` from `router_test.go`.
 - For MCP route tests, pass `Verifier: nil` in `RouterConfig` to skip bearer auth (covered by `main_test.go:Benchmark_Server_Integration_MCP_Tools_List_Should_Be_Fast`).
 
 ## Domain Iteration Loop
@@ -159,13 +182,17 @@ while a rewrite is pending.
 ## PGO Profiling Loop
 
 ```bash
-make profile                                          # .cpuprofile.pprof + .cpuprofile.svg
-podman build -t "$USER/hotel-booking:latest" -f Dockerfile .   # builds with -pgo
+make profile   # rewrites cmd/server/default.pgo, and .cpuprofile.svg to look at
 ```
 
-The Dockerfile requires `.cpuprofile.pprof` at build time, and that file is gitignored.
-Run `make profile` first on a fresh clone, or remove the `-pgo` flag from the `go build`
-invocation in `Dockerfile`.
+`cmd/server/default.pgo` is committed, and `go build` finds it on its own because it sits
+next to the main package — no `-pgo` flag anywhere, and a clean checkout builds without
+running the benchmarks first. `go install` of a tagged version gets the optimization too.
+
+The profile currently comes from the benchmarks in `cmd/server/main_test.go`. The baseline
+would rather it came from a 30-second CPU profile of real production traffic
+(`/debug/pprof/profile?seconds=30` on the ops listener); refresh it that way once there is
+traffic worth profiling.
 
 ## Documentation Touch Points (before commit)
 

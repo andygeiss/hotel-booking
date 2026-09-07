@@ -114,6 +114,8 @@ assets/
   templates/           HTML templates (Go templates)
 cmd/
   server/              HTTP server entry point
+    config.go          Config struct + parseConfig: every knob, parsed once
+    default.pgo        Committed CPU profile; go build finds it, no -pgo flag
     main.go            Wiring, DI, server startup
     main_test.go       Integration benchmarks (PGO)
 docs/
@@ -121,6 +123,7 @@ docs/
 internal/
   adapters/
     inbound/           HTTP handlers, router, RouterConfig
+      app_info.go      AppInfo: the identity handlers render, passed not read
       middleware.go    secureHeaders, the CSP constant, WithSecurity chain
       router.go        Central HTTP routing
       http_ops.go      /healthz + pprof for the loopback ops listener
@@ -172,7 +175,7 @@ make test            # go test -race -shuffle=on ./...
 make fmt             # goimports + go fix — read the diff before committing it
 make build           # Release-shaped binary into bin/
 make clean           # Remove bin/
-make profile         # CPU profile for the -pgo Docker build
+make profile         # Refresh cmd/server/default.pgo (PGO)
 ```
 
 The local container stack is not a Make target (the baseline bans Docker targets).
@@ -337,6 +340,7 @@ func Test_Something(t *testing.T) {
 | Make, no CI server | One gate list, run on the developer's machine; `make ci` proves it on the commit |
 | Security chain in `Route` | A handler cannot be registered outside CSP, CSRF and the body cap |
 | Loopback ops listener | `/healthz` and pprof are unreachable from the proxy, which is their only access control |
+| One `Config` in `main` | Flags beat env beats defaults; `internal/` never reads the environment, so handler tests need no `t.Setenv` |
 
 ---
 
@@ -361,17 +365,25 @@ Boxes in the baseline's `checklists/web-application.md` that this project does n
 yet. These are open tasks, not waivers — what is genuinely waived is in
 [README § Baseline deviations](./README.md#baseline-deviations).
 
-- [ ] **Delete `GET /sw.js`.** Nothing registers a service worker any more. The route
-      stays only long enough to hand an unregistering worker to browsers that still
-      hold the old one.
-- [ ] **Move config into `main`.** Eight files under `internal/adapters/inbound` call
-      `os.Getenv` for `APP_NAME` and `APP_DESCRIPTION`, which is why every handler test
-      needs `t.Setenv`. The baseline wants one `Config` struct parsed in `main`
-      (`patterns/go-config.md`).
-- [ ] **Give shutdown a deadline.** `srv.Shutdown(context.Background())` waits forever
-      on an in-flight request. The baseline calls for a fresh ~10 s budget.
-- [ ] **Ship the PGO profile, or drop `-pgo`.** `.cpuprofile.pprof` is gitignored, so
-      the Dockerfile's `-pgo` build fails on a clean checkout until `make profile` runs.
+- [x] **Move config into `main`.** One `Config` struct in `cmd/server/config.go`, parsed
+      and validated before anything opens. Nothing under `internal/` reads the
+      environment, so no handler test sets `APP_NAME` any more.
+- [x] **Give shutdown a deadline.** Both listeners get a fresh 10 s budget.
+- [x] **Ship the PGO profile.** `cmd/server/default.pgo` is committed and auto-detected;
+      no build passes `-pgo`.
+- [x] **Stop the service worker.** The tombstone at `GET /sw.js` unregisters the old
+      worker and drops its caches.
+- [ ] **Delete `GET /sw.js`.** The route, `http_service_worker.go` and `sw.tmpl` go once
+      the deprecation window is over and returning browsers have picked up the tombstone.
+- [ ] **Do not reach Keycloak at boot.** `oidc.NewProvider` calls the issuer's discovery
+      endpoint in `main`, so the app refuses to start when Keycloak is down and
+      `go run ./cmd/server` with an empty environment cannot start at all. The baseline
+      wants boot to depend on local facts only (`patterns/go-http-client.md`), which
+      means building the MCP verifier on first use.
+- [ ] **Give compose the credential files.** The database passwords are read from
+      `$CREDENTIALS_DIRECTORY` when it is set, but `docker-compose.yml` still passes them
+      as environment variables. Until it mounts one file per secret, the tier-1 rule in
+      `patterns/go-config.md` is not met.
 - [ ] **Dual-mode htmx responses.** `Vary: HX-Request`, `hx-push-url`, and the
       fragment-or-full-page test are not in place yet
       (`patterns/htmx-server-rendering.md`).
@@ -419,6 +431,16 @@ yet. These are open tasks, not waivers — what is genuinely waived is in
     `OpsHandler` on `127.0.0.1:6060`. Being unreachable from the proxy is their only
     access control, so putting either on the application listener exposes them.
 
-16. **The gates are yours to run** - There is no CI workflow. `make check` before a
+16. **Configuration lives in `main`, never in `internal/`** - `cmd/server/config.go`
+    holds every knob; `parseConfig` validates it before a database opens or a listener
+    binds. A handler that needs the app name takes an `inbound.AppInfo`, it does not
+    read `APP_NAME`. `./server -h` is the contract.
+
+17. **Secrets are files, not variables** - The database passwords come from
+    `$CREDENTIALS_DIRECTORY`, one file per secret. The `*_PASSWORD` variables are a
+    development fallback. `Config.LogValue` is an allowlist, so adding a secret field to
+    the struct does not add it to the logs.
+
+18. **The gates are yours to run** - There is no CI workflow. `make check` before a
     commit, `make ci` before a push, and read `make ci`'s `go version` line: it is the
     only record of which toolchain ran.

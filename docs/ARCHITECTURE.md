@@ -1288,6 +1288,26 @@ Outermost first:
 The tests that pin all three are in `internal/adapters/inbound/middleware_test.go` and
 `router_test.go`.
 
+### Configuration
+
+Every knob the binary reads is one field of a `Config` struct in `cmd/server/config.go`,
+parsed and validated in `main` before a database opens or a listener binds. **Flags beat
+environment variables beat built-in defaults** — `cmp.Or` is the whole mechanism, because
+the environment variable *is* the flag's default. Nothing under `internal/` reads the
+environment: a handler that needs the app name takes an `inbound.AppInfo`, which is why
+no handler test sets `APP_NAME` any more.
+
+Two checks earn their place. Ports and the issuer URL are validated at the edge, so a
+typo is one line on stderr and exit 2 rather than a failed request later. And the two
+bounded contexts are checked *together*: neither database setting is wrong on its own,
+but pointing both at the same database silently merges the contexts, and the first sign
+would be a payment row answering a reservation lookup.
+
+Secrets are files. The two database passwords come from `$CREDENTIALS_DIRECTORY`, one
+file per secret, because a file is not inherited by every child process and does not show
+up in a process listing. `Config.LogValue` is an allowlist, so a secret field added to the
+struct later is not logged by accident.
+
 ### Ops endpoints
 
 `/healthz` and `/debug/pprof` are served by `inbound.OpsHandler` on a second listener

@@ -34,7 +34,7 @@
 | Command runner | `make` (see `Makefile`); no CI server |
 | Ops listener | `127.0.0.1:6060` — `/healthz` and `/debug/pprof`, never proxied |
 | Container runtime stage | `FROM scratch` (~5–10 MB) |
-| Build optimization | Profile-Guided Optimization (PGO) via `.cpuprofile.pprof` |
+| Build optimization | Profile-Guided Optimization via the committed `cmd/server/default.pgo` |
 
 ## Generated Documentation
 

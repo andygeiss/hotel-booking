@@ -11,8 +11,8 @@ Two stages, defined in `Dockerfile`:
 1. **Builder**: `golang:1.27.1-alpine3.23` (the pinned Go toolchain — never an RC)
    - `CGO_ENABLED=0`, `GO111MODULE=on`
    - `go mod download` as a separate layer (cached while `go.mod`/`go.sum` are unchanged)
-   - `go build -ldflags "-s -w" -pgo .cpuprofile.pprof -o server ./cmd/server`
-   - **Requires** `.cpuprofile.pprof` at repo root. Generate via `make profile` before the image build. Remove the `-pgo` flag if you don't want PGO.
+   - `go build -ldflags "-s -w" -trimpath -o server ./cmd/server`
+   - Profile-Guided Optimization needs no flag: `go build` reads `cmd/server/default.pgo` on its own, because the file sits next to the main package. It is committed, so a clean checkout builds. Refresh it with `make profile`.
 2. **Runtime**: `FROM scratch`
    - Copies `/server` only. Static binary, embedded assets, no libc.
    - `EXPOSE 8080`, `ENTRYPOINT ["/server"]`.
@@ -72,22 +72,64 @@ a container image is not a gate either: it would need a runtime up on every `mak
 
 The image build does **not** push anywhere — deployment is out-of-band.
 
-## Environment Variables
+## Configuration
 
-See `.env.example` for the authoritative list with inline documentation. Summary:
+**`./server -h` is the contract, not this table.** Every knob the binary reads sits in one
+`Config` struct in `cmd/server/config.go`, parsed and validated before a database opens or
+a listener binds. Nothing under `internal/` reads the environment.
+
+**Flags beat environment variables beat built-in defaults**, and each flag names its
+variable in its own help text. The variables that are not flags — the database settings,
+`CREDENTIALS_DIRECTORY`, and the ones cloud-native-utils reads for itself — are printed
+under the flag list, so `-h` stays complete.
+
+A configuration error is one line on stderr and exit 2, before anything starts:
+
+```
+$ ./server -port=http
+server: port "http": want a number from 0 to 65535
+```
+
+Validated at boot: both listener and database ports, a non-empty app name, an `http`/`https`
+issuer URL, and — because neither half is wrong on its own — that the two bounded contexts
+do not point at the same database.
+
+### Secrets
+
+The two database passwords are read from **files**, one per secret, in the directory named
+by `CREDENTIALS_DIRECTORY`: `reservation-db-password` and `payment-db-password`. A file is
+not inherited by every child process and does not appear in a process listing, which is
+true of neither a flag value nor an environment variable.
+
+When `CREDENTIALS_DIRECTORY` is unset, the passwords fall back to `RESERVATION_DB_PASSWORD`
+and `PAYMENT_DB_PASSWORD`. That fallback is a development convenience and a recorded
+deviation — see [README § Baseline deviations](../README.md#baseline-deviations). Compose
+does not supply credential files yet.
+
+`Config.LogValue` is an allowlist, so the boot log prints the safe fields and no password
+can be added to the struct and logged by accident.
+
+### The variables
+
+See `.env.example` for the annotated list. Summary:
 
 ### Application identity
 
 - `APP_NAME` (default `Hotel Booking`) — UI + logs display name
 - `APP_DESCRIPTION` — used in page titles and PWA manifest
 - `APP_SHORTNAME` (default `hotel-booking`) — Docker image + container name
-- `APP_VERSION` (default `1.0.0`) — service-worker cache key
+- `APP_VERSION` (default: the build version from `debug.ReadBuildInfo`) — reported by the MCP server and by `/healthz`
 
 ### HTTP server
 
+- `HOST` (default empty — every interface, which is what the container needs; a bare-metal deployment behind a proxy sets `127.0.0.1`)
 - `PORT` (default `8080`)
 - `REDIRECT_URL` (default `http://localhost:8080/ui`)
-- `SERVER_READ_TIMEOUT`, `SERVER_WRITE_TIMEOUT`, `SERVER_IDLE_TIMEOUT`, `SERVER_READ_HEADER_TIMEOUT` — all default `5s`
+
+The four server timeouts are no longer configurable. They are constants in
+`cmd/server/main.go` at the baseline's values — read header 5s, read 10s, write 30s,
+idle 2m — because the old `SERVER_*_TIMEOUT` defaults of 5s put the write timeout below
+what a slow response needs.
 
 ### OIDC / Keycloak
 
@@ -99,8 +141,10 @@ See `.env.example` for the authoritative list with inline documentation. Summary
 
 ### Databases
 
-- Reservation: `RESERVATION_DB_{HOST,PORT,USER,PASSWORD,NAME,SSLMODE}`
-- Payment: `PAYMENT_DB_{HOST,PORT,USER,PASSWORD,NAME,SSLMODE}`
+- Reservation: `RESERVATION_DB_{HOST,PORT,USER,NAME,SSLMODE}`, plus the password above
+- Payment: `PAYMENT_DB_{HOST,PORT,USER,NAME,SSLMODE}`, plus the password above
+
+The two must not name the same database; the binary refuses to start if they do.
 
 In the compose network, DB hosts are `postgres-reservation` and `postgres-payment`; from the host, use `localhost` with ports `5432`/`5433`.
 
