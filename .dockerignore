@@ -22,7 +22,6 @@ LICENSE
 # Development files
 .env
 .envrc
-justfile
 Makefile
 
 # Test and profile data

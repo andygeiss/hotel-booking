@@ -5,8 +5,8 @@
 # Environment variables: USER (system user) and APP_SHORTNAME (from .env or shell)
 #
 # Usage:
-#   just up       # Build image and start services
-#   just down     # Stop and remove all services
+#   docker-compose --env-file .env up -d    # Start services
+#   docker-compose --env-file .env down     # Stop and remove all services
 #   docker-compose logs -f app  # View app logs
 
 services:
