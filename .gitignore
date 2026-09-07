@@ -8,6 +8,11 @@
 .env
 .keycloak.json
 
+# Secret files, one per secret. The .example templates are committed;
+# the real files are not.
+secrets/*
+!secrets/*.example
+
 # Test artifacts
 *.test
 

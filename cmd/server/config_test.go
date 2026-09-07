@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"flag"
+	"fmt"
 	"io"
 	"log/slog"
 	"os"
@@ -271,6 +272,54 @@ func Test_Config_LogValue_Should_Not_Leak_A_Database_Password(t *testing.T) {
 	assert.That(t, "the reservation password must not be logged", strings.Contains(logged, "hunter2-reservation"), false)
 	assert.That(t, "the payment password must not be logged", strings.Contains(logged, "hunter2-payment"), false)
 	assert.That(t, "the safe fields must still be logged", strings.Contains(logged, "Hotel Booking"), true)
+}
+
+// repoFile reads a committed file at the repository root. `make ci` runs the
+// gates against `git archive HEAD` in an empty directory, so a test that reads
+// one of these sees the commit and not the working tree.
+func repoFile(t *testing.T, name string) string {
+	t.Helper()
+	b, err := os.ReadFile(filepath.Join("..", "..", name))
+	assert.That(t, "must be able to read "+name, err, nil)
+	return string(b)
+}
+
+func Test_Deployment_Should_Not_Pass_A_Database_Password_As_An_Environment_Variable(t *testing.T) {
+	// readCredential preferring a file is worth nothing while the deployment
+	// still hands the binary a variable. A compose file is exactly the place
+	// where one gets put back "just for now", so this test watches both files
+	// that could do it.
+
+	for _, name := range []string{"docker-compose.yml", ".env.example"} {
+		for i, line := range strings.Split(repoFile(t, name), "\n") {
+			// A comment may name the variable; only an assignment counts.
+			stmt := strings.TrimPrefix(strings.TrimSpace(line), "- ")
+			if strings.HasPrefix(stmt, "#") {
+				continue
+			}
+			for _, secret := range []string{"RESERVATION_DB_PASSWORD", "PAYMENT_DB_PASSWORD"} {
+				assigned := strings.HasPrefix(stmt, secret+"=") || strings.HasPrefix(stmt, secret+":")
+				assert.That(t,
+					fmt.Sprintf("%s:%d must not assign %s: the password is a file in $CREDENTIALS_DIRECTORY", name, i+1, secret),
+					assigned, false)
+			}
+		}
+	}
+}
+
+func Test_Compose_Should_Mount_One_File_Per_Secret(t *testing.T) {
+	// Arrange
+	compose := repoFile(t, "docker-compose.yml")
+
+	// Assert
+	assert.That(t, "the app must be told where compose mounted the secrets",
+		strings.Contains(compose, "CREDENTIALS_DIRECTORY: /run/secrets"), true)
+	for _, secret := range []string{"reservation-db-password", "payment-db-password"} {
+		assert.That(t, "compose must source "+secret+" from a file",
+			strings.Contains(compose, "file: ./secrets/"+secret), true)
+		assert.That(t, "the database owning "+secret+" must read the same file",
+			strings.Contains(compose, "POSTGRES_PASSWORD_FILE: /run/secrets/"+secret), true)
+	}
 }
 
 func Test_DatabaseConfig_DSN_Should_Carry_Every_Field(t *testing.T) {

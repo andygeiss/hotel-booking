@@ -1,8 +1,13 @@
 # ======================================
 # Docker Compose Configuration
 # ======================================
-# Defines three services: Keycloak (auth), Kafka (event streaming), and app (main application)
+# Defines five services: Keycloak (auth), Kafka (event streaming), two PostgreSQL
+# databases (one per bounded context), and app (main application)
 # Environment variables: USER (system user) and APP_SHORTNAME (from .env or shell)
+#
+# Secrets are files, never environment variables. The two database passwords live
+# in ./secrets/, one file per secret, and are mounted read-only under /run/secrets
+# in the containers that need them. See the `secrets:` block at the bottom.
 #
 # Usage:
 #   docker-compose --env-file .env up -d    # Start services
@@ -26,8 +31,19 @@ services:
       - postgres-reservation
       - postgres-payment
     env_file:
-      # Load all environment variables from .env into the container
+      # Load all environment variables from .env into the container.
+      # .env carries no database password: those are files, mounted below.
       - .env
+    environment:
+      # Where the mounted secret files land. An explicit `environment:` entry
+      # beats the same name coming from `env_file:`, so this overrides the
+      # ./secrets that .env sets for `make run` on the host.
+      CREDENTIALS_DIRECTORY: /run/secrets
+    secrets:
+      # One file per secret, read-only at /run/secrets/<name>. The names are the
+      # ones cmd/server/config.go reads.
+      - payment-db-password
+      - reservation-db-password
     ports:
       # HTTP server (localhost only - use reverse proxy in production)
       - "8080:8080"
@@ -104,8 +120,12 @@ services:
     container_name: postgres-reservation
     environment:
       POSTGRES_USER: ${RESERVATION_DB_USER:-reservation}
-      POSTGRES_PASSWORD: ${RESERVATION_DB_PASSWORD:-reservation_secret}
+      # The same file the app reads, so the two cannot drift apart. The postgres
+      # image reads any POSTGRES_* setting from a *_FILE variant.
+      POSTGRES_PASSWORD_FILE: /run/secrets/reservation-db-password
       POSTGRES_DB: ${RESERVATION_DB_NAME:-reservation_db}
+    secrets:
+      - reservation-db-password
     volumes:
       # Persist data across container restarts
       - postgres_reservation_data:/var/lib/postgresql/data
@@ -130,8 +150,11 @@ services:
     container_name: postgres-payment
     environment:
       POSTGRES_USER: ${PAYMENT_DB_USER:-payment}
-      POSTGRES_PASSWORD: ${PAYMENT_DB_PASSWORD:-payment_secret}
+      # See postgres-reservation above.
+      POSTGRES_PASSWORD_FILE: /run/secrets/payment-db-password
       POSTGRES_DB: ${PAYMENT_DB_NAME:-payment_db}
+    secrets:
+      - payment-db-password
     volumes:
       # Persist data across container restarts
       - postgres_payment_data:/var/lib/postgresql/data
@@ -145,6 +168,15 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+
+# One file per secret, uncommitted. `cp secrets/<name>.example secrets/<name>`
+# creates them — see docs/development-guide.md § First-Time Setup. Compose fails
+# to start rather than inventing a password when a file is missing.
+secrets:
+  payment-db-password:
+    file: ./secrets/payment-db-password
+  reservation-db-password:
+    file: ./secrets/reservation-db-password
 
 volumes:
   postgres_reservation_data:

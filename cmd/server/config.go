@@ -209,8 +209,9 @@ func validateIssuer(issuer string) error {
 // A secret belongs in a file: a file is not inherited by every child process
 // and does not appear in a process listing, which is true of neither a flag
 // value nor an environment variable. The deployment puts one file per secret in
-// $CREDENTIALS_DIRECTORY. The environment fallback is what docker-compose still
-// uses here, and the README records it as a deviation rather than the target.
+// $CREDENTIALS_DIRECTORY: docker-compose.yml mounts them at /run/secrets, and
+// .env points `make run` at ./secrets, so both paths read files. The
+// environment fallback below is what is left for a machine that sets neither.
 //
 // An empty result is not an error: the binary must start with an empty
 // environment, and the database says clearly enough what a missing password

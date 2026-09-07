@@ -24,6 +24,10 @@ LICENSE
 .envrc
 Makefile
 
+# Secrets. They reach the container as mounted files at run time, so they
+# must never enter the build context and land in a builder layer.
+secrets/
+
 # Test and profile data
 coverage.out
 *.pprof
