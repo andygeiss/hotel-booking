@@ -384,3 +384,53 @@ func Test_Route_MCP_Endpoint_With_MCPServer_Should_Return_200(t *testing.T) {
 	// Assert
 	assert.That(t, "status code must be 200", rec.Code, http.StatusOK)
 }
+
+// ============================================================================
+// Security Chain Tests
+// ============================================================================
+
+func Test_Route_Should_Send_Security_Headers_On_Every_Response(t *testing.T) {
+	// Arrange
+	t.Setenv("APP_NAME", "TestApp")
+	t.Setenv("APP_DESCRIPTION", "Test Description")
+
+	mux := inbound.Route(inbound.RouterConfig{
+		Ctx:                context.Background(),
+		EFS:                getRouterTestFS(t),
+		Logger:             slog.Default(),
+		ReservationService: createTestReservationService(t),
+	})
+
+	for _, path := range []string{"/ui/login", "/liveness", "/unknown/path"} {
+		// Act
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, path, nil))
+
+		// Assert
+		assert.That(t, "csp must be set on "+path, rec.Header().Get("Content-Security-Policy") != "", true)
+		assert.That(t, "nosniff must be set on "+path, rec.Header().Get("X-Content-Type-Options"), "nosniff")
+	}
+}
+
+func Test_Route_Cross_Origin_Post_Should_Return_403(t *testing.T) {
+	// Arrange
+	t.Setenv("APP_NAME", "TestApp")
+	t.Setenv("APP_DESCRIPTION", "Test Description")
+
+	mux := inbound.Route(inbound.RouterConfig{
+		Ctx:                context.Background(),
+		EFS:                getRouterTestFS(t),
+		Logger:             slog.Default(),
+		ReservationService: createTestReservationService(t),
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/ui/reservations", nil)
+	req.Header.Set("Sec-Fetch-Site", "cross-site")
+	rec := httptest.NewRecorder()
+
+	// Act
+	mux.ServeHTTP(rec, req)
+
+	// Assert
+	assert.That(t, "status code must be 403", rec.Code, http.StatusForbidden)
+}

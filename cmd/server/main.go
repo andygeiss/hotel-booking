@@ -4,9 +4,12 @@ import (
 	"context"
 	"database/sql"
 	"embed"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
+	"runtime/debug"
+	"time"
 
 	"github.com/andygeiss/cloud-native-utils/env"
 	"github.com/andygeiss/cloud-native-utils/logging"
@@ -26,6 +29,17 @@ import (
 
 //go:embed assets
 var efs embed.FS
+
+// buildVersion reports the module version this binary was built from.
+// debug.ReadBuildInfo is the only source: a version baked in with -ldflags
+// drifts from the tag that produced it, and nobody notices until an incident.
+func buildVersion() string {
+	info, ok := debug.ReadBuildInfo()
+	if !ok || info.Main.Version == "" {
+		return "unknown"
+	}
+	return info.Main.Version
+}
 
 // buildMCPServer creates the MCP server with all tools registered.
 func buildMCPServer(
@@ -141,6 +155,45 @@ func main() {
 		Verifier:           verifier,
 	})
 
+	// Start the ops listener. /healthz and the pprof endpoints answer here and
+	// nowhere else: the address is loopback, so the proxy cannot reach them and
+	// being unreachable is their whole access control.
+	opsSrv := &http.Server{
+		Addr: "127.0.0.1:6060",
+		Handler: inbound.OpsHandler(buildVersion(), func(ctx context.Context) error {
+			if err := reservationDB.PingContext(ctx); err != nil {
+				return fmt.Errorf("pinging reservation database: %w", err)
+			}
+			if err := paymentDB.PingContext(ctx); err != nil {
+				return fmt.Errorf("pinging payment database: %w", err)
+			}
+			return nil
+		}),
+		IdleTimeout:       2 * time.Minute,
+		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       10 * time.Second,
+		// 30 seconds, well above the app listener, because a pprof profile
+		// writes nothing until it finishes sampling.
+		WriteTimeout: 30 * time.Second,
+	}
+
+	// How this goroutine stops: the shutdown below closes the listener when the
+	// context is done, and ListenAndServe then returns http.ErrServerClosed.
+	service.RegisterOnContextDone(ctx, func() {
+		_ = opsSrv.Shutdown(context.Background())
+	})
+	go func() {
+		if err := opsSrv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			// The app keeps serving without /healthz and pprof, so say plainly
+			// what is gone and what frees the port. 6060 is the conventional
+			// Go pprof port, so a second local service is the usual cause.
+			logger.Error("ops listener failed: /healthz and /debug/pprof are unavailable",
+				"addr", opsSrv.Addr,
+				"error", err,
+				"fix", "stop whatever else listens on 127.0.0.1:6060 (lsof -nP -iTCP:6060 -sTCP:LISTEN)")
+		}
+	}()
+
 	srv := web.NewServer(mux)
 	defer func() { _ = srv.Close() }()
 
@@ -159,7 +212,7 @@ func main() {
 	// Start the HTTP server in the main goroutine.
 	if err := srv.ListenAndServe(); err != nil {
 		// Check if the server was closed intentionally.
-		if err == http.ErrServerClosed {
+		if errors.Is(err, http.ErrServerClosed) {
 			logger.Error("server closed", "reason", "server closed intentionally")
 			return
 		}

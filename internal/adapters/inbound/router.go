@@ -27,6 +27,8 @@ type RouterConfig struct {
 // Route creates a new mux with the liveness and readiness probe (/liveness, /readiness),
 // the static assets endpoint (/) and the ui endpoints (/ui).
 // The EFS field in config accepts any fs.FS implementation (embed.FS, fs.Sub result, etc.).
+// Every route it returns is wrapped in WithSecurity, so no handler can be
+// registered outside the security headers, the CSRF check and the body cap.
 func Route(config RouterConfig) *http.ServeMux {
 	// Create a new mux with liveness and readyness endpoint.
 	// Embed the assets into the mux.
@@ -91,5 +93,12 @@ func Route(config RouterConfig) *http.ServeMux {
 		}
 	}
 
-	return mux
+	// Hand back a root mux whose single route is the application behind the
+	// security chain. Wrapping here rather than in main is what makes the
+	// chain impossible to forget: there is no way to reach a handler that
+	// skips it.
+	root := http.NewServeMux()
+	root.Handle("/", WithSecurity(mux))
+
+	return root
 }
