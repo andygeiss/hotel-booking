@@ -37,6 +37,7 @@
 | New gotcha | CLAUDE.md § Gotchas | yes | - |
 | Architectural decision | CLAUDE.md § Decisions | yes | - |
 | New environment variable | `docs/deployment-guide.md` | no | Setup |
+| CSS token or component style | `DESIGN.md` | no | - |
 | New event topic | `docs/api-contracts.md` § Domain Event Topics | no | - |
 
 ---
@@ -396,8 +397,10 @@ yet. These are open tasks, not waivers — what is genuinely waived is in
 - [ ] **Dual-mode htmx responses.** `Vary: HX-Request`, `hx-push-url`, and the
       fragment-or-full-page test are not in place yet
       (`patterns/htmx-server-rendering.md`).
-- [ ] **`DESIGN.md`.** The three stylesheets under `cmd/server/assets/static/css` have
-      no design file to stay in lockstep with (`patterns/design-system.md`).
+- [x] **`DESIGN.md`.** At the repo root, in the `design.md` alpha format: the glassmorphism
+      tokens verbatim, measured contrast for every pair, and the component inventory. It
+      records four contrast floors the palette misses, nine off-token colours in
+      `styles.css`, and three interactive states no stylesheet defines — see its own tables.
 
 ---
 

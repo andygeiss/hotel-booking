@@ -27,6 +27,7 @@ All three layers are **hand-maintained**. The BMAD `bmad-document-project` skill
 | Source tree change (new package, new directory) | [`source-tree-analysis.md`](./source-tree-analysis.md) |
 | Component inventory (handler, adapter, service file) | [`component-inventory.md`](./component-inventory.md) |
 | Build/test/run command, debugging tip | [`development-guide.md`](./development-guide.md) |
+| CSS token, colour, component style | [`DESIGN.md`](../DESIGN.md) (project root; changes in the same commit as the stylesheet) |
 | Domain error sentinel | [`CLAUDE.md`](../CLAUDE.md) § Domain Errors |
 | Architectural decision | [`CLAUDE.md`](../CLAUDE.md) § Decisions |
 | Project-wide gotcha | [`CLAUDE.md`](../CLAUDE.md) § Project-Specific Gotchas |
