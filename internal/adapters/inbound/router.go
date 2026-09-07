@@ -64,10 +64,6 @@ func Route(config RouterConfig) *http.ServeMux {
 	// This endpoint serves the manifest.json file for Progressive Web App support.
 	mux.HandleFunc("GET /manifest.json", logging.WithLogging(config.Logger, HttpViewManifest(e, config.App)))
 
-	// Add the service worker endpoint for the PWA.
-	// This endpoint serves the sw.js file for offline caching and installability.
-	mux.HandleFunc("GET /sw.js", logging.WithLogging(config.Logger, HttpViewServiceWorker(e)))
-
 	// Add the reservations list endpoint.
 	mux.HandleFunc("GET /ui/reservations", logging.WithLogging(config.Logger, web.WithAuth(serverSessions, HttpViewReservations(e, config.App, config.ReservationService))))
 

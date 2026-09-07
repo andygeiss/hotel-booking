@@ -42,7 +42,7 @@ All handlers are created by a **factory function** that closes over its dependen
 ### View DTOs
 
 - `HttpViewIndexResponse` — session identity for dashboard
-- `HttpViewLoginResponse`, `HttpViewErrorResponse`, `HttpViewManifestResponse`, `HttpViewServiceWorkerResponse`
+- `HttpViewLoginResponse`, `HttpViewErrorResponse`, `HttpViewManifestResponse`
 - `ReservationListItem`, `HttpViewReservationsResponse`
 - `GuestInfoView`, `ReservationDetailView`, `HttpViewReservationDetailResponse`
 - `RoomOption`, `HttpViewReservationFormResponse`
@@ -53,7 +53,7 @@ All handlers are created by a **factory function** that closes over its dependen
 
 - `index.tmpl`, `login.tmpl`, `error.tmpl`
 - `reservations.tmpl`, `reservation_form.tmpl`, `reservation_detail.tmpl`
-- `manifest.tmpl`, `sw.tmpl`
+- `manifest.tmpl`
 
 Test fixtures live under `internal/adapters/inbound/testdata/assets/templates/` (mirrored names).
 

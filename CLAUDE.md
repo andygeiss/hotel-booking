@@ -374,10 +374,11 @@ yet. These are open tasks, not waivers — what is genuinely waived is in
 - [x] **Give shutdown a deadline.** Both listeners get a fresh 10 s budget.
 - [x] **Ship the PGO profile.** `cmd/server/default.pgo` is committed and auto-detected;
       no build passes `-pgo`.
-- [x] **Stop the service worker.** The tombstone at `GET /sw.js` unregisters the old
-      worker and drops its caches.
-- [ ] **Delete `GET /sw.js`.** The route, `http_service_worker.go` and `sw.tmpl` go once
-      the deprecation window is over and returning browsers have picked up the tombstone.
+- [x] **Stop the service worker.** The tombstone at `GET /sw.js` unregistered the old
+      worker and dropped its caches.
+- [x] **Delete `GET /sw.js`.** The route, `http_service_worker.go` and `sw.tmpl` are gone;
+      the path now 404s, which is what unregisters a worker on a browser that never
+      reached the tombstone. `Test_Route_Service_Worker_Should_Return_404` pins it.
 - [x] **Do not reach Keycloak at boot.** The MCP verifier is built on the first `/mcp`
       request. The app starts with an empty environment and no identity provider running.
 - [x] **Give compose the credential files.** `docker-compose.yml` declares two compose

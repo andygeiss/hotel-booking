@@ -44,8 +44,7 @@ staticcheck is the only third-party lint tool.
 │           ├── manifest.tmpl         # │  /manifest.json — PWA manifest
 │           ├── reservation_detail.tmpl
 │           ├── reservation_form.tmpl
-│           ├── reservations.tmpl
-│           └── sw.tmpl               # │  /sw.js — tombstone worker; unregisters the old one
+│           └── reservations.tmpl
 │                                     # └─
 │
 ├── docs/                             # Architecture and generated documentation
@@ -68,13 +67,12 @@ staticcheck is the only third-party lint tool.
     ├── adapters/
     │   ├── inbound/                  # │  Driving adapters — things that call INTO the domain
     │   │   ├── router.go             # │  RouterConfig struct + Route() builds all /ui/* +
-    │   │   │                         # │  /manifest.json + /sw.js + optional /mcp endpoint
+    │   │   │                         # │  /manifest.json + optional /mcp endpoint
     │   │   ├── http_view.go          # │  Thin wrapper that delegates to templating engine
     │   │   ├── http_index.go         # │  GET /ui/ (authenticated dashboard)
     │   │   ├── http_login.go         # │  GET /ui/login (OIDC handoff)
     │   │   ├── http_error.go         # │  GET /ui/error (error page with query params)
     │   │   ├── http_manifest.go      # │  GET /manifest.json (PWA)
-    │   │   ├── http_service_worker.go # │  GET /sw.js (PWA, no-cache headers)
     │   │   ├── http_booking_reservations.go     # │  GET /ui/reservations (list by guest email)
     │   │   ├── http_booking_reservation_form.go # │  GET /ui/reservations/new + POST /ui/reservations
     │   │   ├── http_booking_reservation_detail.go # │  GET/POST /ui/reservations/{id}[/cancel]

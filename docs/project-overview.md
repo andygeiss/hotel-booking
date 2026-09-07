@@ -24,7 +24,7 @@ The codebase is designed to be forked as a template — the directory layout, de
 - **Event-driven Saga** orchestrates the booking workflow (`reservation.created` → `payment.authorized` → `payment.captured` → `reservation.confirmed`) with compensation on `payment.failed`.
 - **Two isolated PostgreSQL databases** (reservation_db on 5432, payment_db on 5433) use a simple key/value schema (`kv_store` table) via `cloud-native-utils/resource.PostgresAccess`.
 - **Dual OAuth clients** via Keycloak: one session-based for the HTMX UI, one client-credentials flow for the `/mcp` MCP (Model Context Protocol) endpoint.
-- **Progressive Web App** support: manifest + service worker served from Go templates.
+- **Progressive Web App** support: a manifest rendered from a Go template. No service worker — nothing is cached in the client.
 - **Profile-Guided Optimization** in the Docker build via benchmarks in `cmd/server/main_test.go`.
 
 ## Quick Reference
@@ -45,7 +45,7 @@ The codebase is designed to be forked as a template — the directory layout, de
 | Lint | `staticcheck` via `make check` (the only third-party lint tool) |
 | Container | Multi-stage Dockerfile → `scratch` runtime (~5-10 MB) |
 | CI | GitHub Actions (`.github/workflows/ci.yml`) + Codacy coverage |
-| Frontend | Go `html/template` SSR + HTMX + PWA (service worker) |
+| Frontend | Go `html/template` SSR + HTMX + PWA manifest (no service worker) |
 
 ## Repository Structure
 

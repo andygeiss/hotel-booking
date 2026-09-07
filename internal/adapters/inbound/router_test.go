@@ -322,6 +322,36 @@ func Test_Route_Unknown_Endpoint_Should_Return_404(t *testing.T) {
 // MCP Endpoint Tests
 // ============================================================================
 
+func Test_Route_Service_Worker_Should_Return_404(t *testing.T) {
+	// The tombstone at GET /sw.js is gone, and 404 is what has to replace it.
+	// A browser still holding the old worker unregisters it when the update
+	// check 404s; a 200 carrying HTML — which is what a catch-all route would
+	// serve here — fails the check on the MIME type instead and leaves that
+	// worker installed, serving its own cache forever.
+
+	// Arrange
+	ctx := context.Background()
+	logger := slog.Default()
+	reservationService := createTestReservationService(t)
+	mux := inbound.Route(inbound.RouterConfig{
+		App:                testApp(),
+		Ctx:                ctx,
+		EFS:                getRouterTestFS(t),
+		Logger:             logger,
+		ReservationService: reservationService,
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/sw.js", nil)
+	rec := httptest.NewRecorder()
+
+	// Act
+	mux.ServeHTTP(rec, req)
+
+	// Assert
+	assert.That(t, "status code must be 404", rec.Code, http.StatusNotFound)
+	assert.That(t, "nothing may serve javascript from this path", strings.Contains(rec.Header().Get("Content-Type"), "javascript"), false)
+}
+
 func Test_Route_MCP_Endpoint_Without_MCPServer_Should_Return_404(t *testing.T) {
 	// Arrange
 	ctx := context.Background()

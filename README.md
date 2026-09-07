@@ -60,7 +60,7 @@ This repository provides a reference implementation for structuring Go applicati
 - **OIDC Authentication** — Keycloak integration with session management
 - **PostgreSQL Persistence** — Key/value storage with separate databases per bounded context
 - **Production-Ready Docker** — Multi-stage build with PGO optimization
-- **Progressive Web App** — Service worker, manifest, and offline support
+- **Progressive Web App** — Installable via a manifest; no service worker, so nothing is served from the client
 - **Saga Pattern** — Event-driven booking workflow with compensation on failure
 - **MCP Integration** — Model Context Protocol endpoint for AI tool integration
 
@@ -603,16 +603,6 @@ the damage.
   `go-oidc/v3` (token verification), and `kafka-go` (event streaming, pulled in
   indirectly). Contained: every one is reached through a port in `internal/domain`, so
   the domain layer compiles without any of them.
-
-- **No service worker**
-  ([patterns/pwa.md](https://github.com/andygeiss/baseline/blob/main/patterns/pwa.md))
-  — waived 2026-09-07 by Andy, temporarily. Nothing registers a service worker any
-  more, and `GET /sw.js` now serves a tombstone: it takes over from the old worker,
-  deletes every cache the old one filled, unregisters itself, and reloads the pages it
-  controlled. It handles no fetch events, so nothing is served from the client.
-  Contained: no template references it, a test pins that no fetch handler comes back,
-  and the waiver ends when the route is deleted after the deprecation window
-  (tracked in [CLAUDE.md § Roadmap](./CLAUDE.md#roadmap)).
 
 - **Secrets arrive as files, never as environment variables**
   ([patterns/go-config.md](https://github.com/andygeiss/baseline/blob/main/patterns/go-config.md)

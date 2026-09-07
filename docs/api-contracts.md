@@ -27,14 +27,17 @@ Mounted by `web.NewServeMux` from `cloud-native-utils` (see `cmd/server/main_tes
 | Method | Path | Purpose | Auth | Handler |
 |--------|------|---------|------|---------|
 | GET | `/manifest.json` | PWA manifest (rendered from `manifest.tmpl`) | none | `HttpViewManifest` |
-| GET | `/sw.js` | Tombstone service worker (no-cache headers) | none | `HttpViewServiceWorker` |
 
-No page registers a service worker any more: a Content-Security-Policy without
-`'unsafe-inline'` blocks the inline script that used to do it. The route now serves a
-**tombstone** — a worker that takes over from the old one, deletes every cache it filled,
-unregisters itself, and reloads the pages it controlled. It handles no fetch events, so
-nothing is answered from the client while it is alive. The route is deleted once the
-deprecation window is over.
+There is no service worker and no route for one. A Content-Security-Policy without
+`'unsafe-inline'` blocks the inline script that used to register it, and the baseline
+forbids one anyway. The tombstone that unregistered the old worker has served its purpose
+and is gone.
+
+`GET /sw.js` now **404s**, and that status is load-bearing: a browser still holding the old
+worker unregisters it when its update check 404s. A `200` carrying HTML would fail that
+check on the MIME type instead and leave the worker installed, answering from its own cache
+forever — which is why nothing may be added to this path and why
+`Test_Route_Service_Worker_Should_Return_404` pins both the status and the content type.
 
 ### Ops listener (`127.0.0.1:6060`)
 
