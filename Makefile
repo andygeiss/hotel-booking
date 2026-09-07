@@ -43,12 +43,13 @@ fmt:
 	go run golang.org/x/tools/cmd/goimports@latest -w .
 	go fix ./...
 
-# The CPU profile the Dockerfile's -pgo build reads. A real recurring command
-# (makefile.md rule 3), not a build step: the Go toolchain still owns the build.
-# The SVG needs graphviz on PATH.
+# Refreshes the PGO profile. A real recurring command (makefile.md rule 3), not
+# a build step: go build finds cmd/server/default.pgo on its own, so no build
+# anywhere passes -pgo and a clean checkout compiles without running this. The
+# SVG is the flame graph and needs graphviz on PATH.
 profile:
-	go test -bench=. -benchtime=10s -cpuprofile=.cpuprofile.pprof ./cmd/server/...
-	go tool pprof -svg .cpuprofile.pprof > .cpuprofile.svg
+	go test -bench=. -benchtime=10s -cpuprofile=cmd/server/default.pgo ./cmd/server/
+	go tool pprof -svg cmd/server/default.pgo > .cpuprofile.svg
 
 # Loads .env when it is there, so a local start is one command. Only run:
 # check and test MUST NOT depend on a developer's machine (rule 6). One shell

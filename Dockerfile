@@ -33,14 +33,16 @@ COPY . .
 # Build server binary with optimizations
 # Flags:
 #   -ldflags "-s -w": Strip debug symbols (smaller binary)
-#   -pgo cpuprofile.pprof: Profile-Guided Optimization
-#     - Generate/update this file with: `make profile`
-#     - This template treats profiling artifacts as generated files (typically ignored by git).
-#     - If the file is missing, the build will fail; remove the `-pgo` flag to disable PGO.
+#   -trimpath: Reproducible paths, the same flag `make build` uses
 #   -o server: Output binary name
+#
+# Profile-Guided Optimization needs no flag: go build reads cmd/server/default.pgo
+# on its own because it sits next to the main package. That file is committed, so
+# a clean checkout builds without running the benchmarks first. Refresh it with
+# `make profile`.
 RUN go build \
     -ldflags "-s -w" \
-    -pgo .cpuprofile.pprof \
+    -trimpath \
     -o server ./cmd/server
 
 ############################

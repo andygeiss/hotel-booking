@@ -27,7 +27,7 @@ Makefile
 # Test and profile data
 coverage.out
 *.pprof
-!.cpuprofile.pprof
+# cmd/server/default.pgo is not excluded: go build reads it for PGO.
 
 # Docker
 Dockerfile
