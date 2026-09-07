@@ -145,7 +145,7 @@ main {
 }
 
 .nav__link:hover {
-    color: var(--color-primary-text);
+    color: var(--color-white);
     text-shadow: 0 0 20px var(--accent-purple);
 }
 
@@ -315,7 +315,7 @@ p {
         var(--accent-pink) 100%
     );
     border: none;
-    color: var(--color-white);
+    color: var(--color-primary-text);
 }
 
 .btn-primary:hover {
@@ -329,7 +329,7 @@ p {
         var(--accent-blue) 100%
     );
     border: none;
-    color: var(--color-white);
+    color: var(--color-primary-text);
 }
 
 .btn-secondary:hover {
@@ -408,14 +408,14 @@ p {
     backdrop-filter: blur(var(--glass-blur));
     -webkit-backdrop-filter: blur(var(--glass-blur));
     background: var(--glass-bg);
-    border: 1px solid rgba(255, 255, 255, 0.18);
+    border: 1px solid var(--glass-border);
     border-radius: var(--radius-xl);
     padding: var(--space-6);
     transition: all var(--transition-base);
 }
 
 .card:hover {
-    border-color: rgba(255, 255, 255, 0.3);
+    border-color: var(--glass-border-light);
     transform: translateY(-2px);
 }
 
@@ -541,12 +541,10 @@ p {
 
 .text-error {
     color: var(--color-error);
-    text-shadow: 0 0 10px rgba(239, 68, 68, 0.5);
 }
 
 .text-success {
     color: var(--color-success);
-    text-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
 }
 
 .text-muted {
@@ -601,20 +599,195 @@ td {
 
 /* Links */
 a {
-    color: var(--accent-purple);
+    color: var(--color-link);
     transition: var(--transition-fast);
 }
 
 a:hover {
-    color: var(--accent-pink);
-    text-shadow: 0 0 20px var(--accent-pink);
+    color: var(--color-link-hover);
+    text-shadow: 0 0 20px var(--color-link-hover);
 }
 
-/* Button links - keep white text */
+/* Button links. The glass buttons keep light text; only the filled ones take
+   the dark text their gradient needs. */
 a.btn,
 a.btn:hover {
-    color: var(--color-primary-text);
+    color: var(--color-text);
     text-shadow: none;
+}
+
+a.btn-danger,
+a.btn-danger:hover,
+a.btn-primary,
+a.btn-primary:hover,
+a.btn-secondary,
+a.btn-secondary:hover {
+    color: var(--color-primary-text);
+}
+
+/* ========================================
+   FOCUS AND DISABLED STATES
+   ======================================== */
+
+/* Every focusable thing gets the same ring. :focus-visible rather than :focus,
+   so a mouse click does not leave one behind but keyboard and assistive
+   navigation always do. The yellow is the one hue nothing else in the theme
+   uses, which is what makes the ring read as focus and not as decoration. */
+:focus-visible {
+    outline: 3px solid var(--color-focus);
+    outline-offset: 2px;
+}
+
+/* The ring is the accessible signal; do not let a component drop it. */
+.btn:focus-visible,
+.form-input:focus-visible,
+.nav__link:focus-visible,
+a:focus-visible {
+    outline: 3px solid var(--color-focus);
+    outline-offset: 2px;
+}
+
+/* The nav toggle is a visually hidden checkbox, so the ring has to land on the
+   label the user actually sees. */
+.nav__toggle:focus-visible + .nav__toggle-label {
+    outline: 3px solid var(--color-focus);
+    outline-offset: 2px;
+}
+
+.btn:disabled,
+.form-input:disabled,
+button:disabled {
+    box-shadow: none;
+    cursor: not-allowed;
+    opacity: 0.5;
+    transform: none;
+}
+
+.btn:disabled:hover {
+    box-shadow: none;
+    transform: none;
+}
+
+/* ========================================
+   BADGES, ALERTS, DANGER BUTTON
+   ======================================== */
+
+/* A badge is a tinted well with ordinary body text on it, not coloured text on
+   the page: near-white on the tint measures 8.5:1 or better, while the hue
+   alone at this size would not clear 4.5:1 on a glass card. The tint and its
+   border are mixed at the use site rather than stored as extra tokens. */
+.badge {
+    background: color-mix(in srgb, var(--color-text-muted) 22%, transparent);
+    border: 1px solid color-mix(in srgb, var(--color-text-muted) 55%, transparent);
+    border-radius: var(--radius-full);
+    color: var(--color-text);
+    display: inline-block;
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+    line-height: var(--line-height-tight);
+    padding: var(--space-1) var(--space-3);
+    white-space: nowrap;
+}
+
+.badge-danger {
+    background: color-mix(in srgb, var(--color-error-solid) 22%, transparent);
+    border-color: color-mix(in srgb, var(--color-error-solid) 55%, transparent);
+}
+
+.badge-info {
+    background: color-mix(in srgb, var(--accent-cyan) 22%, transparent);
+    border-color: color-mix(in srgb, var(--accent-cyan) 55%, transparent);
+}
+
+.badge-primary {
+    background: color-mix(in srgb, var(--color-primary) 25%, transparent);
+    border-color: color-mix(in srgb, var(--color-primary) 60%, transparent);
+}
+
+.badge-secondary {
+    background: color-mix(in srgb, var(--color-text-muted) 22%, transparent);
+    border-color: color-mix(in srgb, var(--color-text-muted) 55%, transparent);
+}
+
+.badge-success {
+    background: color-mix(in srgb, var(--color-success) 22%, transparent);
+    border-color: color-mix(in srgb, var(--color-success) 55%, transparent);
+}
+
+.badge-warning {
+    background: color-mix(in srgb, var(--color-warning) 22%, transparent);
+    border-color: color-mix(in srgb, var(--color-warning) 55%, transparent);
+}
+
+/* An alert is the same idea at paragraph size. It carries role="alert" in the
+   markup, so the tint is reinforcement, never the only signal. */
+.alert {
+    backdrop-filter: blur(var(--glass-blur-sm));
+    -webkit-backdrop-filter: blur(var(--glass-blur-sm));
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-md);
+    color: var(--color-text);
+    padding: var(--space-3) var(--space-4);
+}
+
+.alert-danger {
+    background: color-mix(in srgb, var(--color-error-solid) 20%, transparent);
+    border-color: color-mix(in srgb, var(--color-error-solid) 55%, transparent);
+}
+
+/* The one destructive action in the app. Solid rather than a gradient, so the
+   text contrast is a single number and not a range. */
+.btn-danger {
+    background: var(--color-error-solid);
+    border: none;
+    color: var(--color-primary-text);
+}
+
+.btn-danger:hover {
+    background: var(--color-error);
+    box-shadow: var(--glass-shadow-lg);
+}
+
+/* ========================================
+   DETAIL GRID AND FORM LAYOUT
+   ======================================== */
+
+.detail-grid {
+    display: grid;
+    gap: var(--space-4);
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    margin-bottom: var(--space-4);
+}
+
+.detail-item label {
+    color: var(--color-text-muted);
+    display: block;
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+    margin-bottom: var(--space-1);
+}
+
+.detail-item p {
+    color: var(--color-text);
+    margin-bottom: 0;
+}
+
+.form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+}
+
+/* The cancel form sits inside a table cell next to the View link, so it must
+   not take a line of its own. */
+.form-inline {
+    display: inline-block;
+    margin: 0;
+}
+
+.mb-2 {
+    margin-bottom: var(--space-2);
 }
 
 /* ========================================

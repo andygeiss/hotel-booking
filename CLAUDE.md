@@ -404,9 +404,10 @@ yet. These are open tasks, not waivers — what is genuinely waived is in
       not set. A rejected form is 422 with the form fragment, plus `HX-Push-Url: false`
       when the request was boosted. `render_test.go` pins all of it.
 - [x] **`DESIGN.md`.** At the repo root, in the `design.md` alpha format: the glassmorphism
-      tokens verbatim, measured contrast for every pair, and the component inventory. It
-      records four contrast floors the palette misses, nine off-token colours in
-      `styles.css`, and three interactive states no stylesheet defines — see its own tables.
+      tokens verbatim, measured contrast for every pair, and the component inventory. Every
+      pair now meets its floor — the filled buttons take dark text rather than white, and
+      the border, muted, error and link roles were re-picked against a glass card over the
+      lighter gradient stop, which is the worst ground in the app.
 
 ---
 

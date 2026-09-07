@@ -11,8 +11,8 @@
     --glass-bg: rgba(255, 255, 255, 0.08);
     --glass-bg-solid: rgba(255, 255, 255, 0.12);
     --glass-bg-dark: rgba(0, 0, 0, 0.2);
-    --glass-border: rgba(255, 255, 255, 0.18);
-    --glass-border-light: rgba(255, 255, 255, 0.3);
+    --glass-border: rgba(255, 255, 255, 0.35);
+    --glass-border-light: rgba(255, 255, 255, 0.5);
 
     /* Blur Values */
     --glass-blur: 20px;
@@ -61,13 +61,22 @@
     );
     --color-background-solid: #000000;
     --color-border: var(--glass-border);
-    --color-error: #ff453a;
+    /* Text roles clear 4.5:1 on a glass card over the lighter gradient stop,
+       which is the worst ground in the app. --color-error-solid is the old,
+       more saturated red, kept for fills that never carry text. */
+    --color-error: #ff8a80;
+    --color-error-solid: #ff453a;
+    --color-focus: var(--gradient-yellow);
+    --color-link: #d9a0f7;
+    --color-link-hover: #ff9aae;
     --color-gray: var(--color-gray-400);
     --color-gray-light: var(--color-gray-200);
     --color-gray-dark: var(--color-gray-700);
     --color-primary: var(--accent-blue);
     --color-primary-hover: #409cff;
-    --color-primary-text: var(--color-white);
+    /* Text on a filled primary/secondary/danger surface. Dark, not white:
+       white on the purple-to-pink gradient measures 3.52:1, black 5.96:1. */
+    --color-primary-text: var(--color-black);
     --color-secondary: var(--color-gray-600);
     --color-secondary-light: var(--color-gray-500);
     --color-accent: var(--accent-purple);
@@ -75,7 +84,7 @@
     --color-surface: var(--glass-bg);
     --color-surface-solid: var(--glass-bg-solid);
     --color-text: var(--color-gray-50);
-    --color-text-muted: var(--color-gray-400);
+    --color-text-muted: var(--color-gray-300);
     --color-warning: var(--accent-orange);
 
     /* Glassmorphism Effects */
@@ -169,8 +178,10 @@
         --glass-bg: rgba(255, 255, 255, 0.1);
         --glass-bg-solid: rgba(255, 255, 255, 0.15);
         --glass-bg-dark: rgba(0, 0, 0, 0.3);
-        --glass-border: rgba(255, 255, 255, 0.2);
-        --glass-border-light: rgba(255, 255, 255, 0.3);
+        /* 0.40, not the 0.35 of the default scheme: this palette's lightest
+           gradient stop (#0f3460) is lighter, and 0.35 measures 2.87:1 there. */
+        --glass-border: rgba(255, 255, 255, 0.4);
+        --glass-border-light: rgba(255, 255, 255, 0.55);
 
         --color-background: linear-gradient(
             135deg,
