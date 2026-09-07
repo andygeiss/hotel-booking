@@ -3,7 +3,7 @@
 # ======================================
 # Production-ready container for the Go DDD/Hexagonal application
 # Strategy: Multi-stage build with minimal runtime scratch image
-#   - Builder stage: golang:1.26rc1-alpine3.23 (toolchain used inside the image)
+#   - Builder stage: golang:1.27.1-alpine3.23 (toolchain used inside the image)
 #   - Runtime stage: scratch (runs minimal binary only)
 # Result: ~5-10MB container image with no OS/libc dependencies
 #
@@ -12,7 +12,7 @@
 # Build Stage
 ############################
 # Compiles the Go application with optimizations
-FROM golang:1.26rc1-alpine3.23 AS builder
+FROM golang:1.27.1-alpine3.23 AS builder
 
 # Build environment setup
 # CGO_ENABLED=0: Static compilation (no C dependencies)
@@ -34,7 +34,7 @@ COPY . .
 # Flags:
 #   -ldflags "-s -w": Strip debug symbols (smaller binary)
 #   -pgo cpuprofile.pprof: Profile-Guided Optimization
-#     - Generate/update this file with: `just profile`
+#     - Generate/update this file with: `make profile`
 #     - This template treats profiling artifacts as generated files (typically ignored by git).
 #     - If the file is missing, the build will fail; remove the `-pgo` flag to disable PGO.
 #   -o server: Output binary name
