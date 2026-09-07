@@ -39,6 +39,12 @@ var efs embed.FS
 // forever.
 const shutdownTimeout = 10 * time.Second
 
+// oidcTimeout bounds every call to the identity provider: the discovery
+// document on the first /mcp request, and the key fetches behind each token
+// verification after that. It sits under the app listener's 30 s write
+// timeout, so the handler answers before the server gives up on it.
+const oidcTimeout = 5 * time.Second
+
 // shutdownOnSignal stops srv once ctx is done, giving it shutdownTimeout to
 // drain. RegisterOnContextDone waits five seconds first, so the readiness
 // probe fails and the load balancer stops sending traffic before the listener
@@ -154,18 +160,25 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Initialize OIDC provider for MCP token verification.
-	// This connects to Keycloak to validate Bearer tokens for the MCP endpoint.
-	// The issuer is shared with the browser login flow, so both agree.
-	provider, err := oidc.NewProvider(ctx, cfg.OIDCIssuer)
-	if err != nil {
-		logger.Error("failed to initialize OIDC provider", "error", err)
-		os.Exit(1)
+	// How the MCP endpoint verifies bearer tokens. The provider is built on the
+	// first /mcp request, not here: fetching the issuer's discovery document is
+	// a call to somebody else's process, and boot must depend on local facts
+	// only. Doing it here meant Keycloak being down stopped this app starting.
+	//
+	// ctx is the process context rather than a request's, because go-oidc keeps
+	// it for the key set it refetches on every verification. oidcClient bounds
+	// both that discovery call and every later key fetch; it is injected
+	// because http.DefaultClient has no timeout at all.
+	oidcClient := &http.Client{Timeout: oidcTimeout}
+	verifierCtx := oidc.ClientContext(ctx, oidcClient)
+	newVerifier := func() (*oidc.IDTokenVerifier, error) {
+		provider, err := oidc.NewProvider(verifierCtx, cfg.OIDCIssuer)
+		if err != nil {
+			return nil, fmt.Errorf("discovering OIDC issuer %q: %w", cfg.OIDCIssuer, err)
+		}
+		// A separate client ID: machine-to-machine, not the browser session.
+		return provider.Verifier(&oidc.Config{ClientID: cfg.MCPClientID}), nil
 	}
-
-	// Configure token verifier for MCP client.
-	// Uses a separate client ID for machine-to-machine MCP authentication.
-	verifier := provider.Verifier(&oidc.Config{ClientID: cfg.MCPClientID})
 
 	// Build the MCP server with all tools registered.
 	mcpServer := buildMCPServer(cfg, reservationService, availabilityChecker, paymentService)
@@ -182,7 +195,7 @@ func main() {
 		Logger:             logger,
 		ReservationService: reservationService,
 		MCPServer:          mcpServer,
-		Verifier:           verifier,
+		NewVerifier:        newVerifier,
 	})
 
 	// Start the ops listener. /healthz and the pprof endpoints answer here and

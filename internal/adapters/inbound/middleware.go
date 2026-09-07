@@ -1,6 +1,13 @@
 package inbound
 
-import "net/http"
+import (
+	"log/slog"
+	"net/http"
+	"sync"
+
+	"github.com/andygeiss/cloud-native-utils/web"
+	"github.com/coreos/go-oidc/v3/oidc"
+)
 
 // maxRequestBody caps every request body at 1 MiB. Without a cap, ParseForm on
 // a hostile body reads until the process runs out of memory.
@@ -48,4 +55,62 @@ func secureHeaders(next http.Handler) http.Handler {
 func WithSecurity(next http.Handler) http.Handler {
 	csrf := http.NewCrossOriginProtection()
 	return secureHeaders(csrf.Handler(http.MaxBytesHandler(next, maxRequestBody)))
+}
+
+// VerifierFunc builds the OIDC verifier that the MCP endpoint checks bearer
+// tokens against. It is a function rather than a verifier because building one
+// calls the identity provider, and that must not happen while the app starts.
+//
+// It takes no context on purpose. go-oidc keeps the context it was built with
+// for the key set it refetches on every token verification, so the caller must
+// hand it one that lives as long as the process — a request's context would
+// stop working the moment that request ended, and every later verification
+// would fail. Bound the call with the HTTP client's own timeout instead.
+type VerifierFunc func() (*oidc.IDTokenVerifier, error)
+
+// WithBearerAuth checks the MCP endpoint's bearer token, building the verifier
+// on the first request rather than at boot.
+//
+// Building it fetches the issuer's discovery document, which is a call to
+// somebody else's process. Doing that in main made the app refuse to start
+// whenever the identity provider was down — their outage became ours — and it
+// meant the binary could not start with an empty environment at all.
+//
+// Only success is cached. A provider that was down when the first request
+// arrived is asked again on the next one, so the endpoint recovers by itself.
+func WithBearerAuth(newVerifier VerifierFunc, logger *slog.Logger, next http.HandlerFunc) http.HandlerFunc {
+	var (
+		mu       sync.Mutex
+		verifier *oidc.IDTokenVerifier
+	)
+
+	// The mutex is held across the call, so a burst of first requests asks the
+	// provider once instead of all at once.
+	resolve := func() (*oidc.IDTokenVerifier, error) {
+		mu.Lock()
+		defer mu.Unlock()
+		if verifier != nil {
+			return verifier, nil
+		}
+		v, err := newVerifier()
+		if err != nil {
+			return nil, err
+		}
+		verifier = v
+		return v, nil
+	}
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		v, err := resolve()
+		if err != nil {
+			logger.Error("cannot verify bearer tokens: the identity provider did not answer",
+				"error", err,
+				"fix", "check that the OIDC issuer is reachable from this process")
+			// 503 rather than 401: the token was never read, so the client
+			// should retry instead of going to look for new credentials.
+			http.Error(w, "identity provider unavailable", http.StatusServiceUnavailable)
+			return
+		}
+		web.WithBearerAuth(v, next)(w, r)
+	}
 }

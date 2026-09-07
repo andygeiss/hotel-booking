@@ -11,7 +11,6 @@ import (
 	"github.com/andygeiss/cloud-native-utils/templating"
 	"github.com/andygeiss/cloud-native-utils/web"
 	"github.com/andygeiss/hotel-booking/internal/domain/reservation"
-	"github.com/coreos/go-oidc/v3/oidc"
 )
 
 // RouterConfig holds all dependencies for HTTP routing.
@@ -20,9 +19,9 @@ type RouterConfig struct {
 	Ctx                context.Context
 	EFS                fs.FS
 	Logger             *slog.Logger
-	MCPServer          *mcp.Server // Optional: nil disables MCP endpoint
+	MCPServer          *mcp.Server  // Optional: nil disables MCP endpoint
+	NewVerifier        VerifierFunc // Required if MCPServer is set; called on the first /mcp request, never here
 	ReservationService *reservation.Service
-	Verifier           *oidc.IDTokenVerifier // Required if MCPServer is set
 }
 
 // Route creates a new mux with the liveness and readiness probe (/liveness, /readiness),
@@ -87,8 +86,8 @@ func Route(config RouterConfig) *http.ServeMux {
 	// Add MCP endpoint if configured.
 	if config.MCPServer != nil {
 		mcpHandler := web.NewMCPHandler(config.MCPServer)
-		if config.Verifier != nil {
-			mux.Handle("POST /mcp", logging.WithLogging(config.Logger, web.WithBearerAuth(config.Verifier, mcpHandler.Handler())))
+		if config.NewVerifier != nil {
+			mux.Handle("POST /mcp", logging.WithLogging(config.Logger, WithBearerAuth(config.NewVerifier, config.Logger, mcpHandler.Handler())))
 		} else {
 			mux.Handle("POST /mcp", logging.WithLogging(config.Logger, mcpHandler.Handler()))
 		}

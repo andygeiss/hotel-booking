@@ -4,13 +4,16 @@ package inbound
 // directly, so that a policy edit and its test cannot drift apart.
 
 import (
+	"errors"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
 	"github.com/andygeiss/cloud-native-utils/assert"
+	"github.com/coreos/go-oidc/v3/oidc"
 )
 
 func okHandler() http.Handler {
@@ -128,4 +131,121 @@ func Test_WithSecurity_Body_Under_The_Cap_Should_Be_Readable(t *testing.T) {
 
 	// Assert
 	assert.That(t, "error must be nil", readErr, nil)
+}
+
+// ============================================================================
+// WithBearerAuth Tests
+// ============================================================================
+
+func discardLogger() *slog.Logger {
+	return slog.New(slog.NewTextHandler(io.Discard, nil))
+}
+
+// workingVerifier is built without touching the network. Every test below
+// stops before a signature is checked, so the key set is never used.
+func workingVerifier() *oidc.IDTokenVerifier {
+	return oidc.NewVerifier("https://issuer.example", nil, &oidc.Config{ClientID: "hotel-booking-mcp"})
+}
+
+func Test_WithBearerAuth_Should_Not_Build_The_Verifier_Until_A_Request_Arrives(t *testing.T) {
+	// Building it calls the identity provider. If that happened here, it would
+	// be happening at startup, which is the whole bug this replaced.
+
+	// Arrange
+	calls := 0
+
+	// Act
+	_ = WithBearerAuth(func() (*oidc.IDTokenVerifier, error) {
+		calls++
+		return workingVerifier(), nil
+	}, discardLogger(), okHandlerFunc())
+
+	// Assert
+	assert.That(t, "the provider must not be called while wiring", calls, 0)
+}
+
+func Test_WithBearerAuth_When_The_Provider_Is_Down_Should_Return_503(t *testing.T) {
+	// Arrange
+	reached := false
+	handler := WithBearerAuth(
+		func() (*oidc.IDTokenVerifier, error) { return nil, errors.New("connection refused") },
+		discardLogger(),
+		func(w http.ResponseWriter, r *http.Request) { reached = true },
+	)
+	rec := httptest.NewRecorder()
+
+	// Act
+	handler(rec, httptest.NewRequest(http.MethodPost, "/mcp", nil))
+
+	// Assert
+	assert.That(t, "status code must be 503", rec.Code, http.StatusServiceUnavailable)
+	assert.That(t, "the handler behind it must not run", reached, false)
+}
+
+func Test_WithBearerAuth_Should_Retry_After_The_Provider_Recovers(t *testing.T) {
+	// Caching the failure would leave /mcp broken until the next deploy, long
+	// after the identity provider came back.
+
+	// Arrange
+	calls := 0
+	handler := WithBearerAuth(func() (*oidc.IDTokenVerifier, error) {
+		calls++
+		if calls == 1 {
+			return nil, errors.New("connection refused")
+		}
+		return workingVerifier(), nil
+	}, discardLogger(), okHandlerFunc())
+
+	// Act
+	first := httptest.NewRecorder()
+	handler(first, httptest.NewRequest(http.MethodPost, "/mcp", nil))
+	second := httptest.NewRecorder()
+	handler(second, httptest.NewRequest(http.MethodPost, "/mcp", nil))
+
+	// Assert
+	assert.That(t, "the first request must fail while the provider is down", first.Code, http.StatusServiceUnavailable)
+	assert.That(t, "the second must get past the verifier", second.Code, http.StatusUnauthorized)
+	assert.That(t, "the provider must have been asked twice", calls, 2)
+}
+
+func Test_WithBearerAuth_Should_Build_The_Verifier_Only_Once(t *testing.T) {
+	// Arrange
+	calls := 0
+	handler := WithBearerAuth(func() (*oidc.IDTokenVerifier, error) {
+		calls++
+		return workingVerifier(), nil
+	}, discardLogger(), okHandlerFunc())
+
+	// Act
+	for range 3 {
+		handler(httptest.NewRecorder(), httptest.NewRequest(http.MethodPost, "/mcp", nil))
+	}
+
+	// Assert
+	assert.That(t, "success must be cached", calls, 1)
+}
+
+func Test_WithBearerAuth_Without_A_Token_Should_Return_401(t *testing.T) {
+	// A missing token is the client's problem (401), a missing provider is
+	// ours (503). The two must not look the same.
+
+	// Arrange
+	reached := false
+	handler := WithBearerAuth(
+		func() (*oidc.IDTokenVerifier, error) { return workingVerifier(), nil },
+		discardLogger(),
+		func(w http.ResponseWriter, r *http.Request) { reached = true },
+	)
+	rec := httptest.NewRecorder()
+
+	// Act
+	handler(rec, httptest.NewRequest(http.MethodPost, "/mcp", nil))
+
+	// Assert
+	assert.That(t, "status code must be 401", rec.Code, http.StatusUnauthorized)
+	assert.That(t, "the MCP handler must not run", reached, false)
+}
+
+func okHandlerFunc() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) }
 }

@@ -18,6 +18,7 @@ import (
 	"github.com/andygeiss/hotel-booking/internal/adapters/inbound"
 	"github.com/andygeiss/hotel-booking/internal/adapters/outbound"
 	"github.com/andygeiss/hotel-booking/internal/domain/reservation"
+	"github.com/coreos/go-oidc/v3/oidc"
 )
 
 // Note: containsString helper is defined in http_index_test.go and shared across the test package
@@ -418,4 +419,63 @@ func Test_Route_Cross_Origin_Post_Should_Return_403(t *testing.T) {
 
 	// Assert
 	assert.That(t, "status code must be 403", rec.Code, http.StatusForbidden)
+}
+
+// ============================================================================
+// MCP Verifier Tests
+// ============================================================================
+
+func Test_Route_Should_Not_Reach_The_Identity_Provider_While_Wiring(t *testing.T) {
+	// Boot must depend on local facts only. Building the verifier calls
+	// Keycloak, and doing that here is what used to stop this app starting
+	// whenever Keycloak was down.
+
+	// Arrange
+	t.Setenv("APP_NAME", "TestApp")
+	called := false
+
+	// Act
+	_ = inbound.Route(inbound.RouterConfig{
+		App:                testApp(),
+		Ctx:                context.Background(),
+		EFS:                getRouterTestFS(t),
+		Logger:             slog.Default(),
+		ReservationService: createTestReservationService(t),
+		MCPServer:          mcp.NewServer("test-server", "1.0.0"),
+		NewVerifier: func() (*oidc.IDTokenVerifier, error) {
+			called = true
+			return nil, nil
+		},
+	})
+
+	// Assert
+	assert.That(t, "the identity provider must not be reached during wiring", called, false)
+}
+
+func Test_Route_MCP_Endpoint_With_An_Unreachable_Provider_Should_Return_503(t *testing.T) {
+	// Arrange
+	t.Setenv("APP_NAME", "TestApp")
+
+	mux := inbound.Route(inbound.RouterConfig{
+		App:                testApp(),
+		Ctx:                context.Background(),
+		EFS:                getRouterTestFS(t),
+		Logger:             slog.Default(),
+		ReservationService: createTestReservationService(t),
+		MCPServer:          mcp.NewServer("test-server", "1.0.0"),
+		NewVerifier: func() (*oidc.IDTokenVerifier, error) {
+			return nil, errors.New("dial tcp 127.0.0.1:8180: connect: connection refused")
+		},
+	})
+
+	initReq := `{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}`
+	req := httptest.NewRequest(http.MethodPost, "/mcp", strings.NewReader(initReq))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+
+	// Act
+	mux.ServeHTTP(rec, req)
+
+	// Assert
+	assert.That(t, "status code must be 503", rec.Code, http.StatusServiceUnavailable)
 }
