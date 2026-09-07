@@ -50,7 +50,7 @@ This system manages hotel room reservations and associated payments. It demonstr
 
 | Component | Technology | Purpose |
 |-----------|------------|---------|
-| Language | Go 1.25.5 | Application runtime |
+| Language | Go 1.27.1 | Application runtime (`go.mod` declares `go 1.27`) |
 | Architecture | Hexagonal + DDD | Clean separation, domain focus |
 | Web Framework | `net/http` stdlib | HTTP server and routing |
 | Frontend | HTML + HTMX | Interactive UI without JavaScript frameworks |
@@ -171,7 +171,8 @@ hotel-booking/
 ├── docker-compose.yml              # Development stack
 ├── Dockerfile                      # Production build
 ├── go.mod                          # Go module definition
-└── .justfile                       # Task runner commands
+├── Makefile                        # The only command surface; the gates
+└── SPEC.md                         # Project brief: job, why, guardrails, done means
 ```
 
 ---
@@ -961,9 +962,10 @@ type mockEventPublisher struct {
 ### Running Tests
 
 ```bash
-just test                    # Run all unit tests with coverage
-just test-integration        # Run integration tests (requires Docker)
-go test -v -run TestName ./internal/domain/reservation/...  # Single test
+make test                    # go test -race -shuffle=on ./...
+make check                   # every gate, before every commit
+go test -tags=integration -v ./internal/...                 # integration tests (requires Docker)
+go test -v -run TestName ./internal/domain/reservation/...  # single test
 ```
 
 ---
@@ -1255,6 +1257,45 @@ var efs embed.FS
 
 ## Security
 
+### The request chain
+
+`Route` returns its mux wrapped in `WithSecurity` (`internal/adapters/inbound/middleware.go`),
+so every response — a page, a fragment, a 404, a static asset — passes through it.
+Outermost first:
+
+1. **`secureHeaders`** — sets the four headers before the next handler runs, because a
+   header set after `WriteHeader` is dropped silently.
+
+   | Header | Value |
+   |--------|-------|
+   | `Content-Security-Policy` | `default-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'none'; form-action 'self'` |
+   | `Strict-Transport-Security` | `max-age=31536000` |
+   | `X-Content-Type-Options` | `nosniff` |
+   | `Referrer-Policy` | `same-origin` |
+
+   `img-src ... data:` is load-bearing: the CSS mask icons are `data:image/svg+xml` URLs.
+   `'unsafe-inline'` and `'unsafe-eval'` are banned, which is why the app carries no
+   inline `<script>` and no hand-written JavaScript.
+
+2. **`http.CrossOriginProtection`** (stdlib, Go 1.25+) — CSRF without tokens. It checks
+   `Sec-Fetch-Site`, falling back to `Origin` against `Host`. A client that sends
+   neither is not a browser, so it passes and `/mcp` keeps answering.
+
+3. **`http.MaxBytesHandler`, 1 MiB** — innermost, so `ParseForm` on a hostile body
+   cannot exhaust memory. An outer cap cannot be raised further in: a route that one day
+   accepts uploads picks its own limit at the cap site.
+
+The tests that pin all three are in `internal/adapters/inbound/middleware_test.go` and
+`router_test.go`.
+
+### Ops endpoints
+
+`/healthz` and `/debug/pprof` are served by `inbound.OpsHandler` on a second listener
+bound to `127.0.0.1:6060`. Being unreachable from anywhere but the machine itself is
+their only access control, so they must never join the application mux and the proxy
+must never be pointed at them. `Test_Route_Ops_Endpoints_Should_Not_Be_Served_By_The_App_Mux`
+is what stops a later edit from moving them.
+
 ### Authentication
 
 - **Keycloak** provides OIDC/OAuth2 authentication
@@ -1297,9 +1338,10 @@ if string(res.GuestID) != email {
 ### Development
 
 ```bash
-just up       # Start all services
-just down     # Stop all services
-just logs     # View application logs
+podman build -t "$USER/hotel-booking:latest" -f Dockerfile .   # Build the image
+docker-compose --env-file .env up -d                           # Start all services
+docker-compose --env-file .env down                            # Stop all services
+docker-compose logs -f app                                     # View application logs
 ```
 
 ### Production Dockerfile

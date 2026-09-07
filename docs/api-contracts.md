@@ -1,6 +1,12 @@
 # API Contracts
 
-Full catalog of HTTP endpoints and MCP tools exposed by the server. All routes are registered in `internal/adapters/inbound/router.go` via `Route(RouterConfig)`.
+Full catalog of HTTP endpoints and MCP tools exposed by the server. All application
+routes are registered in `internal/adapters/inbound/router.go` via `Route(RouterConfig)`,
+which hands back its mux already wrapped in `WithSecurity` — security headers, the CSRF
+check, and a 1 MiB body cap. A handler registered outside that wrapper does not exist.
+
+The ops endpoints are the one exception: they live on a second listener and are listed
+under [Ops listener](#ops-listener-127006060).
 
 ---
 
@@ -22,6 +28,30 @@ Mounted by `web.NewServeMux` from `cloud-native-utils` (see `cmd/server/main_tes
 |--------|------|---------|------|---------|
 | GET | `/manifest.json` | PWA manifest (rendered from `manifest.tmpl`) | none | `HttpViewManifest` |
 | GET | `/sw.js` | Service worker (no-cache headers) | none | `HttpViewServiceWorker` |
+
+No page registers the service worker any more: a Content-Security-Policy without
+`'unsafe-inline'` blocks the inline script that used to do it. The route stays only long
+enough to hand an unregistering worker to browsers that still hold the old one.
+
+### Ops listener (`127.0.0.1:6060`)
+
+A second `http.Server`, started in `cmd/server/main.go` and served by
+`inbound.OpsHandler`. It binds loopback only, so it is unreachable through the proxy —
+that is its entire access control. **Never proxy it, and never move these routes onto
+the application mux.**
+
+| Method | Path | Purpose | Auth | Handler |
+|--------|------|---------|------|---------|
+| GET | `/healthz` | `{"status":"ok\|unavailable","version":"..."}`; pings both databases on a 1 s budget, 503 when either is down | loopback only | `OpsHandler` |
+| GET | `/debug/pprof/` | pprof index and the named runtime profiles | loopback only | `net/http/pprof` |
+| GET | `/debug/pprof/cmdline` | Command line of the running binary | loopback only | `net/http/pprof` |
+| GET | `/debug/pprof/profile` | CPU profile (`?seconds=N`) | loopback only | `net/http/pprof` |
+| GET, POST | `/debug/pprof/symbol` | Symbol lookup | loopback only | `net/http/pprof` |
+| GET | `/debug/pprof/trace` | Execution trace | loopback only | `net/http/pprof` |
+
+`/healthz` is separate from `/liveness` and `/readiness` above: it names the build and
+reaches the databases, so it stays private, while the two probes answer the container
+orchestrator with a status code and nothing else.
 
 ### UI (HTMX / SSR)
 

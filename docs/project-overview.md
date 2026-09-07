@@ -3,7 +3,7 @@
 **Project:** Hotel Booking
 **Type:** Go backend service (monolith)
 **Architecture:** Hexagonal (Ports & Adapters) + Domain-Driven Design
-**Primary Language:** Go 1.25.5
+**Primary Language:** Go 1.27.1 (`go.mod` declares `go 1.27`)
 **Scan Date:** 2026-04-16
 **Scan Level:** Exhaustive
 
@@ -42,7 +42,7 @@ The codebase is designed to be forked as a template — the directory layout, de
 | OIDC client | `github.com/coreos/go-oidc/v3` |
 | Kafka client | `github.com/segmentio/kafka-go` (indirect via cloud-native-utils) |
 | Task runner | `just` |
-| Lint | `golangci-lint` (v2, `default: all` with noise disabled) |
+| Lint | `staticcheck` via `make check` (the only third-party lint tool) |
 | Container | Multi-stage Dockerfile → `scratch` runtime (~5-10 MB) |
 | CI | GitHub Actions (`.github/workflows/ci.yml`) + Codacy coverage |
 | Frontend | Go `html/template` SSR + HTMX + PWA (service worker) |

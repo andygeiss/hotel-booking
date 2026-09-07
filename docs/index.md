@@ -11,10 +11,10 @@
 ## Project Overview
 
 - **Type:** Monolith (single Go module, single binary)
-- **Primary language:** Go 1.25.5
+- **Primary language:** Go 1.27.1 (`go.mod` declares `go 1.27`)
 - **Architecture:** Hexagonal (Ports & Adapters) + Domain-Driven Design
 - **Topology:** Three bounded contexts inside one process (Reservation, Payment, Orchestration) communicating over Kafka
-- **UI:** Go `html/template` SSR + HTMX + PWA service worker
+- **UI:** Go `html/template` SSR + htmx 2.0.10 + PWA manifest (no service worker is registered)
 - **Auth:** Keycloak OIDC (dual client: session for UI, client-credentials for `/mcp`)
 - **Persistence:** Two isolated PostgreSQL databases, key/value schema
 - **External library:** `github.com/andygeiss/cloud-native-utils v0.5.6`
@@ -31,7 +31,8 @@
 | Keycloak | `localhost:8180` (realm `local`) |
 | Kafka | `localhost:9092` |
 | MCP endpoint | `POST /mcp` (Bearer auth, client `hotel-booking-mcp`) |
-| Task runner | `just` (see `.justfile`) |
+| Command runner | `make` (see `Makefile`); no CI server |
+| Ops listener | `127.0.0.1:6060` — `/healthz` and `/debug/pprof`, never proxied |
 | Container runtime stage | `FROM scratch` (~5–10 MB) |
 | Build optimization | Profile-Guided Optimization (PGO) via `.cpuprofile.pprof` |
 
@@ -51,11 +52,10 @@
 - [../README.md](../README.md) — user-facing quick start
 - [../CLAUDE.md](../CLAUDE.md) — conventions, ubiquitous language, state machines, gotchas
 - [../.env.example](../.env.example) — environment variable catalog
-- [../.justfile](../.justfile) — task runner commands
+- [../SPEC.md](../SPEC.md) — the project brief: job, why, guardrails, done means
+- [../Makefile](../Makefile) — the only command surface, and the gates
 - [../docker-compose.yml](../docker-compose.yml) — dev stack definition
 - [../Dockerfile](../Dockerfile) — multi-stage production image
-- [../.golangci.yml](../.golangci.yml) — lint configuration
-- [../.github/workflows/ci.yml](../.github/workflows/ci.yml) — CI pipeline
 
 ## Bounded Contexts
 
@@ -69,7 +69,7 @@
 
 1. **Install tooling**
    ```bash
-   just setup
+   brew install go docker-compose podman graphviz
    ```
 2. **Configure environment**
    ```bash
@@ -78,17 +78,19 @@
    ```
 3. **Start the stack**
    ```bash
-   just up
+   podman build -t "$USER/hotel-booking:latest" -f Dockerfile .
+   docker-compose --env-file .env up -d
    ```
 4. **Verify**
    - App: http://localhost:8080/ui
    - Keycloak admin: http://localhost:8180/admin (admin / admin)
 5. **Iterate**
-   - `just test` — run unit tests with coverage
-   - `just lint` / `just fmt` — lint and auto-format
-   - `just profile` — regenerate the PGO profile
+   - `make check` — every gate, before every commit
+   - `make ci` — the same gates against the commit, before every push
+   - `make test` / `make fmt` — the inner loop
+   - `make profile` — regenerate the PGO profile
 
-See [development-guide.md](./development-guide.md) for the full daily-driver workflow and [deployment-guide.md](./deployment-guide.md) for everything container- and CI-related.
+See [development-guide.md](./development-guide.md) for the full daily-driver workflow and [deployment-guide.md](./deployment-guide.md) for everything container-related.
 
 ## Using these docs as PRD input
 

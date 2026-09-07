@@ -1,6 +1,6 @@
 # Deployment Guide
 
-Container image build, docker-compose dev stack, CI pipeline, and environment configuration.
+Container image build, docker-compose dev stack, the gates, and environment configuration.
 
 ---
 
@@ -8,16 +8,16 @@ Container image build, docker-compose dev stack, CI pipeline, and environment co
 
 Two stages, defined in `Dockerfile`:
 
-1. **Builder**: `golang:1.26rc1-alpine3.23`
+1. **Builder**: `golang:1.27.1-alpine3.23` (the pinned Go toolchain — never an RC)
    - `CGO_ENABLED=0`, `GO111MODULE=on`
    - `go mod download` as a separate layer (cached while `go.mod`/`go.sum` are unchanged)
    - `go build -ldflags "-s -w" -pgo .cpuprofile.pprof -o server ./cmd/server`
-   - **Requires** `.cpuprofile.pprof` at repo root. Generate via `just profile` before `just build`. Remove the `-pgo` flag if you don't want PGO.
+   - **Requires** `.cpuprofile.pprof` at repo root. Generate via `make profile` before the image build. Remove the `-pgo` flag if you don't want PGO.
 2. **Runtime**: `FROM scratch`
    - Copies `/server` only. Static binary, embedded assets, no libc.
    - `EXPOSE 8080`, `ENTRYPOINT ["/server"]`.
 
-Final image is ~5-10 MB. Image tag produced by `just build` is `${USER}/${APP_SHORTNAME}:latest` (e.g. `andygeiss/hotel-booking:latest`).
+Final image is ~5-10 MB. Build it with `podman build -t "$USER/hotel-booking:latest" -f Dockerfile .`; `docker-compose.yml` expects the tag `${USER}/${APP_SHORTNAME}:latest` (e.g. `andygeiss/hotel-booking:latest`).
 
 ## `.dockerignore`
 
@@ -37,25 +37,40 @@ Five services:
 
 Persistent volumes: `postgres_reservation_data`, `postgres_payment_data`. Both DBs bootstrap with the same `kv_store` schema.
 
-`just up` = build image → rotate `CHANGE_ME_LOCAL_SECRET` placeholder in `.env` and `.keycloak.json` if still present → `docker-compose up -d` → poll Keycloak for up to 60s.
+Bring the stack up and down with `docker-compose` directly. Rotate the
+`CHANGE_ME_LOCAL_SECRET` placeholder in `.env` and `.keycloak.json` once before the first
+start (see [Development Guide](./development-guide.md)); Keycloak needs about a minute to
+import its realm on a cold start.
 
-`just down` = `docker-compose --env-file .env down` (does **not** remove volumes).
+```bash
+docker-compose --env-file .env up -d      # start
+docker-compose --env-file .env down       # stop; volumes survive
+```
 
-## CI (`.github/workflows/ci.yml`)
+## The gates (there is no CI server)
 
-GitHub Actions workflow `Continuous Integration` runs on every push:
+Nothing runs the tests for you. The gates live in the `Makefile` and run on the
+developer's machine:
 
-1. `actions/checkout@v4`
-2. `actions/setup-go@v4` with `go-version: stable`
-3. Downloads the Codacy coverage script (`curl -o get.sh ... coverage.codacy.com/get.sh`)
-4. Installs `just` via `taiki-e/install-action`
-5. `just test` — runs the unit test suite with `-coverprofile=.coverage.pprof`
-6. Exports `COMMIT_SHA=${GITHUB_SHA}`
-7. Uploads the Go coverage to Codacy with `--force-coverage-parser go -r .coverage.pprof`
+- **`make check` before every commit** — the eight gates against the working tree:
+  format, vet, fix, staticcheck, govulncheck, tidy, test, static build.
+- **`make ci` before every push** — the same list against `git archive HEAD`, copied to
+  an empty directory. A file you forgot to `git add`, a stray `.env`, or a local edit
+  cannot make it green. Read its `go version` line: it is the only record of which
+  toolchain ran.
 
-Required secret: `CODACY_PROJECT_TOKEN`.
+A red `govulncheck` means bump the dependency, never silence the check. Dependency
+updates are done by hand on a 90-day cycle, under the pin:
 
-The workflow does **not** build or push a Docker image — deployment is currently out-of-band.
+```bash
+export GOTOOLCHAIN=go1.27.1
+go get -u ./... && go mod tidy && make check     # one chore(deps) commit
+```
+
+There is deliberately nothing under `.github/workflows/` and no dependency bot. Building
+a container image is not a gate either: it would need a runtime up on every `make check`.
+
+The image build does **not** push anywhere — deployment is out-of-band.
 
 ## Environment Variables
 
@@ -78,7 +93,7 @@ See `.env.example` for the authoritative list with inline documentation. Summary
 
 - `OIDC_ISSUER` (default `http://localhost:8180/realms/local`) — same URL must resolve from both the browser and the app container
 - `OIDC_CLIENT_ID` (default `hotel-booking`) — session-based web client
-- `OIDC_CLIENT_SECRET` — starts as `CHANGE_ME_LOCAL_SECRET`; rotated in place by `just up`
+- `OIDC_CLIENT_SECRET` — starts as `CHANGE_ME_LOCAL_SECRET`; rotate it in place once, before the first start (see [Development Guide](./development-guide.md))
 - `OIDC_REDIRECT_URL` (default `http://localhost:8080/auth/callback`)
 - `MCP_CLIENT_ID` (default `hotel-booking-mcp`) — client-credentials flow for `/mcp`
 

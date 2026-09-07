@@ -13,19 +13,20 @@ Annotated directory map of the Hotel Booking repository. Every critical folder i
 ```
 hotel-booking/
 ├── .env.example                      # Template for local env vars (copy to .env)
-├── .github/
-│   └── workflows/
-│       └── ci.yml                    # GitHub Actions CI: just test + Codacy coverage upload
-├── .golangci.yml                     # golangci-lint v2 config — default:all minus noisy linters
-├── .justfile                         # Task runner: build, up, down, fmt, lint, test, profile, setup
 ├── .keycloak.json.example            # Template for Keycloak realm config
 ├── .gitignore                        # Includes .claude, _bmad, _bmad-output (BMAD workspace)
 ├── CLAUDE.md                         # Project conventions, ubiquitous language, state machines, gotchas
-├── Dockerfile                        # Multi-stage: golang:1.26rc1-alpine3.23 → scratch, PGO enabled
+├── Dockerfile                        # Multi-stage: golang:1.27.1-alpine3.23 → scratch, PGO enabled
 ├── LICENSE                           # MIT
+├── Makefile                          # The only command surface; the eight gates live in `check`
 ├── README.md                         # User-facing quick start + architecture overview
+├── SPEC.md                           # The project brief: job, why, guardrails, done means
 ├── docker-compose.yml                # Dev stack: app + keycloak + kafka + 2× postgres
-├── go.mod / go.sum                   # Module: github.com/andygeiss/hotel-booking, Go 1.25.5
+├── go.mod / go.sum                   # Module: github.com/andygeiss/hotel-booking, `go 1.27`
+
+There is deliberately no `.github/workflows/`, no dependency bot, and no
+`.golangci.yml`: the gates run from the Makefile on the developer's machine, and
+staticcheck is the only third-party lint tool.
 │
 ├── cmd/server/                       # ┌─ Binary entry point
 │   ├── main.go                       # │  DI wiring, context, Postgres pools, Kafka dispatcher,
@@ -41,7 +42,7 @@ hotel-booking/
 │           ├── reservation_detail.tmpl
 │           ├── reservation_form.tmpl
 │           ├── reservations.tmpl
-│           └── sw.tmpl               # │  /sw.js — PWA service worker
+│           └── sw.tmpl               # │  /sw.js — service worker; nothing registers it
 │                                     # └─
 │
 ├── docs/                             # Architecture and generated documentation
@@ -137,8 +138,8 @@ hotel-booking/
 ## Test Organization
 
 - Unit tests colocated with source files (`*_test.go`).
-- Integration tests are tagged with `//go:build integration` (run via `just test-integration`).
-- Benchmarks (`cmd/server/main_test.go`) drive PGO profile generation (`just profile`).
+- Integration tests are tagged with `//go:build integration` (run via `go test -tags=integration -v ./internal/...`).
+- Benchmarks (`cmd/server/main_test.go`) drive PGO profile generation (`make profile`).
 - Test fixtures live under `internal/adapters/inbound/testdata/assets/templates/` (mirrors embedded templates).
 
 ## Dependency Direction

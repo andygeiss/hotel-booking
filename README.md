@@ -9,7 +9,6 @@
 [![Releases](https://img.shields.io/github/v/release/andygeiss/hotel-booking)](https://github.com/andygeiss/hotel-booking/releases)
 [![Go Report Card](https://goreportcard.com/badge/github.com/andygeiss/hotel-booking)](https://goreportcard.com/report/github.com/andygeiss/hotel-booking)
 [![Codacy Badge](https://app.codacy.com/project/badge/Grade/f9f01632dff14c448dbd4688abbd04e8)](https://app.codacy.com/gh/andygeiss/hotel-booking/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_grade)
-[![Codacy Badge](https://app.codacy.com/project/badge/Coverage/f9f01632dff14c448dbd4688abbd04e8)](https://app.codacy.com/gh/andygeiss/hotel-booking/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_coverage)
 
 A hotel reservation and payment management system built with Go, demonstrating Domain-Driven Design (DDD) and Hexagonal Architecture (Ports & Adapters) patterns.
 
@@ -31,6 +30,7 @@ A hotel reservation and payment management system built with Go, demonstrating D
 - [Testing](#testing)
 - [Configuration](#configuration)
 - [Using as a Template](#using-as-a-template)
+- [Baseline deviations](#baseline-deviations)
 - [Contributing](#contributing)
 - [License](#license)
 
@@ -53,7 +53,7 @@ This repository provides a reference implementation for structuring Go applicati
 ## Key Features
 
 - **Bounded Context Architecture** — Separate reservation, payment, and orchestration contexts
-- **Developer Experience** — `just` task runner, golangci-lint, comprehensive test coverage
+- **Developer Experience** — one `make` command surface, staticcheck and govulncheck as gates, comprehensive test coverage
 - **Domain-Driven Design** — Aggregates, entities, value objects, domain services, and domain events
 - **Event-Driven Communication** — Kafka-based pub/sub for inter-context messaging
 - **Hexagonal Architecture** — Clear separation between domain logic and infrastructure
@@ -232,7 +232,6 @@ Booking Workflow:
 
 ```
 hotel-booking/
-├── .justfile                     # Task runner commands
 ├── cmd/server/                   # HTTP server entry point
 │   ├── main.go                   # DI wiring, bootstrap, lifecycle
 │   └── assets/
@@ -241,6 +240,8 @@ hotel-booking/
 │           └── error.tmpl        # User-friendly error page
 ├── docker-compose.yml            # Dev stack (PostgreSQL x2, Keycloak, Kafka, app)
 ├── Dockerfile                    # Multi-stage production build
+├── Makefile                      # The only command surface; the gates live in `check`
+├── SPEC.md                       # Project brief: job, why, guardrails, done means
 ├── migrations/
 │   ├── reservation/
 │   │   └── init.sql              # Reservation database schema (key/value)
@@ -249,7 +250,9 @@ hotel-booking/
 ├── internal/
 │   ├── adapters/
 │   │   ├── inbound/              # HTTP handlers, event subscribers
-│   │   │   ├── router.go         # HTTP routing & middleware
+│   │   │   ├── router.go         # HTTP routing; returns the mux behind WithSecurity
+│   │   │   ├── middleware.go     # secureHeaders, the CSP, the WithSecurity chain
+│   │   │   ├── http_ops.go       # /healthz + pprof for the loopback ops listener
 │   │   │   ├── http_{feature}.go # HTTP handlers
 │   │   │   ├── http_error.go     # Error page handler
 │   │   │   └── event_subscriber.go
@@ -291,10 +294,12 @@ hotel-booking/
 
 ### Prerequisites
 
-- **Docker** and **Docker Compose** (or Podman)
-- **Go 1.24+**
-- **golangci-lint** (for linting/formatting)
-- **just** task runner
+- **Go 1.27.1** — the version pinned by the [engineering baseline](https://github.com/andygeiss/baseline/blob/main/VERSIONS.md)
+- **Make** — the only command surface; already on every machine
+- **Docker** and **Docker Compose** (or Podman) — for the local stack only
+
+`make check` runs staticcheck and govulncheck through `go run`, so it needs the network
+but nothing installed.
 
 ### Installation
 
@@ -304,11 +309,11 @@ hotel-booking/
    cd hotel-booking
    ```
 
-2. **Install development tools:**
+2. **Install the local stack tools:**
    ```bash
-   just setup
+   brew install docker-compose podman graphviz
    ```
-   This installs `docker-compose`, `golangci-lint`, `just`, and `podman` via Homebrew.
+   `graphviz` is only needed by `make profile`.
 
 3. **Configure environment:**
    ```bash
@@ -318,9 +323,14 @@ hotel-booking/
 
 4. **Start the development stack:**
    ```bash
-   just up
+   sed -i '' "s/CHANGE_ME_LOCAL_SECRET/$(LC_ALL=C tr -dc 'A-Za-z0-9' < /dev/urandom | head -c 32)/g" .env .keycloak.json
+   podman build -t "$USER/hotel-booking:latest" -f Dockerfile .
+   docker-compose --env-file .env up -d
    ```
-   This builds the Docker image and starts two PostgreSQL databases (reservation_db, payment_db), Keycloak, Kafka, and the application.
+   The first line gives the app and the Keycloak realm the same random secret; it does
+   nothing once the placeholder is gone. The rest starts two PostgreSQL databases
+   (reservation_db, payment_db), Keycloak, Kafka, and the application. Full walkthrough:
+   [docs/development-guide.md](docs/development-guide.md).
 
 5. **Access the application:**
    - **App:** http://localhost:8080/ui
@@ -332,17 +342,22 @@ hotel-booking/
 
 ### Commands
 
+`make` is the whole command surface. `make check` before every commit, `make ci` before
+every push — there is no CI server, so nothing runs the gates for you.
+
 | Command | Description |
 |---------|-------------|
-| `just build` | Build Docker image |
-| `just down` | Stop all services |
-| `just fmt` | Format code |
-| `just lint` | Run linter |
-| `just profile` | Generate CPU profile for PGO |
-| `just setup` | Install development dependencies |
-| `just test` | Run unit tests with coverage |
-| `just test-integration` | Run integration tests |
-| `just up` | Start full development stack |
+| `make build` | Build the release-shaped binary into `bin/` |
+| `make check` | Every gate against the working tree — the default target |
+| `make ci` | The same gates against the commit, in a clean copy |
+| `make clean` | Remove `bin/` |
+| `make fmt` | Apply goimports and `go fix` |
+| `make profile` | Generate the CPU profile the `-pgo` Docker build reads |
+| `make run` | Run the server, loading `.env` if it is there |
+| `make test` | The inner loop: `go test -race -shuffle=on ./...` |
+
+The local container stack is not a Make target — see
+[docs/development-guide.md](docs/development-guide.md) for `docker-compose` commands.
 
 ### Run Single Test
 
@@ -395,20 +410,23 @@ See [ARCHITECTURE.md](docs/ARCHITECTURE.md#7-mcp-integration) for details on add
 
 ### Unit Tests
 
-Run all unit tests with coverage:
-
 ```bash
-just test
+make test
 ```
 
-This generates `.coverage.pprof` with coverage metrics.
+Every run uses `-race -shuffle=on`, the same flags `make check` uses. For coverage:
+
+```bash
+go test -coverprofile=.coverage.pprof ./internal/...
+go tool cover -func=.coverage.pprof | grep total
+```
 
 ### Integration Tests
 
 Integration tests require external services (PostgreSQL databases, Kafka, Keycloak):
 
 ```bash
-just test-integration
+go test -tags=integration -v ./internal/...
 ```
 
 ### Test Organization
@@ -515,10 +533,78 @@ See `.env.example` for the complete list with documentation.
 
 ---
 
+## Baseline deviations
+
+This project follows the [engineering baseline](https://github.com/andygeiss/baseline).
+Where it does not, the reason is here. A reader hunting for gaps can count every bullet
+in this section as one.
+
+### Waived rules
+
+Each entry states the rule, the document, the date, who decided, why, and what contains
+the damage.
+
+- **Persistence: SQLite first**
+  ([project-types/web-application.md](https://github.com/andygeiss/baseline/blob/main/project-types/web-application.md))
+  — waived 2026-09-07 by Andy. One database per bounded context is the thing this
+  repository demonstrates, and a single SQLite file cannot show that isolation.
+  Contained: `pgx/v5` is the only driver, both schemas are the same key/value shape in
+  `migrations/`, and no query ever crosses a context.
+
+- **Sessions via `alexedwards/scs/v2`**
+  ([project-types/web-application.md](https://github.com/andygeiss/baseline/blob/main/project-types/web-application.md))
+  — waived 2026-09-07 by Andy. The project exists partly to show OAuth 2.1 against a
+  real identity provider, including two clients: a browser session for the web UI and a
+  Bearer token for MCP. Contained: sessions stay server-side in
+  `cloud-native-utils/web`, the cookie carries a token and nothing else, and Keycloak is
+  reached only from `cmd/server/main.go` and the OIDC middleware.
+
+- **Project layout**
+  ([patterns/go-project-layout.md](https://github.com/andygeiss/baseline/blob/main/patterns/go-project-layout.md))
+  — waived 2026-09-07 by Andy. The baseline's `internal/{app,domain,store}` has one
+  slot for one context; this repository teaches several bounded contexts, so it uses
+  `internal/domain/<context>` with `internal/adapters/{inbound,outbound}`. Contained:
+  the dependency direction is unchanged — adapters import domain, domain imports no
+  adapter — and routes still live in one file.
+
+- **Approved dependency list**
+  ([stack/go.md](https://github.com/andygeiss/baseline/blob/main/stack/go.md))
+  — waived 2026-09-07 by Andy. Three dependencies sit outside the list, each because it
+  *is* the mechanism a chapter of this reference implementation demonstrates:
+  `cloud-native-utils` (server, sessions, MCP, templating, Kafka dispatcher),
+  `go-oidc/v3` (token verification), and `kafka-go` (event streaming, pulled in
+  indirectly). Contained: every one is reached through a port in `internal/domain`, so
+  the domain layer compiles without any of them.
+
+- **No service worker**
+  ([patterns/pwa.md](https://github.com/andygeiss/baseline/blob/main/patterns/pwa.md))
+  — waived 2026-09-07 by Andy, temporarily. Nothing registers a service worker any
+  more: the inline registration scripts were removed when the Content-Security-Policy
+  landed, because a policy without `'unsafe-inline'` blocks them. `GET /sw.js` still
+  answers so that browsers holding the old worker can be handed an unregistering one.
+  Contained: no template references it, and the waiver ends when that route is deleted
+  (tracked in [CLAUDE.md § Roadmap](./CLAUDE.md#roadmap)).
+
+### Rules met by a different route
+
+- **Health checks.** The baseline puts `/healthz` on a loopback-only ops listener, and
+  this project does that (`127.0.0.1:6060`, together with `/debug/pprof`). The app
+  listener additionally answers `/health`, `/liveness`, and `/readiness` for the
+  container orchestrator. Those three return a status code and nothing else, so the
+  reason `/healthz` stays private — it names the build and reaches the databases — does
+  not apply to them.
+
+- **Deployment shape.** The baseline ships one static binary behind a TLS proxy. This
+  one is built `CGO_ENABLED=0` and runs alone in a `scratch` image, so it is that same
+  binary; the container is how it is delivered, and belongs to the operations
+  repository rather than here.
+
+---
+
 ## Contributing
 
-1. Ensure all tests pass: `just test`
-2. Ensure code is formatted and linted: `just fmt && just lint`
+1. Ensure `make check` is green, and `make ci` before you push
+2. Fix formatting with `make fmt` and read the `go fix` diff before committing it
 3. Follow hexagonal architecture patterns (ports in domain, adapters in adapters/)
 4. Maintain bounded context boundaries (communicate via events, not direct calls)
 5. Update documentation if architecture changes

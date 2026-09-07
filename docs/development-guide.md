@@ -8,14 +8,21 @@ Local development setup, build, test, and common workflows for the Hotel Booking
 
 | Tool | Why | Install (macOS) |
 |------|-----|-----------------|
-| Go 1.25+ | Language toolchain (Docker image uses `golang:1.26rc1-alpine3.23`, but `go.mod` declares 1.25.5) | `brew install go` |
-| `just` | Task runner for every script below | `brew install just` |
-| `golangci-lint` v2+ | Lint + format (see `.golangci.yml`) | `brew install golangci-lint` |
+| Go 1.27.1 | The pinned toolchain; `go.mod` declares `go 1.27` and the Docker builder uses `golang:1.27.1-alpine3.23` | `brew install go` |
+| `make` | The only command surface | already installed |
 | `docker-compose` | Orchestrates the dev stack | `brew install docker-compose` |
-| `podman` | Default image builder used by `just build` | `brew install podman` |
-| `graphviz` | For `just profile` PGO SVG output | `brew install graphviz` |
+| `podman` | Builds the image | `brew install podman` |
+| `graphviz` | For `make profile` PGO SVG output | `brew install graphviz` |
 
-One-shot: `just setup` runs the Homebrew installs listed above.
+```bash
+brew install go docker-compose podman graphviz
+```
+
+`make check` needs no installed linter: it runs staticcheck and govulncheck through
+`go run ...@latest`, so it needs the network instead.
+
+If `make ci` prints a `go version` line that is not `go1.27.1`, put `GOTOOLCHAIN=go1.27.1`
+in front of every `go` and `make` command. Never add a `toolchain` line to `go.mod`.
 
 ## First-Time Setup
 
@@ -27,7 +34,7 @@ One-shot: `just setup` runs the Homebrew installs listed above.
 
 2. **Install tooling** (Homebrew-based)
    ```bash
-   just setup
+   brew install go docker-compose podman graphviz
    ```
 
 3. **Provision local config files**
@@ -35,43 +42,68 @@ One-shot: `just setup` runs the Homebrew installs listed above.
    cp .env.example .env
    cp .keycloak.json.example .keycloak.json
    ```
-   Both files contain the placeholder `CHANGE_ME_LOCAL_SECRET`. On first `just up`, the justfile rotates the placeholder in-place to a random 32-char secret so the app and Keycloak realm agree.
+   Both files contain the placeholder `CHANGE_ME_LOCAL_SECRET`. Rotate it once, so the
+   app and the Keycloak realm agree on the same random secret:
+   ```bash
+   sed -i '' "s/CHANGE_ME_LOCAL_SECRET/$(LC_ALL=C tr -dc 'A-Za-z0-9' < /dev/urandom | head -c 32)/g" .env .keycloak.json
+   ```
+   Running it again does nothing once the placeholder is gone.
 
 4. **Start the stack**
    ```bash
-   just up
+   podman build -t "$USER/hotel-booking:latest" -f Dockerfile .
+   docker-compose --env-file .env up -d
    ```
    Brings up `app`, `keycloak`, `kafka`, `postgres-reservation`, `postgres-payment`.
+   Keycloak needs about a minute to import its realm on a cold start.
 
 5. **Verify it's alive**
    - App: http://localhost:8080/ui
    - Keycloak admin: http://localhost:8180/admin (admin / admin)
 
-## Daily Commands (`.justfile`)
+## Daily Commands (`Makefile`)
+
+`make` is the whole command surface, copied from the baseline's `stack/makefile.md`.
+There is no CI server, so the two commands that matter are yours to run:
+`make check` before every commit, `make ci` before every push.
 
 | Command | What it does |
 |---------|--------------|
-| `just up` / `just u` | `podman build` the image, rotate the local secret if present, then `docker-compose up -d` and poll Keycloak until its import directory is ready |
-| `just down` / `just d` | `docker-compose --env-file .env down` |
-| `just build` / `just b` | `podman build -t ${USER}/${APP_SHORTNAME}:latest -f Dockerfile .` |
-| `just fmt` | `golangci-lint fmt ./...` (formats in place) |
-| `just lint` | `golangci-lint run ./...` |
-| `just test` / `just t` | `go test -v -coverprofile=.coverage.pprof ./internal/...` and print total coverage |
-| `just test-integration [path]` | `go test -tags=integration -v <path>` (default `./internal/...`) |
-| `just profile` | Run benchmarks with `-cpuprofile=.cpuprofile.pprof` and generate `.cpuprofile.svg` (for the PGO build) |
-| `just setup` | Install the tools listed above via Homebrew |
+| `make build` | `CGO_ENABLED=0 go build -trimpath -o bin/ ./cmd/server` |
+| `make check` | The eight gates against the working tree — the default target |
+| `make ci` | The same gates against `git archive HEAD`, in a clean copy |
+| `make clean` | `rm -rf bin/` |
+| `make fmt` | `goimports -w .` then `go fix ./...` — read the diff before committing it |
+| `make profile` | Benchmarks with `-cpuprofile=.cpuprofile.pprof`, plus `.cpuprofile.svg` |
+| `make run` | `go run ./cmd/server`, loading `.env` if it is there |
+| `make test` | `go test -race -shuffle=on ./...` |
+
+**The eight gates, in order:** format, vet, fix, staticcheck, govulncheck, tidy, test,
+static build. A red `govulncheck` means bump the dependency — never silence the check.
+
+The container stack has no Make target; the baseline bans Docker targets. Use
+`docker-compose` directly:
+
+| Command | What it does |
+|---------|--------------|
+| `podman build -t "$USER/hotel-booking:latest" -f Dockerfile .` | Build the image |
+| `docker-compose --env-file .env up -d` | Start the stack |
+| `docker-compose --env-file .env down` | Stop it (volumes survive) |
+| `docker-compose logs -f app` | Follow the app log |
 
 ## Running the Server Locally (without the stack)
 
 When you want to iterate on Go code without the Docker wrapper (still need Postgres/Kafka/Keycloak running):
 
 ```bash
-just up                    # start infra only is not directly supported — see note
 docker-compose --env-file .env up -d postgres-reservation postgres-payment kafka keycloak
-go run ./cmd/server
+make run
 ```
 
-`go run` uses the `.env` file only if you source it into the shell (`set -a; source .env; set +a`) or run through a tool like `direnv`. Otherwise the defaults inside `main.go` kick in.
+`make run` sources `.env` for you and starts the server with `go run`. It is the only
+target that reads that file: `check` and `test` must never depend on a developer's
+machine, or `make ci` would go red on a commit that is fine. Without `.env`, the
+defaults inside `main.go` kick in.
 
 ## Single-Test Invocation
 
@@ -86,7 +118,7 @@ For table-driven tests, the inner name is usually passed with a slash: `-run 'Pa
 
 - Pattern: `Test_{Component}_{Scenario}_Should_{ExpectedResult}` (e.g., `Test_Route_MCP_Endpoint_Without_MCPServer_Should_Return_404`).
 - Unit tests live next to the code (`*_test.go`).
-- Integration tests use the build tag `//go:build integration` (skipped in `just test`, run via `just test-integration`).
+- Integration tests use the build tag `//go:build integration` (skipped by `make test`, run via `go test -tags=integration -v ./internal/...`).
 - Handler tests use `httptest.NewRecorder()` and the testdata templates under `internal/adapters/inbound/testdata/assets/templates/`.
 - Use `t.Setenv("APP_NAME", ...)` and `t.Setenv("APP_DESCRIPTION", ...)` — a number of handlers read these at closure construction time.
 - For MCP route tests, pass `Verifier: nil` in `RouterConfig` to skip bearer auth (covered by `main_test.go:Benchmark_Server_Integration_MCP_Tools_List_Should_Be_Fast`).
@@ -95,17 +127,26 @@ For table-driven tests, the inner name is usually passed with a slash: `-run 'Pa
 
 1. Edit an aggregate or service under `internal/domain/...`.
 2. Update or add a `*_test.go` beside it.
-3. `just test` to verify — aim to keep domain tests fast and infrastructure-free.
+3. `make test` to verify — aim to keep domain tests fast and infrastructure-free.
 4. If you changed an exported port or event shape, update:
    - the adapter(s) under `internal/adapters/...`
    - `cmd/server/main.go` DI wiring (if a new dependency is required)
    - `docs/api-contracts.md` / `docs/data-models.md` if behavior is externally visible
 
-## Linter Notes (`.golangci.yml`)
+## Linter Notes
 
-`default: all` with a deliberate list of disables: `depguard, exhaustruct, paralleltest, wsl, varnamelen, ireturn, noctx, tagliatelle, mnd, nlreturn, wrapcheck, noinlineerr, forbidigo, forcetypeassert, err113, lll, wsl_v5`. `gofmt` is configured with rewrite rules that replace `interface{}` → `any` and `a[b:len(a)]` → `a[b:]` when you run `just fmt`.
+There is no `golangci-lint` and no `.golangci.yml` any more. The baseline allows exactly
+one third-party lint tool, `staticcheck`, and `make check` runs it through
+`go run honnef.co/go/tools/cmd/staticcheck@latest ./...`.
 
-`revive` disables `package-comments`, `exported`, `var-naming`, `unused-parameter`. `gosec` excludes `G301` (dir perms). If a rule fires in CI but not locally, make sure you are on golangci-lint v2+.
+`@latest` is deliberate for staticcheck and govulncheck: both are analysis gates, never
+build inputs, so a new check can redden a run but can never change the shipped binary.
+If a staticcheck release breaks the gate on an unrelated morning, pin that one line to
+the previous version in the commit that says why, and remove the pin once the findings
+are fixed.
+
+Formatting is `gofmt` through `goimports`; `make fmt` applies it, and `make check` fails
+while a rewrite is pending.
 
 ## Debugging Tips
 
@@ -118,11 +159,13 @@ For table-driven tests, the inner name is usually passed with a slash: `-run 'Pa
 ## PGO Profiling Loop
 
 ```bash
-just profile                               # produces .cpuprofile.pprof and .cpuprofile.svg
-just build                                 # Dockerfile builds with `-pgo=.cpuprofile.pprof`
+make profile                                          # .cpuprofile.pprof + .cpuprofile.svg
+podman build -t "$USER/hotel-booking:latest" -f Dockerfile .   # builds with -pgo
 ```
 
-The Dockerfile requires `.cpuprofile.pprof` to be present at build time. If it is missing, either run `just profile` first or remove the `-pgo` flag from the `go build` invocation in `Dockerfile`.
+The Dockerfile requires `.cpuprofile.pprof` at build time, and that file is gitignored.
+Run `make profile` first on a fresh clone, or remove the `-pgo` flag from the `go build`
+invocation in `Dockerfile`.
 
 ## Documentation Touch Points (before commit)
 

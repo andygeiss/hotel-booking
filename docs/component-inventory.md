@@ -15,7 +15,15 @@ Architecture narrative lives in [ARCHITECTURE.md](./ARCHITECTURE.md); this inven
 | Component | File | Role |
 |-----------|------|------|
 | `RouterConfig` struct | `router.go` | Consolidates all routing dependencies (Ctx, EFS, Logger, MCPServer, ReservationService, Verifier) |
-| `Route(RouterConfig) *http.ServeMux` | `router.go` | Builds the full mux; wraps every handler with `logging.WithLogging` and auth where needed |
+| `Route(RouterConfig) *http.ServeMux` | `router.go` | Builds the full mux; wraps every handler with `logging.WithLogging` and auth where needed, then returns a root mux with the whole application behind `WithSecurity` |
+
+### Middleware and ops
+
+| Component | File | Role |
+|-----------|------|------|
+| `WithSecurity(http.Handler) http.Handler` | `middleware.go` | The security chain: `secureHeaders`, then `http.CrossOriginProtection` (CSRF), then a 1 MiB `http.MaxBytesHandler`. Applied by `Route`, so no handler can skip it. |
+| `secureHeaders` + the `csp` constant | `middleware.go` | CSP, HSTS, `nosniff`, `Referrer-Policy`, set before the next handler runs |
+| `OpsHandler(version string, ping func(context.Context) error) http.Handler` | `http_ops.go` | `/healthz` and the pprof routes for the loopback-only ops listener on `127.0.0.1:6060`. Never registered on the application mux. |
 
 ### HTTP View Handlers (SSR via `cloud-native-utils/templating`)
 

@@ -121,7 +121,9 @@ docs/
 internal/
   adapters/
     inbound/           HTTP handlers, router, RouterConfig
+      middleware.go    secureHeaders, the CSP constant, WithSecurity chain
       router.go        Central HTTP routing
+      http_ops.go      /healthz + pprof for the loopback ops listener
       http_*.go        One handler per file
     outbound/          Repository, event publisher, gateway mocks
       event_publisher.go
@@ -148,27 +150,38 @@ internal/
 migrations/
   payment/             Payment DB schema
   reservation/         Reservation DB schema
+Makefile               The only command surface (baseline stack/makefile.md)
+SPEC.md                The project brief: job, why, guardrails, done means
 ```
 
 ---
 
 ## Commands
 
+`make` is the only command surface, copied from the baseline's `stack/makefile.md`.
+There is no CI server: `make check` before every commit, `make ci` before every push.
+
 ```bash
-# Build and run
-just build           # Build server binary to bin/
-just run             # Run server locally (uses .env)
-just up              # Start Docker services (Postgres, Keycloak, Kafka)
-just down            # Stop Docker services
+# The two that matter
+make check           # Every gate against the working tree (the default target)
+make ci              # The same gates against the commit, in a clean copy
 
-# Quality
-just lint            # Run golangci-lint
-just test            # Run all tests with coverage
-just profile         # Run benchmarks for PGO profiling
-
-# Development
-just serve           # Build and run in one step
+# Inner loop
+make run             # Run the server locally (loads .env if present)
+make test            # go test -race -shuffle=on ./...
+make fmt             # goimports + go fix — read the diff before committing it
+make build           # Release-shaped binary into bin/
+make clean           # Remove bin/
+make profile         # CPU profile for the -pgo Docker build
 ```
+
+The local container stack is not a Make target (the baseline bans Docker targets).
+Use `docker-compose --env-file .env up -d` — see
+[Development Guide](./docs/development-guide.md).
+
+**The eight gates `check` runs, in order:** format, vet, fix, staticcheck, govulncheck,
+tidy, test, static build. A red `govulncheck` means bump the dependency, never silence
+the check.
 
 ---
 
@@ -321,6 +334,9 @@ func Test_Something(t *testing.T) {
 | Handler factory | Closure-based DI, testable handlers |
 | Separate databases | Bounded context isolation, independent scaling |
 | Kafka for events | Durable event streaming, replay capability |
+| Make, no CI server | One gate list, run on the developer's machine; `make ci` proves it on the commit |
+| Security chain in `Route` | A handler cannot be registered outside CSP, CSRF and the body cap |
+| Loopback ops listener | `/healthz` and pprof are unreachable from the proxy, which is their only access control |
 
 ---
 
@@ -334,9 +350,33 @@ func Test_Something(t *testing.T) {
 - [x] RouterConfig refactoring
 - [x] Separate databases per bounded context
 - [x] Kafka event streaming
+- [x] Engineering baseline: Go 1.27 pin, Makefile, security headers, CSRF, ops listener
 - [ ] Email notifications
 - [ ] Calendar integration
 - [ ] Admin dashboard
+
+### Open baseline work
+
+Boxes in the baseline's `checklists/web-application.md` that this project does not check
+yet. These are open tasks, not waivers — what is genuinely waived is in
+[README § Baseline deviations](./README.md#baseline-deviations).
+
+- [ ] **Delete `GET /sw.js`.** Nothing registers a service worker any more. The route
+      stays only long enough to hand an unregistering worker to browsers that still
+      hold the old one.
+- [ ] **Move config into `main`.** Eight files under `internal/adapters/inbound` call
+      `os.Getenv` for `APP_NAME` and `APP_DESCRIPTION`, which is why every handler test
+      needs `t.Setenv`. The baseline wants one `Config` struct parsed in `main`
+      (`patterns/go-config.md`).
+- [ ] **Give shutdown a deadline.** `srv.Shutdown(context.Background())` waits forever
+      on an in-flight request. The baseline calls for a fresh ~10 s budget.
+- [ ] **Ship the PGO profile, or drop `-pgo`.** `.cpuprofile.pprof` is gitignored, so
+      the Dockerfile's `-pgo` build fails on a clean checkout until `make profile` runs.
+- [ ] **Dual-mode htmx responses.** `Vary: HX-Request`, `hx-push-url`, and the
+      fragment-or-full-page test are not in place yet
+      (`patterns/htmx-server-rendering.md`).
+- [ ] **`DESIGN.md`.** The three stylesheets under `cmd/server/assets/static/css` have
+      no design file to stay in lockstep with (`patterns/design-system.md`).
 
 ---
 
@@ -365,3 +405,20 @@ func Test_Something(t *testing.T) {
 11. **Database per context** - Reservation and Payment use separate PostgreSQL instances. Never cross-query.
 
 12. **Kafka broker config** - Use `localhost:9092` for local dev, `kafka:9092` inside Docker compose.
+
+13. **No inline JavaScript, ever** - The CSP carries no `'unsafe-inline'`, so an inline
+    `<script>` or `<style>` is dead on arrival in the browser. Put behaviour in htmx
+    attributes and rules in a stylesheet. Adding `'unsafe-inline'` to make one thing
+    work is banned: it is a tier-1 rule in the baseline.
+
+14. **Security wraps the router, not `main`** - `Route` returns its mux already wrapped
+    in `WithSecurity`. Never register a handler outside it, and never hand `main` an
+    unwrapped mux.
+
+15. **Ops endpoints stay off the app mux** - `/healthz` and `/debug/pprof` belong to
+    `OpsHandler` on `127.0.0.1:6060`. Being unreachable from the proxy is their only
+    access control, so putting either on the application listener exposes them.
+
+16. **The gates are yours to run** - There is no CI workflow. `make check` before a
+    commit, `make ci` before a push, and read `make ci`'s `go version` line: it is the
+    only record of which toolchain ran.
