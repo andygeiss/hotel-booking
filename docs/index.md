@@ -11,7 +11,7 @@
 ## Project Overview
 
 - **Type:** Monolith (single Go module, single binary)
-- **Primary language:** Go 1.27.1 (`go.mod` declares `go 1.27`)
+- **Primary language:** Go 1.27.2 (`go.mod` declares `go 1.27`)
 - **Architecture:** Hexagonal (Ports & Adapters) + Domain-Driven Design
 - **Topology:** Three bounded contexts inside one process (Reservation, Payment, Orchestration) communicating over Kafka
 - **UI:** Go `html/template` SSR + htmx 2.0.10 + PWA manifest (no service worker at all; `/sw.js` 404s)

@@ -3,7 +3,7 @@
 **Project:** Hotel Booking
 **Type:** Go backend service (monolith)
 **Architecture:** Hexagonal (Ports & Adapters) + Domain-Driven Design
-**Primary Language:** Go 1.27.1 (`go.mod` declares `go 1.27`)
+**Primary Language:** Go 1.27.2 (`go.mod` declares `go 1.27`)
 **Scan Date:** 2026-04-16
 **Scan Level:** Exhaustive
 

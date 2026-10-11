@@ -8,7 +8,7 @@ Container image build, docker-compose dev stack, the gates, and environment conf
 
 Two stages, defined in `Dockerfile`:
 
-1. **Builder**: `golang:1.27.1-alpine3.23` (the pinned Go toolchain — never an RC)
+1. **Builder**: `golang:1.27.2-alpine3.23` (the pinned Go toolchain — never an RC)
    - `CGO_ENABLED=0`, `GO111MODULE=on`
    - `go mod download` as a separate layer (cached while `go.mod`/`go.sum` are unchanged)
    - `go build -ldflags "-s -w" -trimpath -o server ./cmd/server`
@@ -70,7 +70,7 @@ A red `govulncheck` means bump the dependency, never silence the check. Dependen
 updates are done by hand on a 90-day cycle, under the pin:
 
 ```bash
-export GOTOOLCHAIN=go1.27.1
+export GOTOOLCHAIN=go1.27.2
 go get -u ./... && go mod tidy && make check     # one chore(deps) commit
 ```
 
