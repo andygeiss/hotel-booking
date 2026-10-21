@@ -16,7 +16,7 @@ hotel-booking/
 ├── .keycloak.json.example            # Template for Keycloak realm config
 ├── .gitignore                        # Includes .claude, _bmad, _bmad-output (BMAD workspace)
 ├── CLAUDE.md                         # Project conventions, ubiquitous language, state machines, gotchas
-├── Dockerfile                        # Multi-stage: golang:1.27.2-alpine3.23 → scratch, PGO enabled
+├── Dockerfile                        # Multi-stage: golang:1.27.3-alpine3.23 → scratch, PGO enabled
 ├── LICENSE                           # MIT
 ├── Makefile                          # The only command surface; the eight gates live in `check`
 ├── README.md                         # User-facing quick start + architecture overview

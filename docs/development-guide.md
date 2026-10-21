@@ -8,7 +8,7 @@ Local development setup, build, test, and common workflows for the Hotel Booking
 
 | Tool | Why | Install (macOS) |
 |------|-----|-----------------|
-| Go 1.27.2 | The pinned toolchain; `go.mod` declares `go 1.27` and the Docker builder uses `golang:1.27.2-alpine3.23` | `brew install go` |
+| Go 1.27.3 | The pinned toolchain; `go.mod` declares `go 1.27` and the Docker builder uses `golang:1.27.3-alpine3.23` | `brew install go` |
 | `make` | The only command surface | already installed |
 | `docker-compose` | Orchestrates the dev stack | `brew install docker-compose` |
 | `podman` | Builds the image | `brew install podman` |
@@ -21,7 +21,7 @@ brew install go docker-compose podman graphviz
 `make check` needs no installed linter: it runs staticcheck and govulncheck through
 `go run ...@latest`, so it needs the network instead.
 
-If `make ci` prints a `go version` line that is not `go1.27.2`, put `GOTOOLCHAIN=go1.27.2`
+If `make ci` prints a `go version` line that is not `go1.27.3`, put `GOTOOLCHAIN=go1.27.3`
 in front of every `go` and `make` command. Never add a `toolchain` line to `go.mod`.
 
 ## First-Time Setup

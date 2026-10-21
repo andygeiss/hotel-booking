@@ -50,7 +50,7 @@ This system manages hotel room reservations and associated payments. It demonstr
 
 | Component | Technology | Purpose |
 |-----------|------------|---------|
-| Language | Go 1.27.2 | Application runtime (`go.mod` declares `go 1.27`) |
+| Language | Go 1.27.3 | Application runtime (`go.mod` declares `go 1.27`) |
 | Architecture | Hexagonal + DDD | Clean separation, domain focus |
 | Web Framework | `net/http` stdlib | HTTP server and routing |
 | Frontend | HTML + HTMX | Interactive UI without JavaScript frameworks |

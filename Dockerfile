@@ -3,7 +3,7 @@
 # ======================================
 # Production-ready container for the Go DDD/Hexagonal application
 # Strategy: Multi-stage build with minimal runtime scratch image
-#   - Builder stage: golang:1.27.2-alpine3.23 (toolchain used inside the image)
+#   - Builder stage: golang:1.27.3-alpine3.23 (toolchain used inside the image)
 #   - Runtime stage: scratch (runs minimal binary only)
 # Result: ~5-10MB container image with no OS/libc dependencies
 #
@@ -12,7 +12,7 @@
 # Build Stage
 ############################
 # Compiles the Go application with optimizations
-FROM golang:1.27.2-alpine3.23 AS builder
+FROM golang:1.27.3-alpine3.23 AS builder
 
 # Build environment setup
 # CGO_ENABLED=0: Static compilation (no C dependencies)

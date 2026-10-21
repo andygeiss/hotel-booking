@@ -294,7 +294,7 @@ hotel-booking/
 
 ### Prerequisites
 
-- **Go 1.27.2** — the version pinned by the [engineering baseline](https://github.com/andygeiss/baseline/blob/main/VERSIONS.md)
+- **Go 1.27.3** — the version pinned by the [engineering baseline](https://github.com/andygeiss/baseline/blob/main/VERSIONS.md)
 - **Make** — the only command surface; already on every machine
 - **Docker** and **Docker Compose** (or Podman) — for the local stack only
 
