@@ -170,12 +170,10 @@ func HttpCreateReservation(v *View, app AppInfo, reservationService *reservation
 // form fragment, every field still holding what was typed.
 //
 // 422 rather than 200 because the request was understood and refused, and htmx
-// only swaps a 4xx because the layout's htmx-config lists this one code.
-//
-// HX-Push-Url: false is for the boosted case. A boosted swap otherwise pushes
-// this POST's URL into history, and the next refresh or Back re-issues it as a
-// GET against a route that only accepts POST — a 405 in the user's face. A 422
-// is not a redirect, so nothing else prevents that push.
+// swaps it only because the layout's hx-status:422 line says so. That line's
+// push:false also covers the boosted case: a boosted swap otherwise pushes this
+// POST's URL into history, and the next refresh or Back re-issues it as a GET
+// against a route that only accepts POST — a 405 in the user's face.
 func renderReservationFormWithError(v *View, w http.ResponseWriter, r *http.Request, appName, title, sessionID, errMsg string) {
 	data := HttpViewReservationFormResponse{
 		AppName:    appName,
@@ -191,9 +189,6 @@ func renderReservationFormWithError(v *View, w http.ResponseWriter, r *http.Requ
 		GuestEmail: r.FormValue("guest_email"),
 		GuestPhone: r.FormValue("guest_phone"),
 		Error:      errMsg,
-	}
-	if r.Header.Get("HX-Boosted") == "true" {
-		w.Header().Set("HX-Push-Url", "false")
 	}
 	v.Render(w, r, http.StatusUnprocessableEntity, "reservation_form", "reservation-form", data)
 }

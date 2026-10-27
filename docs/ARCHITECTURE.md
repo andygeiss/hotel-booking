@@ -777,12 +777,16 @@ type ReservationListItem struct {
 Cancel operations support HTMX for partial page updates:
 
 ```go
-if r.Header.Get("HX-Request") == "true" {
+if !isFragment(r) { // HX-Request-Type: partial
+    http.Redirect(w, r, "/ui/reservations", http.StatusSeeOther)
+    return
+}
+if !strings.HasSuffix(r.Header.Get("HX-Target"), "#reservation-list") {
     w.Header().Set("HX-Redirect", "/ui/reservations")
     w.WriteHeader(http.StatusOK)
     return
 }
-http.Redirect(w, r, "/ui/reservations", http.StatusSeeOther)
+v.Render(w, r, http.StatusOK, "reservations", "reservation-list", data)
 ```
 
 ### MCP Tools

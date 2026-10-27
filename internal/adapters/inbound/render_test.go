@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -54,7 +55,7 @@ func Test_Render_Without_Htmx_Headers_Should_Return_The_Whole_Page(t *testing.T)
 
 func Test_Render_With_Htmx_Request_Should_Return_Only_The_Fragment(t *testing.T) {
 	// Arrange, Act
-	rec, body := renderReservations(t, map[string]string{"HX-Request": "true"})
+	rec, body := renderReservations(t, map[string]string{"HX-Request": "true", "HX-Request-Type": "partial"})
 
 	// Assert
 	assert.That(t, "status code must be 200", rec.Code, http.StatusOK)
@@ -66,11 +67,11 @@ func Test_Render_With_Htmx_Request_Should_Return_Only_The_Fragment(t *testing.T)
 func Test_Render_With_Boosted_Request_Should_Return_The_Whole_Page(t *testing.T) {
 	// A boosted link sends HX-Request: true but swaps the whole body, so it
 	// needs the document. Answer it with a bare fragment and hx-boost
-	// navigation renders an empty page — which is why isFragment tests both
-	// headers rather than just the first.
+	// navigation renders an empty page — which is why isFragment reads
+	// HX-Request-Type, never HX-Request alone.
 
 	// Arrange, Act
-	rec, body := renderReservations(t, map[string]string{"HX-Request": "true", "HX-Boosted": "true"})
+	rec, body := renderReservations(t, map[string]string{"HX-Request": "true", "HX-Boosted": "true", "HX-Request-Type": "full"})
 
 	// Assert
 	assert.That(t, "status code must be 200", rec.Code, http.StatusOK)
@@ -78,14 +79,40 @@ func Test_Render_With_Boosted_Request_Should_Return_The_Whole_Page(t *testing.T)
 	assert.That(t, "the shell must come back", strings.Contains(body, "<main>"), true)
 }
 
+func Test_Layout_Carries_Every_Htmx_Line(t *testing.T) {
+	// Each line fails silently when it goes: htmx 4 boosts nothing without
+	// :inherited, swaps an error page over whatever asked without the
+	// hx-status lines, and runs a script in <body> again on every boosted swap.
+
+	// Arrange: the real layout, not the fixture the other tests render with.
+	raw, err := os.ReadFile("../../../cmd/server/assets/templates/layout.tmpl")
+	if err != nil {
+		t.Fatalf("reading the layout: %v", err)
+	}
+	body := string(raw)
+
+	// Assert
+	for _, want := range []string{
+		`hx-boost:inherited="true"`,
+		`hx-status:422:inherited="push:false"`,
+		`hx-status:4xx:inherited="swap:'none transition:false ignoreTitle:true' push:false"`,
+		`hx-status:5xx:inherited="swap:'none transition:false ignoreTitle:true' push:false"`,
+		`"history":"reload"`,
+		`<script src="/static/js/htmx.min.js" defer></script>`,
+	} {
+		assert.That(t, "the layout must carry "+want, strings.Contains(body, want), true)
+	}
+	head, _, _ := strings.Cut(body, "</head>")
+	assert.That(t, "htmx must load from <head>", strings.Contains(head, "htmx.min.js"), true)
+}
+
 // ============================================================================
 // Caching
 // ============================================================================
 
-func Test_Render_Should_Vary_On_Both_Htmx_Headers(t *testing.T) {
-	// Both headers pick the body, so both must be cache keys. Varying on
-	// HX-Request alone lets a cache hand a bare fragment to a boosted
-	// navigation.
+func Test_Render_Should_Vary_On_The_Request_Type(t *testing.T) {
+	// HX-Request-Type picks the body, so it must be a cache key. Without it a
+	// cache can hand a bare fragment to a navigation.
 
 	// Arrange, Act
 	rec, _ := renderReservations(t, nil)
@@ -93,8 +120,7 @@ func Test_Render_Should_Vary_On_Both_Htmx_Headers(t *testing.T) {
 	// Assert
 	vary := rec.Header().Values("Vary")
 	joined := strings.Join(vary, ", ")
-	assert.That(t, "Vary must name HX-Request", strings.Contains(joined, "HX-Request"), true)
-	assert.That(t, "Vary must name HX-Boosted", strings.Contains(joined, "HX-Boosted"), true)
+	assert.That(t, "Vary must name HX-Request-Type", strings.Contains(joined, "HX-Request-Type"), true)
 }
 
 func Test_Render_Should_Add_To_Vary_Rather_Than_Replace_It(t *testing.T) {
@@ -115,7 +141,7 @@ func Test_Render_Should_Add_To_Vary_Rather_Than_Replace_It(t *testing.T) {
 	// Assert
 	joined := strings.Join(rec.Header().Values("Vary"), ", ")
 	assert.That(t, "the earlier Vary must survive", strings.Contains(joined, "Cookie"), true)
-	assert.That(t, "the new one must be there too", strings.Contains(joined, "HX-Request"), true)
+	assert.That(t, "the new one must be there too", strings.Contains(joined, "HX-Request-Type"), true)
 }
 
 // ============================================================================
@@ -209,17 +235,18 @@ func Test_Cancel_When_Boosted_Should_Redirect_Too(t *testing.T) {
 	// A boosted form is still a form: it needs the 303 for the same reason.
 
 	// Arrange, Act
-	rec := cancelReservation(t, map[string]string{"HX-Request": "true", "HX-Boosted": "true"})
+	rec := cancelReservation(t, map[string]string{"HX-Request": "true", "HX-Boosted": "true", "HX-Request-Type": "full"})
 
 	// Assert
 	assert.That(t, "status code must be 303", rec.Code, http.StatusSeeOther)
 }
 
 func Test_Cancel_From_The_List_Should_Return_The_Fragment(t *testing.T) {
-	// The list names a target, so the swap has somewhere to land.
+	// The list names a target, so the swap has somewhere to land. htmx 4 sends
+	// it as tag#id.
 
 	// Arrange, Act
-	rec := cancelReservation(t, map[string]string{"HX-Request": "true", "HX-Target": "reservation-list"})
+	rec := cancelReservation(t, map[string]string{"HX-Request": "true", "HX-Request-Type": "partial", "HX-Target": "div#reservation-list"})
 
 	// Assert
 	assert.That(t, "status code must be 200", rec.Code, http.StatusOK)
@@ -233,7 +260,7 @@ func Test_Cancel_From_The_Detail_Page_Should_Send_HX_Redirect(t *testing.T) {
 	// stale once the booking is gone, so send the browser somewhere else.
 
 	// Arrange, Act
-	rec := cancelReservation(t, map[string]string{"HX-Request": "true"})
+	rec := cancelReservation(t, map[string]string{"HX-Request": "true", "HX-Request-Type": "partial", "HX-Target": "form"})
 
 	// Assert
 	assert.That(t, "status code must be 200", rec.Code, http.StatusOK)
@@ -260,7 +287,7 @@ func postInvalidReservation(t *testing.T, headers map[string]string) *httptest.R
 
 func Test_Invalid_Form_Should_Return_422_With_The_Form_Fragment(t *testing.T) {
 	// Arrange, Act
-	rec := postInvalidReservation(t, map[string]string{"HX-Request": "true"})
+	rec := postInvalidReservation(t, map[string]string{"HX-Request": "true", "HX-Request-Type": "partial"})
 
 	// Assert
 	assert.That(t, "status code must be 422", rec.Code, http.StatusUnprocessableEntity)
@@ -269,18 +296,18 @@ func Test_Invalid_Form_Should_Return_422_With_The_Form_Fragment(t *testing.T) {
 	assert.That(t, "no document may come back", strings.Contains(string(body), "<!doctype html>"), false)
 }
 
-func Test_Invalid_Boosted_Form_Should_Refuse_To_Push_The_Post_Url(t *testing.T) {
-	// A boosted swap pushes the request URL into history by default. Let it push
-	// this POST's URL and the next refresh or Back re-issues it as a GET against
-	// a POST-only route — a 405. A 422 is not a redirect, so nothing else stops
-	// the push; the header does.
+func Test_Invalid_Boosted_Form_Leaves_The_Push_To_The_Layout(t *testing.T) {
+	// A boosted swap pushes the request URL into history by default, and a
+	// pushed POST URL comes back as a GET against a POST-only route — a 405.
+	// The layout's hx-status:422 line says push:false, so the server sends no
+	// header of its own: one rule, in one place.
 
 	// Arrange, Act
-	rec := postInvalidReservation(t, map[string]string{"HX-Request": "true", "HX-Boosted": "true"})
+	rec := postInvalidReservation(t, map[string]string{"HX-Request": "true", "HX-Boosted": "true", "HX-Request-Type": "full"})
 
 	// Assert
 	assert.That(t, "status code must be 422", rec.Code, http.StatusUnprocessableEntity)
-	assert.That(t, "the push must be refused", rec.Header().Get("HX-Push-Url"), "false")
+	assert.That(t, "no push header", rec.Header().Get("HX-Push-Url"), "")
 }
 
 func Test_Invalid_Plain_Form_Should_Not_Send_The_Push_Header(t *testing.T) {

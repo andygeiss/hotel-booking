@@ -4,18 +4,11 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <!--
-      htmx-config. The 422 rule is what makes form validation work: htmx 2 does
-      not swap 4xx responses by default. It MUST stay above the [45].. rule —
-      htmx takes the first pattern that matches, and [45].. matches 422 too.
-
-      historyCacheSize 0 with refreshOnHistoryMiss means back and forward are
-      plain browser loads, so they never reach the server carrying htmx headers.
+      htmx-config. history "reload" makes back and forward plain browser loads,
+      so they never reach the server carrying htmx headers. The indicator CSS
+      stays off: htmx 4 would add it outside every cascade layer.
     -->
-    <meta name="htmx-config" content='{"historyCacheSize":0,"refreshOnHistoryMiss":true,"responseHandling":[
-      {"code":"204","swap":false},
-      {"code":"[23]..","swap":true},
-      {"code":"422","swap":true},
-      {"code":"[45]..","swap":false,"error":true}]}' />
+    <meta name="htmx-config" content='{"includeIndicatorCSS":false,"history":"reload"}' />
     <!-- PWA support -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
@@ -35,7 +28,17 @@
     <script src="/static/js/htmx.min.js" defer></script>
     <title>{{ template "title" . }}</title>
 </head>
-<body hx-boost="true">
+<!--
+  Every htmx attribute here is load-bearing. htmx 4 inherits an attribute only
+  through :inherited, so a bare hx-boost would boost nothing. The hx-status lines
+  let a 422 swap (the form flow) without pushing the POST's URL, and keep every
+  other 4xx and 5xx off the page, out of history, and out of the tab title.
+  No transition:true on the boost: this app has never cross-faded.
+-->
+<body hx-boost:inherited="true"
+      hx-status:422:inherited="push:false"
+      hx-status:4xx:inherited="swap:'none transition:false ignoreTitle:true' push:false"
+      hx-status:5xx:inherited="swap:'none transition:false ignoreTitle:true' push:false">
     <!-- Header Navigation -->
     <header class="nav">
         <div class="nav__brand">{{ .AppName }}</div>

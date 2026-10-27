@@ -14,7 +14,7 @@
 - **Primary language:** Go 1.27.3 (`go.mod` declares `go 1.27`)
 - **Architecture:** Hexagonal (Ports & Adapters) + Domain-Driven Design
 - **Topology:** Three bounded contexts inside one process (Reservation, Payment, Orchestration) communicating over Kafka
-- **UI:** Go `html/template` SSR + htmx 2.0.10 + PWA manifest (no service worker at all; `/sw.js` 404s)
+- **UI:** Go `html/template` SSR + htmx 4.0.0 + PWA manifest (no service worker at all; `/sw.js` 404s)
 - **Auth:** Keycloak OIDC (dual client: session for UI, client-credentials for `/mcp`)
 - **Persistence:** Two isolated PostgreSQL databases, key/value schema
 - **External library:** `github.com/andygeiss/cloud-native-utils v0.5.6`

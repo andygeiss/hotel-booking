@@ -2,6 +2,7 @@ package inbound
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/andygeiss/cloud-native-utils/web"
 	"github.com/andygeiss/hotel-booking/internal/domain/reservation"
@@ -167,7 +168,8 @@ func HttpCancelReservation(v *View, app AppInfo, reservationService *reservation
 
 		// The list page names a target to swap; the detail page does not, and
 		// its whole document is stale now, so send it somewhere else instead.
-		if r.Header.Get("HX-Target") != "reservation-list" {
+		// htmx 4 names the target as tag#id, so the id is matched at the end.
+		if !strings.HasSuffix(r.Header.Get("HX-Target"), "#reservation-list") {
 			w.Header().Set("HX-Redirect", "/ui/reservations")
 			w.WriteHeader(http.StatusOK)
 			return

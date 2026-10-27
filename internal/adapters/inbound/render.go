@@ -68,13 +68,13 @@ func NewView(efs fs.FS, logger *slog.Logger) (*View, error) {
 // isFragment reports whether this request wants a fragment back rather than a
 // whole page.
 //
-// Boosted links and forms send HX-Request: true but swap the entire body, so
-// they need the full page — without the HX-Boosted half, hx-boost navigation
-// renders bare fragments into empty pages. Every handler that chooses between a
-// fragment and a 303 calls this too, so the rule has one definition and a
-// handler can never disagree with its own rendering.
+// htmx sends HX-Request-Type: partial when it will swap the answer into an
+// element, and full when the answer replaces the body — a boosted link or form.
+// A plain browser sends neither. Every handler that chooses between a fragment
+// and a 303 calls this too, so the rule has one definition and a handler can
+// never disagree with its own rendering.
 func isFragment(r *http.Request) bool {
-	return r.Header.Get("HX-Request") == "true" && r.Header.Get("HX-Boosted") != "true"
+	return r.Header.Get("HX-Request-Type") == "partial"
 }
 
 // Render writes page as a whole document, or only its named block when the
@@ -100,11 +100,11 @@ func (v *View) Render(w http.ResponseWriter, r *http.Request, status int, page, 
 		return
 	}
 
-	// Both headers help pick the body, so both must be cache keys: Vary on
-	// HX-Request alone lets a cache serve a bare fragment to a boosted
-	// navigation. Add, never Set — Set would drop a Vary the session layer has
-	// already added, letting a cache serve one user's page to another.
-	w.Header().Add("Vary", "HX-Request, HX-Boosted")
+	// The header picks the body, so it must be a cache key: without it a cache
+	// can serve a bare fragment to a navigation. Add, never Set — Set would drop
+	// a Vary the session layer has already added, letting a cache serve one
+	// user's page to another.
+	w.Header().Add("Vary", "HX-Request-Type")
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(status)
 	_, _ = buf.WriteTo(w)

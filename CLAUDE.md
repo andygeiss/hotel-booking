@@ -400,9 +400,10 @@ yet. These are open tasks, not waivers — what is genuinely waived is in
       here and a third compose secret — an upstream change, not a local one.
 - [x] **Dual-mode htmx responses.** `inbound.View.Render` answers the document or one
       named block, chosen by `isFragment` — the same test the handlers use to pick between
-      a fragment and a 303. Every response carries `Vary: HX-Request, HX-Boosted`, added
-      not set. A rejected form is 422 with the form fragment, plus `HX-Push-Url: false`
-      when the request was boosted. `render_test.go` pins all of it.
+      a fragment and a 303. Every response carries `Vary: HX-Request-Type`, added
+      not set. A rejected form is 422 with the form fragment; the layout's
+      `hx-status:422` line swaps it and keeps a boosted POST's URL out of history.
+      `render_test.go` pins all of it.
 - [x] **`DESIGN.md`.** At the repo root, in the `design.md` alpha format: the glassmorphism
       tokens verbatim, measured contrast for every pair, and the component inventory. Every
       pair now meets its floor — the filled buttons take dark text rather than white, and
@@ -479,8 +480,9 @@ yet. These are open tasks, not waivers — what is genuinely waived is in
     because HTML escaping would corrupt a JSON string.
 
 20. **`isFragment` is the only discriminator** - It answers "does this request want a
-    fragment?" — `HX-Request: true` *and not* `HX-Boosted: true`, because a boosted link
-    swaps the whole body and needs the document. `View.Render` calls it, and so does every
+    fragment?" — `HX-Request-Type: partial`, which htmx 4 sends when it will swap the
+    answer into an element; a boosted link says `full`, because it swaps the whole body
+    and needs the document. `View.Render` calls it, and so does every
     handler choosing between a fragment and a 303. Never write the header test a second
     time: two copies is two chances for a handler to disagree with its own rendering.
 
@@ -488,8 +490,9 @@ yet. These are open tasks, not waivers — what is genuinely waived is in
     answers `303 See Other`; only a fragment request gets a direct 200 with the updated
     block. A direct 200 on a boosted POST pushes that URL into history, and the next
     refresh re-issues it as a GET against a POST-only route. A rejected form is **422**
-    with the form fragment, plus `HX-Push-Url: false` when boosted — a 422 is not a
-    redirect, so nothing else stops the push.
+    with the form fragment. The layout's `hx-status:422:inherited="push:false"` line is
+    what swaps it and what stops a boosted swap pushing the POST's URL — a 422 is not a
+    redirect, so nothing else would. Every other 4xx and 5xx swaps nothing.
 
 22. **The gates are yours to run** - There is no CI workflow. `make check` before a
     commit, `make ci` before a push, and read `make ci`'s `go version` line: it is the

@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en">
 <head><title>{{ template "title" . }}</title></head>
-<body hx-boost="true">
+<body hx-boost:inherited="true">
 <header>{{ .AppName }}<span class="session">{{ .SessionID }}</span></header>
 <main>{{ template "main" . }}</main>
 </body>

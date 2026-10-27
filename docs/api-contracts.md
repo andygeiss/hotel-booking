@@ -47,13 +47,12 @@ thing that decides which:
 | Request | What comes back |
 |---|---|
 | No htmx headers | The whole document — layout shell plus the page's `main` |
-| `HX-Request: true` | The named fragment alone |
-| `HX-Request: true` **and** `HX-Boosted: true` | The whole document — a boosted link swaps the entire body |
+| `HX-Request-Type: partial` | The named fragment alone |
+| `HX-Request-Type: full` | The whole document — a boosted link swaps the entire body |
 
-Every one of those responses carries `Vary: HX-Request, HX-Boosted`, **added** rather than
-set, so a `Vary` an earlier layer wrote survives. Both headers pick the body, so both have
-to be cache keys: varying on `HX-Request` alone lets a cache hand a bare fragment to a
-boosted navigation.
+Every one of those responses carries `Vary: HX-Request-Type`, **added** rather than set,
+so a `Vary` an earlier layer wrote survives. The header picks the body, so it has to be a
+cache key: without it a cache can hand a bare fragment to a navigation.
 
 Mutations:
 
@@ -63,12 +62,11 @@ Mutations:
 | `POST` as a fragment swap, target present | `200` with the updated fragment |
 | `POST` as a fragment swap, nothing to swap into | `200` with `HX-Redirect` |
 | Rejected input | `422` with the form fragment, fields still filled |
-| Rejected input, boosted | `422` plus `HX-Push-Url: false` |
 
-The 422 needs the `htmx-config` meta tag in `layout.tmpl` — htmx 2 does not swap 4xx by
-default — and its `{"code":"422","swap":true}` rule must stay **above** the
-`{"code":"[45]..","swap":false}` one, because htmx takes the first pattern that matches and
-`[45]..` matches `422` too.
+The 422 swaps because `<body>` in `layout.tmpl` carries `hx-status:422:inherited="push:false"`,
+and the same line keeps a boosted 422 from pushing its POST URL into history. The two other
+`hx-status` lines keep every other 4xx and 5xx off the page: htmx 4 would otherwise swap an
+error page into whatever asked.
 
 ### Ops listener (`127.0.0.1:6060`)
 
@@ -154,7 +152,7 @@ Reservation IDs are generated via `cloud-native-utils/security.GenerateID()`; th
 
 ### POST `/ui/reservations/{id}/cancel`
 
-No body. Uses session email to verify ownership against `Reservation.GuestID`. HTMX-aware: returns `HX-Redirect: /ui/reservations` when the `HX-Request: true` header is present.
+No body. Uses session email to verify ownership against `Reservation.GuestID`. HTMX-aware: a fragment request (`HX-Request-Type: partial`) gets the re-rendered list when its target is `#reservation-list`, and `HX-Redirect: /ui/reservations` otherwise; everything else gets `303`.
 
 ---
 
